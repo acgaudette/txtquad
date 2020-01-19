@@ -1,10 +1,11 @@
-#include <vulkan/vulkan.h>
-#include <GLFW/glfw3.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <stdalign.h>
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <vulkan/vulkan.h> // Must include before GLFW
+#include <GLFW/glfw3.h>
+#include "vkext.h"
+#include "alg.h"
 
 #define NAME "txtquad"
 #define WIDTH 1024
@@ -12,6 +13,10 @@
 
 #define SWAP_IMG_COUNT 3
 #define FONT_SIZE (128 * 128)
+#define FONT_OFF (128 / 8)
+
+#define MAX_CHAR 4096
+#define MAX_BLCK 1024
 
 struct Frame {
 	size_t i;
@@ -24,66 +29,107 @@ struct Frame {
 #endif
 };
 
-struct DevData {
-	VkPhysicalDevice hard;
-	VkDevice log;
-	size_t q_ind;
-	VkQueue q;
+// TODO: model matrix
+
+struct RawChar {
+	v3 pos;
+	float scale;
+	// rot
+	alignas(16) v2 off;
+	// col
 };
 
-struct SwapData {
-	VkSwapchainKHR chain;
-	VkFormat format;
-	VkImage *img;
+struct Char {
+	v3 pos;
+	float scale;
+	char v;
 };
 
-// TODO
-struct BindingsData {
-	VkDescriptorSetLayout layout;
-	VkDescriptorSet set;
+struct Block {
+	v3 piv;
+	char *str;
+	size_t i;
 };
 
-struct GraphicsData {
-	VkRenderPass pass;
-	VkFramebuffer *fbuffers;
-	VkPipelineLayout layout;
-	VkPipeline pipeline;
-};
+struct Text {
+	struct Block blocks[MAX_BLCK];
+	size_t block_count;
+	struct Char chars[MAX_CHAR];
+	size_t char_count;
+	struct RawChar *char_buf;
+} text;
 
-struct SyncData {
-	VkFence acquire;
-	VkFence *submit;
-	VkSemaphore *sem;
-};
+void text_update(unsigned int index)
+{
+	struct RawChar *buf = text.char_buf + index * MAX_CHAR;
+
+	for (size_t i = 0; i < text.char_count; ++i) {
+		struct Char c = text.chars[i];
+		v2 off = {
+			c.v % FONT_OFF,
+			c.v / FONT_OFF,
+		};
+
+		buf[i] = (struct RawChar) {
+			.pos = c.pos,
+			.scale = c.scale,
+			.off = off,
+		};
+	}
+
+	size_t clear_size = (MAX_CHAR - text.char_count)
+		* sizeof(struct RawChar);
+	memset(buf + text.char_count, 0, clear_size);
+
+	// TODO: blocks, etc.
+}
 
 struct App {
 	GLFWwindow *win;
 	VkInstance inst;
 	VkSurfaceKHR surf;
-	struct DevData dev;
-	struct SwapData swap;
-	struct BindingsData bindings;
-	struct GraphicsData graphics;
-	struct SyncData sync;
+	struct DevData {
+		VkPhysicalDevice hard;
+		VkDevice log;
+		size_t q_ind;
+		VkQueue q;
+	} dev;
+	struct SwapData {
+		VkSwapchainKHR chain;
+		VkFormat format;
+		VkImage *img;
+	} swap;
+	struct FontData {
+		VkImageView view;
+		VkSampler sampler;
+	} font;
+	struct TextData {
+		struct AkBuffer data;
+	} text;
+	struct DescData {
+		VkDescriptorSetLayout *layouts;
+		VkDescriptorSet *sets;
+		size_t count;
+	} desc;
+	struct GraphicsData {
+		VkRenderPass pass;
+		VkFramebuffer *fbuffers;
+		VkPipelineLayout layout;
+		VkPipeline pipeline;
+	} graphics;
+	struct SyncData {
+		VkFence acquire;
+		VkFence *submit;
+		VkSemaphore *sem;
+	} sync;
 	VkCommandPool pool;
 	VkCommandBuffer *cmd;
 } app;
 
-static void panic()
-{
-	printf("Exit failure\n");
-	exit(1);
-}
-
-static void panic_msg(const char *msg)
-{
-	fprintf(stderr, "Error: %s\n", msg);
-	panic();
-}
-
-// TODO: reorg on call order
 // TODO: static
 // TODO: free all mallocs
+// TODO: fix all %d prints
+// TODO: implement free on all vulkan items
 
 GLFWwindow *mk_win()
 {
@@ -106,8 +152,6 @@ GLFWwindow *mk_win()
 	printf("Created GLFW window \"%s\"\n", NAME);
 	return win;
 }
-
-#define STYPE(NAME) .sType = VK_STRUCTURE_TYPE_ ## NAME ,
 
 VkInstance mk_inst(GLFWwindow *win)
 {
@@ -266,6 +310,28 @@ struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 	vkGetDeviceQueue(dev, q_ind, 0, &q);
 	printf("Acquired queue [%lu]\n", q_ind);
 
+	VkPhysicalDeviceMemoryProperties mem_props;
+	vkGetPhysicalDeviceMemoryProperties(hard_dev, &mem_props);
+
+	for (size_t i = 0; i < mem_props.memoryTypeCount; ++i) {
+		VkMemoryType t = mem_props.memoryTypes[i];
+		printf("Found memory type %lu:\n", i);
+		VkMemoryPropertyFlags flags = t.propertyFlags;
+
+		size_t j = 0;
+		while (flags) {
+			if (flags & 1) {
+				printf(
+					"\t%s\n",
+					mem_prop_flag_str(1 << j)
+				);
+			}
+
+			flags >>= 1;
+			++j;
+		}
+	}
+
 	return (struct DevData) {
 		hard_dev,
 		dev,
@@ -308,7 +374,7 @@ struct SwapData mk_swap(struct DevData dev, VkSurfaceKHR surf)
 		.pQueueFamilyIndices = NULL,
 		.preTransform = cap.currentTransform,
 		.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-		.presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR,
+		.presentMode = VK_PRESENT_MODE_FIFO_KHR, // TODO
 		.clipped = VK_TRUE,
 		.oldSwapchain = VK_NULL_HANDLE,
 	};
@@ -327,17 +393,17 @@ struct SwapData mk_swap(struct DevData dev, VkSurfaceKHR surf)
 		panic_msg("unable to create swapchain");
 	}
 
-	// TODO
-	VkImage *img = malloc(sizeof(VkImage) * SWAP_IMG_COUNT);
+	VkImage *img = NULL;
+	img_count = 0;
 	vkGetSwapchainImagesKHR(dev.log, swapchain, &img_count, img);
-	printf("Created swapchain with %u images\n", img_count);
 	assert(img_count == SWAP_IMG_COUNT);
 
-	return (struct SwapData) {
-		swapchain,
-		format,
-		img,
-	};
+	assert(!img);
+	img = malloc(sizeof(VkImage) * img_count);
+	vkGetSwapchainImagesKHR(dev.log, swapchain, &img_count, img);
+
+	printf("Created swapchain with %u images\n", img_count);
+	return (struct SwapData) { swapchain, format, img };
 }
 
 VkCommandPool mk_pool(struct DevData dev)
@@ -360,27 +426,7 @@ VkCommandPool mk_pool(struct DevData dev)
 	return pool;
 }
 
-static const char *mem_prop_flag_str(int flag)
-{
-	switch (flag) {
-	case VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT:
-		return "device_local";
-	case VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT:
-		return "host_visible";
-	case VK_MEMORY_PROPERTY_HOST_COHERENT_BIT:
-		return "host_coherent";
-	case VK_MEMORY_PROPERTY_HOST_CACHED_BIT:
-		return "host_cached";
-	case VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT:
-		return "lazily_allocated";
-	case VK_MEMORY_PROPERTY_PROTECTED_BIT:
-		return "protected";
-	default:
-		return "unknown_flag";
-	}
-}
-
-unsigned char *read_font()
+unsigned char *read_font() // Read custom PBM file
 {
 	errno = 0;
 	const char *path = "./font.pbm";
@@ -466,90 +512,24 @@ unsigned char *read_font()
 	return exp;
 }
 
-// FIXME
-struct BindingsData load_font(struct DevData dev, VkCommandPool pool)
+struct FontData load_font(struct DevData dev, VkCommandPool pool)
 {
 	/* Staging buffer */
 
 	VkResult err;
-	VkBufferCreateInfo buf_create_info = {
-	STYPE(BUFFER_CREATE_INFO)
-		.flags = 0,
-		.size = FONT_SIZE,
-		.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-		.queueFamilyIndexCount = 0,
-		.pQueueFamilyIndices = NULL,
-		.pNext = NULL,
-	};
-
-	VkBuffer staging;
-	err = vkCreateBuffer(dev.log, &buf_create_info, NULL, &staging);
-	if (err != VK_SUCCESS) {
-		panic_msg("unable to create staging buffer");
-	}
-
-	printf("Created font staging buffer with size %d\n", FONT_SIZE);
-
-	VkPhysicalDeviceMemoryProperties mem_props;
-	vkGetPhysicalDeviceMemoryProperties(dev.hard, &mem_props);
-
-	for (size_t i = 0; i < mem_props.memoryTypeCount; ++i) {
-		VkMemoryType t = mem_props.memoryTypes[i];
-		printf("Found memory type %lu:\n", i);
-		VkMemoryPropertyFlags flags = t.propertyFlags;
-
-		size_t j = 0;
-		while (flags) {
-			if (flags & 1) {
-				printf(
-					"\t%s\n",
-					mem_prop_flag_str(1 << j)
-				);
-			}
-
-			flags >>= 1;
-			++j;
-		}
-	}
-
-	/* TODO: validate hardware memory and select best heap */
-	VkMemoryRequirements mem_requirements;
-	vkGetBufferMemoryRequirements(dev.log, staging, &mem_requirements);
-	assert(mem_requirements.size == FONT_SIZE);
-	VkMemoryAllocateInfo staging_alloc_info = {
-	STYPE(MEMORY_ALLOCATE_INFO)
-		.allocationSize = FONT_SIZE,
-		.memoryTypeIndex = 0,
-		.pNext = NULL,
-	};
-
-	VkDeviceMemory staging_mem;
-	err = vkAllocateMemory(
-		dev.log,
-		&staging_alloc_info,
-		NULL,
-		&staging_mem
-	);
-
-	if (err != VK_SUCCESS) {
-		panic_msg("unable to allocate memory for staging buffer");
-	}
-
-	err = vkBindBufferMemory(dev.log, staging, staging_mem, 0);
-	if (err != VK_SUCCESS) {
-		panic_msg("unable to bind staging buffer memory");
-	}
-
-	unsigned char *font = read_font();
+	struct AkBuffer staging;
 	void *src;
 
-	err = vkMapMemory(dev.log, staging_mem, 0, VK_WHOLE_SIZE, 0, &src);
-	if (err != VK_SUCCESS) {
-		panic_msg("unable to map device memory to host");
-	}
+	MK_BUF_AND_MAP(
+		dev.log,
+		"font staging",
+		FONT_SIZE,
+		TRANSFER_SRC,
+		&staging,
+		&src
+	);
 
-	printf("Backed staging buffer\n");
+	unsigned char *font = read_font();
 	memcpy(src, font, FONT_SIZE);
 	printf("Copied font to device\n");
 
@@ -576,7 +556,6 @@ struct BindingsData load_font(struct DevData dev, VkCommandPool pool)
 	};
 
 	VkImage tex;
-
 	err = vkCreateImage(dev.log, &tex_create_info, NULL, &tex);
 	if (err != VK_SUCCESS) {
 		panic_msg("unable to create font texture");
@@ -584,7 +563,7 @@ struct BindingsData load_font(struct DevData dev, VkCommandPool pool)
 
 	printf("Created font texture\n");
 
-	VkDeviceSize align_size = (mem_requirements.size + 0x1000 - 1)
+	VkDeviceSize align_size = (staging.req.size + 0x1000 - 1)
 		& ~(0x1000 - 1);
 
 	VkMemoryAllocateInfo tex_alloc_info = {
@@ -632,95 +611,6 @@ struct BindingsData load_font(struct DevData dev, VkCommandPool pool)
 
 	printf("Created font texture image view\n");
 
-	/* Bindings */
-
-	VkDescriptorSetLayoutBinding bindings[2] = {
-		{
-			.binding = 0,
-			.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-			.descriptorCount = 1,
-			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-			.pImmutableSamplers = NULL,
-		}, {
-			.binding = 1,
-			.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-			.descriptorCount = 1,
-			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-			.pImmutableSamplers = NULL,
-		}
-	};
-
-	VkDescriptorSetLayoutCreateInfo desc_create_info = {
-	STYPE(DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
-		.flags = 0,
-		.bindingCount = 2,
-		.pBindings = bindings,
-		.pNext = NULL,
-	};
-
-	VkDescriptorSetLayout desc_layout;
-	err = vkCreateDescriptorSetLayout(
-		dev.log,
-		&desc_create_info,
-		NULL,
-		&desc_layout
-	);
-
-	if (err != VK_SUCCESS) {
-		panic_msg("unable to create texture descriptor set layout");
-	}
-
-	printf("Created texture descriptor set layout\n");
-
-	VkDescriptorPoolSize pool_sizes[2] = {
-		{
-			.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-			.descriptorCount = 1,
-		}, {
-			.type = VK_DESCRIPTOR_TYPE_SAMPLER,
-			.descriptorCount = 1,
-		}
-	};
-
-	VkDescriptorPoolCreateInfo desc_pool_create_info = {
-	STYPE(DESCRIPTOR_POOL_CREATE_INFO)
-		.flags = 0,
-		.maxSets = 1,
-		.poolSizeCount = 2,
-		.pPoolSizes = pool_sizes,
-		.pNext = NULL,
-	};
-
-	VkDescriptorPool desc_pool;
-	err = vkCreateDescriptorPool(
-		dev.log,
-		&desc_pool_create_info,
-		NULL,
-		&desc_pool
-	);
-
-	if (err != VK_SUCCESS) {
-		panic_msg("unable to create texture descriptor pool");
-	}
-
-	printf("Created texture descriptor pool\n");
-
-	VkDescriptorSetAllocateInfo desc_alloc_info = {
-	STYPE(DESCRIPTOR_SET_ALLOCATE_INFO)
-		.descriptorPool = desc_pool,
-		.descriptorSetCount = 1,
-		.pSetLayouts = &desc_layout,
-		.pNext = NULL,
-	};
-
-	VkDescriptorSet set;
-	err = vkAllocateDescriptorSets(dev.log, &desc_alloc_info, &set);
-	if (err != VK_SUCCESS) {
-		panic_msg("unable to allocate texture descriptor sets\n");
-	}
-
-	printf("Backed texture descriptor sets\n");
-
 	VkSamplerCreateInfo sampler_create_info = {
 	STYPE(SAMPLER_CREATE_INFO)
 		.flags = 0,
@@ -749,44 +639,6 @@ struct BindingsData load_font(struct DevData dev, VkCommandPool pool)
 	}
 
 	printf("Created unfiltered texture sampler\n");
-
-	VkDescriptorImageInfo img_info = {
-		.sampler = sampler,
-		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-	};
-
-	img_info.imageView = tex_view;
-
-	VkWriteDescriptorSet tex_set = {
-	STYPE(WRITE_DESCRIPTOR_SET)
-		.dstSet = set,
-		.dstBinding = 0,
-		.dstArrayElement = 0,
-		.descriptorCount = 1,
-		.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-		.pImageInfo = &img_info,
-		.pBufferInfo = NULL,
-		.pTexelBufferView = NULL,
-		.pNext = NULL,
-	};
-
-	VkWriteDescriptorSet sampler_set = {
-	STYPE(WRITE_DESCRIPTOR_SET)
-		.dstSet = set,
-		.dstBinding = 1,
-		.dstArrayElement = 0,
-		.descriptorCount = 1,
-		.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-		.pImageInfo = &img_info,
-		.pBufferInfo = NULL,
-		.pTexelBufferView = NULL,
-		.pNext = NULL,
-	};
-
-	VkWriteDescriptorSet writes[2] = { tex_set, sampler_set };
-	vkUpdateDescriptorSets(dev.log, 2, writes, 0, NULL);
-
-	printf("Updated texture descriptor sets\n");
 
 	/* Transfer */
 
@@ -864,7 +716,7 @@ struct BindingsData load_font(struct DevData dev, VkCommandPool pool)
 
 	vkCmdCopyBufferToImage(
 		cmd,
-		staging,
+		staging.buf,
 		tex,
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		1,
@@ -921,69 +773,188 @@ struct BindingsData load_font(struct DevData dev, VkCommandPool pool)
 	vkQueueWaitIdle(dev.q);
 	vkFreeCommandBuffers(dev.log, pool, 1, &cmd);
 
-	// FIXME
-	return (struct BindingsData) {
-		desc_layout,
-		set,
+	return (struct FontData) {
+		tex_view,
+		sampler,
 	};
 }
 
-static void read_shader(const char *name, uint32_t **out, size_t *out_len)
+struct TextData prep_text(VkDevice dev, struct RawChar **data)
 {
-	uint32_t *buffer;
-	size_t len;
+	VkResult err;
+	struct AkBuffer buf;
+	size_t size = SWAP_IMG_COUNT * MAX_CHAR * sizeof(struct RawChar);
+	MK_BUF_AND_MAP(dev, "char", size, UNIFORM_BUFFER, &buf, (void**)data);
+	memset(*data, 0, size);
+	return (struct TextData) { buf };
+}
 
-	errno = 0;
-	FILE *file = fopen(name, "rb");
-	if (errno) {
-		fprintf(stderr, "Error opening file at path \"%s\"\n", name);
-		panic();
+struct DescData mk_desc_sets(VkDevice dev)
+{
+	VkResult err;
+	VkDescriptorPoolSize pool_sizes[3] = {
+		{
+			.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+			.descriptorCount = 1,
+		}, {
+			.type = VK_DESCRIPTOR_TYPE_SAMPLER,
+			.descriptorCount = 1,
+		}, {
+			.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			.descriptorCount = SWAP_IMG_COUNT,
+		}
+	};
+
+	// One UBO per independent swap chain image
+	size_t set_count = 1 + SWAP_IMG_COUNT;
+	VkDescriptorPoolCreateInfo desc_pool_create_info = {
+	STYPE(DESCRIPTOR_POOL_CREATE_INFO)
+		.flags = 0,
+		.maxSets = set_count,
+		.poolSizeCount = 3,
+		.pPoolSizes = pool_sizes,
+		.pNext = NULL,
+	};
+
+	VkDescriptorPool pool;
+	err = vkCreateDescriptorPool(dev, &desc_pool_create_info, NULL, &pool);
+	if (err != VK_SUCCESS) {
+		panic_msg("unable to create descriptor pool");
 	}
 
-	if (fseek(file, 0, SEEK_END)) {
-		perror("Error seeking file");
-		exit(EXIT_FAILURE);
+	printf("Created descriptor pool\n");
+
+	VkDescriptorSetLayoutBinding font_bindings[2] = {
+		{
+			.binding = 0,
+			.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+			.descriptorCount = 1,
+			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+			.pImmutableSamplers = NULL,
+		}, {
+			.binding = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+			.descriptorCount = 1,
+			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+			.pImmutableSamplers = NULL,
+		}
+	};
+
+	VkDescriptorSetLayoutBinding text_bindings[1] = {
+		{
+			.binding = 0,
+			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			.descriptorCount = 1,
+			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+			.pImmutableSamplers = NULL,
+		}
+	};
+
+	VkDescriptorSetLayout *layouts = malloc(
+		set_count * sizeof(VkDescriptorSetLayout)
+	);
+
+	MK_SET_LAYOUT(dev, "font", font_bindings, 2, layouts + 0);
+	MK_SET_LAYOUT(dev, "text", text_bindings, 1, layouts + 1);
+	for (size_t i = 1; i < set_count - 1; ++i) {
+		layouts[i + 1] = layouts[i];
 	}
 
-	errno = 0;
-	len = ftell(file);
-	if (errno) {
-		perror("Error acquiring length of file");
-		exit(EXIT_FAILURE);
+	VkDescriptorSetAllocateInfo desc_alloc_info = {
+	STYPE(DESCRIPTOR_SET_ALLOCATE_INFO)
+		.descriptorPool = pool,
+		.descriptorSetCount = set_count,
+		.pSetLayouts = layouts,
+		.pNext = NULL,
+	};
+
+	VkDescriptorSet *sets = malloc(set_count * sizeof(VkDescriptorSet));
+	err = vkAllocateDescriptorSets(dev, &desc_alloc_info, sets);
+	if (err != VK_SUCCESS) {
+		panic_msg("unable to allocate descriptor sets\n");
 	}
 
-	if (fseek(file, 0, SEEK_SET)) {
-		perror("Error seeking file");
-		exit(EXIT_FAILURE);
+	printf("Backed descriptor sets\n");
+	return (struct DescData) { layouts, sets, set_count };
+}
+
+void mk_bindings(
+	VkDevice dev,
+	struct DescData desc,
+	struct FontData font,
+	struct TextData text
+) {
+	VkDescriptorImageInfo img_info = {
+		.sampler = font.sampler,
+		.imageView = font.view,
+		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	};
+
+	VkWriteDescriptorSet tex = {
+	STYPE(WRITE_DESCRIPTOR_SET)
+		.dstSet = desc.sets[0],
+		.dstBinding = 0,
+		.dstArrayElement = 0,
+		.descriptorCount = 1,
+		.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+		.pImageInfo = &img_info,
+		.pBufferInfo = NULL,
+		.pTexelBufferView = NULL,
+		.pNext = NULL,
+	};
+
+	VkWriteDescriptorSet sampler = {
+	STYPE(WRITE_DESCRIPTOR_SET)
+		.dstSet = desc.sets[0],
+		.dstBinding = 1,
+		.dstArrayElement = 0,
+		.descriptorCount = 1,
+		.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+		.pImageInfo = &img_info,
+		.pBufferInfo = NULL,
+		.pTexelBufferView = NULL,
+		.pNext = NULL,
+	};
+
+	size_t write_count = 2 + SWAP_IMG_COUNT;
+	VkWriteDescriptorSet writes[write_count];
+	writes[0] = tex;
+	writes[1] = sampler;
+
+	VkDescriptorBufferInfo buf_infos[SWAP_IMG_COUNT];
+	size_t range = text.data.size / SWAP_IMG_COUNT;
+
+	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
+		buf_infos[i] = (VkDescriptorBufferInfo) {
+			.buffer = text.data.buf,
+			.offset = i * range,
+			.range = range,
+		};
+
+		VkWriteDescriptorSet write = {
+		STYPE(WRITE_DESCRIPTOR_SET)
+			.dstSet = desc.sets[1 + i],
+			.dstBinding = 0,
+			.dstArrayElement = 0,
+			.descriptorCount = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			.pImageInfo = NULL,
+			.pBufferInfo = buf_infos + i,
+			.pTexelBufferView = NULL,
+			.pNext = NULL,
+		};
+
+		writes[2 + i] = write;
 	}
 
-	buffer = malloc(len);
-	assert(buffer);
-
-	clearerr(file);
-	fread(buffer, 1, len, file);
-	if (ferror(file)) {
-		fprintf(
-			stderr,
-			"Error reading file \"%s\"\n",
-			name
-		);
-		exit(EXIT_FAILURE);
-	}
-
-	fclose(file);
-	assert(buffer[0] == 0x07230203);
-
-	*out = buffer;
-	*out_len = len;
-
-	printf("Read %lu words from \"%s\"\n", len, name);
+	vkUpdateDescriptorSets(dev, write_count, writes, 0, NULL);
+	printf("Updated descriptor sets (%lu writes)\n", write_count);
 }
 
 struct GraphicsData mk_graphics(
 	VkDevice dev,
 	struct SwapData swap,
-	VkDescriptorSetLayout desc_layout
+	struct DescData desc
 ) {
 	/* Shader modules */
 
@@ -1149,8 +1120,8 @@ struct GraphicsData mk_graphics(
 	VkPipelineLayoutCreateInfo pipe_layout_create_info = {
 	STYPE(PIPELINE_LAYOUT_CREATE_INFO)
 		.flags = 0,
-		.setLayoutCount = 1,
-		.pSetLayouts = &desc_layout,
+		.setLayoutCount = desc.count,
+		.pSetLayouts = desc.layouts,
 		.pushConstantRangeCount = 0,
 		.pPushConstantRanges = NULL,
 		.pNext = NULL,
@@ -1340,7 +1311,7 @@ struct GraphicsData mk_graphics(
 VkCommandBuffer *record_graphics(
 	VkDevice dev,
 	struct SwapData swap,
-	VkDescriptorSet set, // FIXME
+	VkDescriptorSet *sets,
 	struct GraphicsData graphics,
 	VkCommandPool pool
 ) {
@@ -1369,8 +1340,6 @@ VkCommandBuffer *record_graphics(
 		.pInheritanceInfo = NULL,
 		.pNext = NULL,
 	};
-
-	// TODO: verify
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		err = vkBeginCommandBuffer(cmd[i], &begin_info);
@@ -1403,18 +1372,19 @@ VkCommandBuffer *record_graphics(
 			graphics.pipeline
 		);
 
+		VkDescriptorSet frame_sets[2] = { sets[0], sets[1 + i] };
 		vkCmdBindDescriptorSets(
 			cmd[i],
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			graphics.layout,
 			0,
-			1,
-			&set,
+			2,
+			frame_sets,
 			0,
 			NULL
 		);
 
-		vkCmdDraw(cmd[i], 4, 1, 0, 0); // Quad
+		vkCmdDraw(cmd[i], 4, MAX_CHAR, 0, 0); // Quad
 		vkCmdEndRenderPass(cmd[i]);
 
 		/* Transition swapchain image for rendering */
@@ -1517,9 +1487,38 @@ struct SyncData mk_sync(VkDevice dev)
 	};
 }
 
+void update(struct Frame data)
+{
+	#include <math.h>
+	char a = 'A' + (1 - .5f * (1 + cos(data.t * .5f))) * 26 + 0;
+	char z = 'Z' - (1 - .5f * (1 + cos(data.t * .5f))) * 26 + 1;
+
+	text.char_count = 4;
+	text.chars[0] = (struct Char) {
+		.pos = { -.5f, .5f, 0 },
+		.scale = .25f,
+		.v = a,
+	};
+	text.chars[1] = (struct Char) {
+		.pos = { .5f, .5f, 0 },
+		.scale = .25f,
+		.v = z,
+	};
+	text.chars[2] = (struct Char) {
+		.pos = { -.5f, -.5f, 0 },
+		.scale = .25f,
+		.v = z,
+	};
+	text.chars[3] = (struct Char) {
+		.pos = { .5f, -.5f, 0 },
+		.scale = .25f,
+		.v = a,
+	};
+}
+
 // FIXME
 static int done;
-void update(
+void run(
 	GLFWwindow *win,
 	struct DevData dev,
 	VkSwapchainKHR swapchain,
@@ -1534,6 +1533,8 @@ void update(
 	struct Frame data = {
 		.i = 0,
 	};
+
+	// TODO: review loop ordering
 
 	VkResult err;
 	while (!done) {
@@ -1567,7 +1568,8 @@ void update(
 #endif
 		glfwPollEvents();
 		// TODO: lib
-		// update();
+		update(data);
+		text_update(img_i);
 
 		VkSubmitInfo submit_info = {
 		STYPE(SUBMIT_INFO)
@@ -1672,6 +1674,7 @@ void app_free()
 	printf("Cleanup complete\n");
 }
 
+// TODO: lib
 int main()
 {
 	app.win = mk_win();
@@ -1680,23 +1683,22 @@ int main()
 	app.dev = mk_dev(app.inst, app.surf);
 	app.swap = mk_swap(app.dev, app.surf);
 	app.pool = mk_pool(app.dev);
-
-	// FIXME: separate descriptor
-	//        separate cmd
-	app.bindings = load_font(app.dev, app.pool);
-	app.graphics = mk_graphics(app.dev.log, app.swap, app.bindings.layout);
+	app.font = load_font(app.dev, app.pool);
+	app.text = prep_text(app.dev.log, &text.char_buf);
+	app.desc = mk_desc_sets(app.dev.log);
+	mk_bindings(app.dev.log, app.desc, app.font, app.text);
+	app.graphics = mk_graphics(app.dev.log, app.swap, app.desc);
 
 	app.cmd = record_graphics(
 		app.dev.log,
 		app.swap,
-		app.bindings.set,
+		app.desc.sets,
 		app.graphics,
 		app.pool
 	);
 
 	app.sync = mk_sync(app.dev.log);
-	// TODO: lib
-	update(app.win, app.dev, app.swap.chain, app.cmd, app.sync);
+	run(app.win, app.dev, app.swap.chain, app.cmd, app.sync);
 
 	//app_free();
 	printf("Exit success\n");
