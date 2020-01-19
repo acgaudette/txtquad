@@ -1,0 +1,6 @@
+#!/bin/sh
+
+SHADER=text
+glslangValidator -V $SHADER.vert && \
+glslangValidator -V $SHADER.frag
+exit $?
