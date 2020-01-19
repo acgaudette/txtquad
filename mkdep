@@ -1,0 +1,5 @@
+#!/bin/sh
+
+cd lib/glfw*/ && cmake \
+-DBUILD_SHARED_LIBS=ON .
+make

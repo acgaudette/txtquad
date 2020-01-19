@@ -1,0 +1,5 @@
+Dependencies:
+    libglfw.so    3.3.1
+
+Unpack GLFW into ./lib
+Run ./mkdep
