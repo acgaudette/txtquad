@@ -9,5 +9,6 @@ layout (set = 0, binding = 1) uniform sampler unf;
 void main()
 {
 	float b = texture(sampler2D(img, unf), uv).r;
+	if (b == 0) discard;
 	color = vec4(b);
 }

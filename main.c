@@ -1,4 +1,3 @@
-#include <stdalign.h>
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
@@ -8,12 +7,14 @@
 #include "alg.h"
 
 #define NAME "txtquad"
-#define WIDTH 1024
-#define HEIGHT 1024
+#define WIDTH 512
+#define HEIGHT 512
 
 #define SWAP_IMG_COUNT 3
 #define FONT_SIZE (128 * 128)
 #define FONT_OFF (128 / 8)
+#define PIX_WIDTH (1.f / 8.f)
+#define LINE_HEIGHT (PIX_WIDTH + 1.f)
 
 #define MAX_CHAR 4096
 #define MAX_BLCK 1024
@@ -29,26 +30,37 @@ struct Frame {
 #endif
 };
 
-// TODO: model matrix
+// TODO
+struct Shared {
+	m4 vp;
+};
 
 struct RawChar {
-	v3 pos;
-	float scale;
-	// rot
-	alignas(16) v2 off;
-	// col
+	m4 model;
+	v4 col;
+	v2 off;
+	v2 _slop;
 };
 
 struct Char {
 	v3 pos;
+	// rot
 	float scale;
 	char v;
+	v4 col;
 };
 
 struct Block {
-	v3 piv;
-	char *str;
-	size_t i;
+	char *str; // TODO: fx/color tags?
+	size_t str_len;
+	v3 pos;
+	// rot
+	float scale;
+	v2 piv;
+	v4 col; // TODO: allow for mottle variation
+	float spacing;
+	size_t col_lim; // TODO: parse newline chars
+	int cursor;
 };
 
 struct Text {
@@ -59,29 +71,70 @@ struct Text {
 	struct RawChar *char_buf;
 } text;
 
-void text_update(unsigned int index)
+v2 char_off(char c)
+{
+	return (v2) {
+		c % FONT_OFF,
+		c / FONT_OFF,
+	};
+}
+
+void text_update(unsigned int index, struct Frame data)
 {
 	struct RawChar *buf = text.char_buf + index * MAX_CHAR;
 
 	for (size_t i = 0; i < text.char_count; ++i) {
 		struct Char c = text.chars[i];
-		v2 off = {
-			c.v % FONT_OFF,
-			c.v / FONT_OFF,
-		};
-
 		buf[i] = (struct RawChar) {
-			.pos = c.pos,
-			.scale = c.scale,
-			.off = off,
+			.model = m4_model(c.pos, c.scale),
+			.col = c.col,
+			.off = char_off(c.v),
 		};
 	}
 
-	size_t clear_size = (MAX_CHAR - text.char_count)
-		* sizeof(struct RawChar);
-	memset(buf + text.char_count, 0, clear_size);
+	size_t end = text.char_count;
+	for (size_t i = 0; i < text.block_count; ++i) {
+		struct Block block = text.blocks[i];
+		v3 pos = block.pos; // TODO: pivot
+		size_t lines = 0;
 
-	// TODO: blocks, etc.
+		for (size_t j = 0; j < block.str_len; ++j) {
+			char c = block.str[j];
+			switch (c) {
+			case '\n':
+				++lines;
+				v3 dir = v3_neg(v3_up());
+				dir = v3_neg(dir); // TODO: move to 3D
+				float amt = lines
+					* block.spacing * block.scale;
+				pos = v3_add(block.pos, v3_mul(dir, amt));
+				continue;
+			}
+
+			buf[end + j - lines] = (struct RawChar) {
+				.model = m4_model(pos, block.scale),
+				.col = block.col,
+				.off = char_off(c),
+			};
+
+			v3 dir = v3_right();
+			pos = v3_add(pos, v3_mul(dir, block.scale));
+		}
+
+		end += block.str_len - lines;
+		if (!block.cursor) continue;
+		int flag = fmodf(data.t, 1.f) > .5f;
+		if (flag) continue;
+		buf[end] = (struct RawChar) {
+			.model = m4_model(pos, block.scale),
+			.col = block.col,
+			.off = char_off(13),
+		};
+		++end;
+	}
+
+	size_t clear_size = (MAX_CHAR - end) * sizeof(struct RawChar);
+	memset(buf + end, 0, clear_size);
 }
 
 struct App {
@@ -131,6 +184,30 @@ struct App {
 // TODO: fix all %d prints
 // TODO: implement free on all vulkan items
 
+static char cli[1024];
+static size_t cli_len;
+void input_char(GLFWwindow *win, unsigned int unicode)
+{
+	char ascii = unicode > 'Z' && unicode <= 'z' ? unicode - 32 : unicode;
+	cli[cli_len++] = ascii;
+}
+
+void input_key(GLFWwindow *win, int key, int code, int action, int mod)
+{
+	if (action != GLFW_PRESS) return;
+	switch (key) {
+	case GLFW_KEY_ENTER:
+		cli[cli_len++] = '\n';
+		break;
+	case GLFW_KEY_BACKSPACE:
+		if (cli_len) --cli_len;
+		break;
+	case GLFW_KEY_ESCAPE:
+		cli_len = 0;
+		break;
+	}
+}
+
 GLFWwindow *mk_win()
 {
 	if (!glfwInit()) {
@@ -150,6 +227,9 @@ GLFWwindow *mk_win()
 	);
 
 	printf("Created GLFW window \"%s\"\n", NAME);
+
+	glfwSetCharCallback(win, input_char);
+	glfwSetKeyCallback(win, input_key);
 	return win;
 }
 
@@ -1092,7 +1172,7 @@ struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkPipelineColorBlendAttachmentState null_blend_attach = {
+	VkPipelineColorBlendAttachmentState blend_attach = {
 		.blendEnable = VK_FALSE,
 		.srcColorBlendFactor = 0,
 		.dstColorBlendFactor = 0,
@@ -1106,13 +1186,13 @@ struct GraphicsData mk_graphics(
 		                | VK_COLOR_COMPONENT_A_BIT,
 	};
 
-	VkPipelineColorBlendStateCreateInfo null_blend_state_create_info = {
+	VkPipelineColorBlendStateCreateInfo blend_state_create_info = {
 	STYPE(PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
 		.flags = 0,
 		.logicOpEnable = VK_FALSE,
 		.logicOp = 0,
 		.attachmentCount = 1,
-		.pAttachments = &null_blend_attach,
+		.pAttachments = &blend_attach,
 		.blendConstants = { 0.f, 0.f, 0.f, 0.f },
 		.pNext = NULL,
 	};
@@ -1144,7 +1224,7 @@ struct GraphicsData mk_graphics(
 	VkAttachmentDescription color_attach = {
 		.format = swap.format,
 		.samples = VK_SAMPLE_COUNT_1_BIT,
-		.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
 		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -1202,7 +1282,7 @@ struct GraphicsData mk_graphics(
 		.pRasterizationState = &raster_state_create_info,
 		.pMultisampleState = &null_multi_state_create_info,
 		.pDepthStencilState = NULL,
-		.pColorBlendState = &null_blend_state_create_info,
+		.pColorBlendState = &blend_state_create_info,
 		.pDynamicState = NULL,
 		.layout = null_pipe_layout,
 		.renderPass = pass,
@@ -1299,10 +1379,10 @@ struct GraphicsData mk_graphics(
 		}
 	}
 
-	printf("Created %d post-processing framebuffers\n", SWAP_IMG_COUNT);
+	printf("Created %u framebuffers\n", SWAP_IMG_COUNT);
 	return (struct GraphicsData) {
 		pass,
-		fbuffers, // FIXME
+		fbuffers,
 		null_pipe_layout,
 		pipeline,
 	};
@@ -1341,6 +1421,8 @@ VkCommandBuffer *record_graphics(
 		.pNext = NULL,
 	};
 
+	VkClearValue clear = { 0, 0, 0, 1 };
+
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		err = vkBeginCommandBuffer(cmd[i], &begin_info);
 		if (err != VK_SUCCESS) {
@@ -1355,8 +1437,8 @@ VkCommandBuffer *record_graphics(
 				.offset = { 0, 0 },
 				.extent = { WIDTH, HEIGHT },
 			},
-			.clearValueCount = 0,
-			.pClearValues = NULL,
+			.clearValueCount = 2,
+			.pClearValues = &clear,
 			.pNext = NULL,
 		};
 
@@ -1489,6 +1571,7 @@ struct SyncData mk_sync(VkDevice dev)
 
 void update(struct Frame data)
 {
+	/*
 	#include <math.h>
 	char a = 'A' + (1 - .5f * (1 + cos(data.t * .5f))) * 26 + 0;
 	char z = 'Z' - (1 - .5f * (1 + cos(data.t * .5f))) * 26 + 1;
@@ -1498,21 +1581,44 @@ void update(struct Frame data)
 		.pos = { -.5f, .5f, 0 },
 		.scale = .25f,
 		.v = a,
+		.col = v4_one(),
 	};
 	text.chars[1] = (struct Char) {
 		.pos = { .5f, .5f, 0 },
 		.scale = .25f,
 		.v = z,
+		.col = v4_one(),
 	};
 	text.chars[2] = (struct Char) {
 		.pos = { -.5f, -.5f, 0 },
 		.scale = .25f,
 		.v = z,
+		.col = v4_one(),
 	};
 	text.chars[3] = (struct Char) {
 		.pos = { .5f, -.5f, 0 },
 		.scale = .25f,
 		.v = a,
+		.col = v4_one(),
+	};
+	*/
+
+	text.char_count = 0;
+	text.block_count = 1;
+	text.blocks[0] = (struct Block) {
+		/*
+		.str = "DANIEL",
+		.str_len = 6,
+		*/
+		.str = cli,
+		.str_len = cli_len,
+		.pos = { -.5f, -.5f, 0 },
+		.scale = .25f,
+		.piv = v2_zero(),
+		.col = v4_one(),
+		.spacing = LINE_HEIGHT,
+		.col_lim = 8,
+		.cursor = 1,
 	};
 }
 
@@ -1569,7 +1675,7 @@ void run(
 		glfwPollEvents();
 		// TODO: lib
 		update(data);
-		text_update(img_i);
+		text_update(img_i, data);
 
 		VkSubmitInfo submit_info = {
 		STYPE(SUBMIT_INFO)
