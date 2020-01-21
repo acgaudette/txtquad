@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# TODO: shared lib
+# TODO: rpath for glfw
+
+mkdir -p bin
+clang -O0 -ggdb main.c \
+-DDEBUG \
+-I lib/glfw*/include \
+-L lib/glfw*/src \
+-lglfw -lvulkan \
+-ldl -lX11 -lm -lpthread \
+-Wl,-rpath lib/glfw*/src \
+-o bin/txtquad
