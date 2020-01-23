@@ -6,6 +6,7 @@
 mkdir -p bin
 clang -O0 -ggdb main.c \
 -DDEBUG \
+-DALG_DEBUG \
 -I lib/glfw*/include \
 -L lib/glfw*/src \
 -lglfw -lvulkan \
