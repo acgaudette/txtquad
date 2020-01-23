@@ -1,4 +1,5 @@
 #include <string.h>
+#include <math.h>
 #include <assert.h>
 #include <errno.h>
 #include <vulkan/vulkan.h> // Must include before GLFW
@@ -30,10 +31,9 @@ struct Frame {
 #endif
 };
 
-// TODO
-struct Shared {
+struct Share {
 	m4 vp;
-};
+} *share_buf;
 
 struct RawChar {
 	m4 model;
@@ -44,7 +44,7 @@ struct RawChar {
 
 struct Char {
 	v3 pos;
-	// rot
+	v4 rot;
 	float scale;
 	char v;
 	v4 col;
@@ -54,7 +54,7 @@ struct Block {
 	char *str; // TODO: fx/color tags?
 	size_t str_len;
 	v3 pos;
-	// rot
+	v4 rot;
 	float scale;
 	v2 piv;
 	v4 col; // TODO: allow for mottle variation
@@ -86,7 +86,7 @@ void text_update(unsigned int index, struct Frame data)
 	for (size_t i = 0; i < text.char_count; ++i) {
 		struct Char c = text.chars[i];
 		buf[i] = (struct RawChar) {
-			.model = m4_model(c.pos, c.scale),
+			.model = m4_model(c.pos, c.rot, c.scale),
 			.col = c.col,
 			.off = char_off(c.v),
 		};
@@ -103,8 +103,7 @@ void text_update(unsigned int index, struct Frame data)
 			switch (c) {
 			case '\n':
 				++lines;
-				v3 dir = v3_neg(v3_up());
-				dir = v3_neg(dir); // TODO: move to 3D
+				v3 dir = qt_app(block.rot, v3_neg(v3_up()));
 				float amt = lines
 					* block.spacing * block.scale;
 				pos = v3_add(block.pos, v3_mul(dir, amt));
@@ -112,12 +111,12 @@ void text_update(unsigned int index, struct Frame data)
 			}
 
 			buf[end + j - lines] = (struct RawChar) {
-				.model = m4_model(pos, block.scale),
+				.model = m4_model(pos, block.rot, block.scale),
 				.col = block.col,
 				.off = char_off(c),
 			};
 
-			v3 dir = v3_right();
+			v3 dir = qt_app(block.rot, v3_right());
 			pos = v3_add(pos, v3_mul(dir, block.scale));
 		}
 
@@ -126,7 +125,7 @@ void text_update(unsigned int index, struct Frame data)
 		int flag = fmodf(data.t, 1.f) > .5f;
 		if (flag) continue;
 		buf[end] = (struct RawChar) {
-			.model = m4_model(pos, block.scale),
+			.model = m4_model(pos, block.rot, block.scale),
 			.col = block.col,
 			.off = char_off(13),
 		};
@@ -144,6 +143,7 @@ struct App {
 	struct DevData {
 		VkPhysicalDevice hard;
 		VkDevice log;
+		VkPhysicalDeviceProperties props;
 		size_t q_ind;
 		VkQueue q;
 	} dev;
@@ -156,9 +156,8 @@ struct App {
 		VkImageView view;
 		VkSampler sampler;
 	} font;
-	struct TextData {
-		struct AkBuffer data;
-	} text;
+	struct AkBuffer share;
+	struct AkBuffer text;
 	struct DescData {
 		VkDescriptorSetLayout *layouts;
 		VkDescriptorSet *sets;
@@ -321,8 +320,6 @@ struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 		panic_msg("no physical devices available");
 	}
 
-	printf("Found physical device\n");
-
 	VkPhysicalDeviceProperties dev_prop;
 	vkGetPhysicalDeviceProperties(hard_dev, &dev_prop);
 	printf("Found device \"%s\"\n", dev_prop.deviceName);
@@ -415,6 +412,7 @@ struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 	return (struct DevData) {
 		hard_dev,
 		dev,
+		dev_prop,
 		q_ind,
 		q,
 	};
@@ -859,20 +857,35 @@ struct FontData load_font(struct DevData dev, VkCommandPool pool)
 	};
 }
 
-struct TextData prep_text(VkDevice dev, struct RawChar **data)
+struct AkBuffer prep_share(VkDevice dev, struct Share **data)
 {
-	VkResult err;
+	/* Could combine with the text buffer
+	 * as they are updated at the same rate;
+	 * however, this structure may
+	 * become larger in the future
+	 */
+
+	struct AkBuffer buf;
+	size_t size = SWAP_IMG_COUNT * sizeof(struct Share);
+	MK_BUF_AND_MAP(dev, "share", size, UNIFORM_BUFFER, &buf, (void**)data);
+	(*data)->vp = m4_id();
+	return buf;
+}
+
+struct AkBuffer prep_text(VkDevice dev, struct RawChar **data)
+{
 	struct AkBuffer buf;
 	size_t size = SWAP_IMG_COUNT * MAX_CHAR * sizeof(struct RawChar);
 	MK_BUF_AND_MAP(dev, "char", size, UNIFORM_BUFFER, &buf, (void**)data);
 	memset(*data, 0, size);
-	return (struct TextData) { buf };
+	return buf;
 }
 
 struct DescData mk_desc_sets(VkDevice dev)
 {
 	VkResult err;
-	VkDescriptorPoolSize pool_sizes[3] = {
+	#define POOL_SIZE_COUNT 3
+	VkDescriptorPoolSize pool_sizes[POOL_SIZE_COUNT] = {
 		{
 			.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
 			.descriptorCount = 1,
@@ -881,20 +894,21 @@ struct DescData mk_desc_sets(VkDevice dev)
 			.descriptorCount = 1,
 		}, {
 			.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-			.descriptorCount = SWAP_IMG_COUNT,
+			.descriptorCount = 2 * SWAP_IMG_COUNT,
 		}
 	};
 
-	// One UBO per independent swap chain image
-	size_t set_count = 1 + SWAP_IMG_COUNT;
+	// Two UBOs per independent swap chain image
+	size_t set_count = 1 + 2 * SWAP_IMG_COUNT;
 	VkDescriptorPoolCreateInfo desc_pool_create_info = {
 	STYPE(DESCRIPTOR_POOL_CREATE_INFO)
 		.flags = 0,
 		.maxSets = set_count,
-		.poolSizeCount = 3,
+		.poolSizeCount = POOL_SIZE_COUNT,
 		.pPoolSizes = pool_sizes,
 		.pNext = NULL,
 	};
+	#undef POOL_SIZE_COUNT
 
 	VkDescriptorPool pool;
 	err = vkCreateDescriptorPool(dev, &desc_pool_create_info, NULL, &pool);
@@ -904,7 +918,7 @@ struct DescData mk_desc_sets(VkDevice dev)
 
 	printf("Created descriptor pool\n");
 
-	VkDescriptorSetLayoutBinding font_bindings[2] = {
+	VkDescriptorSetLayoutBinding bindings[3] = {
 		{
 			.binding = 0,
 			.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
@@ -917,11 +931,7 @@ struct DescData mk_desc_sets(VkDevice dev)
 			.descriptorCount = 1,
 			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
 			.pImmutableSamplers = NULL,
-		}
-	};
-
-	VkDescriptorSetLayoutBinding text_bindings[1] = {
-		{
+		}, {
 			.binding = 0,
 			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
 			.descriptorCount = 1,
@@ -934,11 +944,10 @@ struct DescData mk_desc_sets(VkDevice dev)
 		set_count * sizeof(VkDescriptorSetLayout)
 	);
 
-	MK_SET_LAYOUT(dev, "font", font_bindings, 2, layouts + 0);
-	MK_SET_LAYOUT(dev, "text", text_bindings, 1, layouts + 1);
-	for (size_t i = 1; i < set_count - 1; ++i) {
+	MK_SET_LAYOUT(dev, "font", bindings + 0, 2, layouts + 0);
+	MK_SET_LAYOUT(dev, "vert", bindings + 2, 1, layouts + 1);
+	for (size_t i = 1; i < set_count - 1; ++i)
 		layouts[i + 1] = layouts[i];
-	}
 
 	VkDescriptorSetAllocateInfo desc_alloc_info = {
 	STYPE(DESCRIPTOR_SET_ALLOCATE_INFO)
@@ -951,18 +960,24 @@ struct DescData mk_desc_sets(VkDevice dev)
 	VkDescriptorSet *sets = malloc(set_count * sizeof(VkDescriptorSet));
 	err = vkAllocateDescriptorSets(dev, &desc_alloc_info, sets);
 	if (err != VK_SUCCESS) {
-		panic_msg("unable to allocate descriptor sets\n");
+		panic_msg("unable to allocate descriptor sets");
 	}
 
 	printf("Backed descriptor sets\n");
-	return (struct DescData) { layouts, sets, set_count };
+
+	return (struct DescData) {
+		layouts,
+		sets,
+		set_count,
+	};
 }
 
 void mk_bindings(
 	VkDevice dev,
 	struct DescData desc,
 	struct FontData font,
-	struct TextData text
+	struct AkBuffer share,
+	struct AkBuffer text
 ) {
 	VkDescriptorImageInfo img_info = {
 		.sampler = font.sampler,
@@ -996,22 +1011,22 @@ void mk_bindings(
 		.pNext = NULL,
 	};
 
-	size_t write_count = 2 + SWAP_IMG_COUNT;
+	size_t write_count = 2 + 2 * SWAP_IMG_COUNT;
 	VkWriteDescriptorSet writes[write_count];
 	writes[0] = tex;
 	writes[1] = sampler;
 
-	VkDescriptorBufferInfo buf_infos[SWAP_IMG_COUNT];
-	size_t range = text.data.size / SWAP_IMG_COUNT;
+	VkDescriptorBufferInfo buf_infos[2 * SWAP_IMG_COUNT];
+	size_t range = share.size / SWAP_IMG_COUNT;
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		buf_infos[i] = (VkDescriptorBufferInfo) {
-			.buffer = text.data.buf,
+			.buffer = share.buf,
 			.offset = i * range,
 			.range = range,
 		};
 
-		VkWriteDescriptorSet write = {
+		writes[2 + i] = (VkWriteDescriptorSet) {
 		STYPE(WRITE_DESCRIPTOR_SET)
 			.dstSet = desc.sets[1 + i],
 			.dstBinding = 0,
@@ -1023,8 +1038,28 @@ void mk_bindings(
 			.pTexelBufferView = NULL,
 			.pNext = NULL,
 		};
+	}
 
-		writes[2 + i] = write;
+	range = text.size / SWAP_IMG_COUNT;
+	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
+		buf_infos[SWAP_IMG_COUNT + i] = (VkDescriptorBufferInfo) {
+			.buffer = text.buf,
+			.offset = i * range,
+			.range = range,
+		};
+
+		writes[2 + SWAP_IMG_COUNT + i] = (VkWriteDescriptorSet) {
+		STYPE(WRITE_DESCRIPTOR_SET)
+			.dstSet = desc.sets[1 + SWAP_IMG_COUNT + i],
+			.dstBinding = 0,
+			.dstArrayElement = 0,
+			.descriptorCount = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			.pImageInfo = NULL,
+			.pBufferInfo = buf_infos + SWAP_IMG_COUNT + i,
+			.pTexelBufferView = NULL,
+			.pNext = NULL,
+		};
 	}
 
 	vkUpdateDescriptorSets(dev, write_count, writes, 0, NULL);
@@ -1437,7 +1472,7 @@ VkCommandBuffer *record_graphics(
 				.offset = { 0, 0 },
 				.extent = { WIDTH, HEIGHT },
 			},
-			.clearValueCount = 2,
+			.clearValueCount = 1,
 			.pClearValues = &clear,
 			.pNext = NULL,
 		};
@@ -1454,13 +1489,18 @@ VkCommandBuffer *record_graphics(
 			graphics.pipeline
 		);
 
-		VkDescriptorSet frame_sets[2] = { sets[0], sets[1 + i] };
+		VkDescriptorSet frame_sets[3] = {
+			sets[0],
+			sets[1 + i],
+			sets[1 + SWAP_IMG_COUNT + i],
+		};
+
 		vkCmdBindDescriptorSets(
 			cmd[i],
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			graphics.layout,
 			0,
-			2,
+			3,
 			frame_sets,
 			0,
 			NULL
@@ -1569,8 +1609,13 @@ struct SyncData mk_sync(VkDevice dev)
 	};
 }
 
-void update(struct Frame data)
+void update(struct Frame data, struct Share *share)
 {
+	float asp = (float)WIDTH / HEIGHT;
+	m4 view = m4_view(v3_zero(), qt_id());
+	m4 proj = m4_persp(60, asp, .001f, 1024);
+	share->vp = m4_mul(proj, view);
+
 	/*
 	#include <math.h>
 	char a = 'A' + (1 - .5f * (1 + cos(data.t * .5f))) * 26 + 0;
@@ -1674,7 +1719,7 @@ void run(
 #endif
 		glfwPollEvents();
 		// TODO: lib
-		update(data);
+		update(data, share_buf + img_i);
 		text_update(img_i, data);
 
 		VkSubmitInfo submit_info = {
@@ -1790,11 +1835,19 @@ int main()
 	app.swap = mk_swap(app.dev, app.surf);
 	app.pool = mk_pool(app.dev);
 	app.font = load_font(app.dev, app.pool);
+	app.share = prep_share(app.dev.log, &share_buf);
 	app.text = prep_text(app.dev.log, &text.char_buf);
 	app.desc = mk_desc_sets(app.dev.log);
-	mk_bindings(app.dev.log, app.desc, app.font, app.text);
-	app.graphics = mk_graphics(app.dev.log, app.swap, app.desc);
 
+	mk_bindings(
+		app.dev.log,
+		app.desc,
+		app.font,
+		app.share,
+		app.text
+	);
+
+	app.graphics = mk_graphics(app.dev.log, app.swap, app.desc);
 	app.cmd = record_graphics(
 		app.dev.log,
 		app.swap,

@@ -14,18 +14,17 @@ struct Char {
 	vec2 off;
 };
 
-layout (set = 1, binding = 0) uniform Data {
-	Char chars[MAX_CHAR];
-} data;
+layout (set = 1, binding = 0) uniform Share { mat4 vp; } share;
+layout (set = 2, binding = 0) uniform Data { Char chars[MAX_CHAR]; } data;
 layout (location = 0) out vec2 uv;
 
 // TODO: generate via math?
 
 const vec4 vert[4] = {
-	  vec4(-.5f, -.5f, 0, 1)
-	, vec4( .5f, -.5f, 0, 1)
-	, vec4(-.5f,  .5f, 0, 1)
+	  vec4(-.5f,  .5f, 0, 1)
 	, vec4( .5f,  .5f, 0, 1)
+	, vec4(-.5f, -.5f, 0, 1)
+	, vec4( .5f, -.5f, 0, 1)
 };
 
 const vec2 sq[4] = {
@@ -52,5 +51,5 @@ void main()
 
 	Char char = data.chars[gl_InstanceIndex];
 	uv = SCALE * (sq[gl_VertexIndex] + char.off);
-	gl_Position = char.model * vert[gl_VertexIndex];
+	gl_Position = share.vp * char.model * vert[gl_VertexIndex];
 }
