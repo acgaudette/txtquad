@@ -4,36 +4,17 @@
 #include <errno.h>
 #include <vulkan/vulkan.h> // Must include before GLFW
 #include <GLFW/glfw3.h>
+#include "txtquad.h"
 #include "vkext.h"
-#include "alg.h"
 
 #define NAME "txtquad"
-#define WIDTH 512
-#define HEIGHT 512
-
 #define SWAP_IMG_COUNT 3
 #define FONT_SIZE (128 * 128)
 #define FONT_OFF (128 / 8)
-#define PIX_WIDTH (1.f / 8.f)
-#define LINE_HEIGHT (PIX_WIDTH + 1.f)
 
-#define MAX_CHAR 4096
-#define MAX_BLCK 1024
-
-struct Frame {
-	size_t i;
-	size_t last_i;
-	float t;
-	float last_t;
-	float dt;
-#ifdef DEBUG
-	float acc;
-#endif
-};
-
-struct Share {
-	m4 vp;
-} *share_buf;
+static struct Share *share_buf;
+static struct RawChar *char_buf;
+static struct Text text;
 
 struct RawChar {
 	m4 model;
@@ -42,44 +23,7 @@ struct RawChar {
 	v2 _slop;
 };
 
-struct Char {
-	v3 pos;
-	v4 rot;
-	float scale;
-	char v;
-	v4 col;
-};
-
-enum Justify {
-	  JUST_LEFT
-	, JUST_CENTER
-	, JUST_RIGHT
-};
-
-struct Block {
-	char *str; // TODO: fx/color tags?
-	size_t str_len;
-	v3 pos;
-	v4 rot;
-	float scale;
-	v2 piv;
-	v2 off;
-	enum Justify just;
-	v4 col; // TODO: allow for mottle variation
-	float spacing;
-	size_t col_lim; // TODO: parse newline chars
-	int cursor;
-};
-
-struct Text {
-	struct Block blocks[MAX_BLCK];
-	size_t block_count;
-	struct Char chars[MAX_CHAR];
-	size_t char_count;
-	struct RawChar *char_buf;
-} text;
-
-v2 char_off(char c)
+static v2 char_off(char c)
 {
 	return (v2) {
 		c % FONT_OFF,
@@ -87,9 +31,9 @@ v2 char_off(char c)
 	};
 }
 
-void text_update(unsigned int index, struct Frame data)
+static void text_update(unsigned int index, struct Frame data)
 {
-	struct RawChar *buf = text.char_buf + index * MAX_CHAR;
+	struct RawChar *buf = char_buf + index * MAX_CHAR;
 
 	for (size_t i = 0; i < text.char_count; ++i) {
 		struct Char c = text.chars[i];
@@ -175,7 +119,7 @@ void text_update(unsigned int index, struct Frame data)
 	memset(buf + end, 0, clear_size);
 }
 
-struct App {
+static struct App {
 	GLFWwindow *win;
 	VkInstance inst;
 	VkSurfaceKHR surf;
@@ -192,6 +136,8 @@ struct App {
 		VkImage *img;
 	} swap;
 	struct FontData {
+		VkImage img;
+		VkDeviceMemory img_mem;
 		VkImageView view;
 		VkSampler sampler;
 	} font;
@@ -201,9 +147,13 @@ struct App {
 		VkDescriptorSetLayout *layouts;
 		VkDescriptorSet *sets;
 		size_t count;
+		VkDescriptorPool pool;
 	} desc;
 	struct GraphicsData {
+		VkShaderModule vert;
+		VkShaderModule frag;
 		VkRenderPass pass;
+		VkImageView *views;
 		VkFramebuffer *fbuffers;
 		VkPipelineLayout layout;
 		VkPipeline pipeline;
@@ -217,20 +167,16 @@ struct App {
 	VkCommandBuffer *cmd;
 } app;
 
-// TODO: static
-// TODO: free all mallocs
-// TODO: fix all %d prints
-// TODO: implement free on all vulkan items
-
+#ifdef DEMO_2
 static char cli[1024];
 static size_t cli_len;
-void input_char(GLFWwindow *win, unsigned int unicode)
+static void input_char(GLFWwindow *win, unsigned int unicode)
 {
 	char ascii = unicode > 'Z' && unicode <= 'z' ? unicode - 32 : unicode;
 	cli[cli_len++] = ascii;
 }
 
-void input_key(GLFWwindow *win, int key, int code, int action, int mod)
+static void input_key(GLFWwindow *win, int key, int code, int action, int mod)
 {
 	if (action != GLFW_PRESS) return;
 	switch (key) {
@@ -245,8 +191,9 @@ void input_key(GLFWwindow *win, int key, int code, int action, int mod)
 		break;
 	}
 }
+#endif
 
-GLFWwindow *mk_win()
+static GLFWwindow *mk_win()
 {
 	if (!glfwInit()) {
 		panic_msg("unable to initialize GLFW");
@@ -266,12 +213,14 @@ GLFWwindow *mk_win()
 
 	printf("Created GLFW window \"%s\"\n", NAME);
 
+#ifdef DEMO_2
 	glfwSetCharCallback(win, input_char);
 	glfwSetKeyCallback(win, input_key);
+#endif
 	return win;
 }
 
-VkInstance mk_inst(GLFWwindow *win)
+static VkInstance mk_inst(GLFWwindow *win)
 {
 	VkApplicationInfo app_info = {
 	STYPE(APPLICATION_INFO)
@@ -337,7 +286,7 @@ VkInstance mk_inst(GLFWwindow *win)
 	return inst;
 }
 
-VkSurfaceKHR mk_surf(GLFWwindow *win, VkInstance inst)
+static VkSurfaceKHR mk_surf(GLFWwindow *win, VkInstance inst)
 {
 	VkSurfaceKHR surf;
 	VkResult err = glfwCreateWindowSurface(inst, win, NULL, &surf);
@@ -349,7 +298,7 @@ VkSurfaceKHR mk_surf(GLFWwindow *win, VkInstance inst)
 	return surf;
 }
 
-struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
+static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 {
 	unsigned int dev_count = 1;
 	VkPhysicalDevice hard_dev;
@@ -457,7 +406,7 @@ struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 	};
 }
 
-struct SwapData mk_swap(struct DevData dev, VkSurfaceKHR surf)
+static struct SwapData mk_swap(struct DevData dev, VkSurfaceKHR surf)
 {
 	VkSurfaceCapabilitiesKHR cap;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev.hard, surf, &cap);
@@ -517,13 +466,18 @@ struct SwapData mk_swap(struct DevData dev, VkSurfaceKHR surf)
 
 	assert(!img);
 	img = malloc(sizeof(VkImage) * img_count);
+	assert( img);
 	vkGetSwapchainImagesKHR(dev.log, swapchain, &img_count, img);
 
 	printf("Created swapchain with %u images\n", img_count);
-	return (struct SwapData) { swapchain, format, img };
+	return (struct SwapData) {
+		swapchain,
+		format,
+		img,
+	};
 }
 
-VkCommandPool mk_pool(struct DevData dev)
+static VkCommandPool mk_pool(struct DevData dev)
 {
 	VkResult err;
 	VkCommandPoolCreateInfo pool_create_info = {
@@ -543,7 +497,7 @@ VkCommandPool mk_pool(struct DevData dev)
 	return pool;
 }
 
-unsigned char *read_font() // Read custom PBM file
+static unsigned char *read_font() // Read custom PBM file
 {
 	errno = 0;
 	const char *path = "./font.pbm";
@@ -629,7 +583,7 @@ unsigned char *read_font() // Read custom PBM file
 	return exp;
 }
 
-struct FontData load_font(struct DevData dev, VkCommandPool pool)
+static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 {
 	/* Staging buffer */
 
@@ -649,6 +603,7 @@ struct FontData load_font(struct DevData dev, VkCommandPool pool)
 	unsigned char *font = read_font();
 	memcpy(src, font, FONT_SIZE);
 	printf("Copied font to device\n");
+	free(font);
 
 	/* Texture */
 
@@ -773,7 +728,6 @@ struct FontData load_font(struct DevData dev, VkCommandPool pool)
 		panic_msg("unable to allocate command buffer\n");
 	}
 
-	// TODO: fixall %d
 	printf("Allocated transfer command buffer\n");
 
 	VkCommandBufferBeginInfo begin_info = {
@@ -889,14 +843,17 @@ struct FontData load_font(struct DevData dev, VkCommandPool pool)
 	vkQueueSubmit(dev.q, 1, &submit_info, NULL);
 	vkQueueWaitIdle(dev.q);
 	vkFreeCommandBuffers(dev.log, pool, 1, &cmd);
+	free_buf(dev.log, staging);
 
 	return (struct FontData) {
+		tex,
+		tex_mem,
 		tex_view,
 		sampler,
 	};
 }
 
-struct AkBuffer prep_share(VkDevice dev, struct Share **data)
+static struct AkBuffer prep_share(VkDevice dev, struct Share **data)
 {
 	/* Could combine with the text buffer
 	 * as they are updated at the same rate;
@@ -911,7 +868,7 @@ struct AkBuffer prep_share(VkDevice dev, struct Share **data)
 	return buf;
 }
 
-struct AkBuffer prep_text(VkDevice dev, struct RawChar **data)
+static struct AkBuffer prep_text(VkDevice dev, struct RawChar **data)
 {
 	struct AkBuffer buf;
 	size_t size = SWAP_IMG_COUNT * MAX_CHAR * sizeof(struct RawChar);
@@ -920,7 +877,7 @@ struct AkBuffer prep_text(VkDevice dev, struct RawChar **data)
 	return buf;
 }
 
-struct DescData mk_desc_sets(VkDevice dev)
+static struct DescData mk_desc_sets(VkDevice dev)
 {
 	VkResult err;
 	#define POOL_SIZE_COUNT 3
@@ -1008,10 +965,11 @@ struct DescData mk_desc_sets(VkDevice dev)
 		layouts,
 		sets,
 		set_count,
+		pool,
 	};
 }
 
-void mk_bindings(
+static void mk_bindings(
 	VkDevice dev,
 	struct DescData desc,
 	struct FontData font,
@@ -1105,7 +1063,7 @@ void mk_bindings(
 	printf("Updated descriptor sets (%lu writes)\n", write_count);
 }
 
-struct GraphicsData mk_graphics(
+static struct GraphicsData mk_graphics(
 	VkDevice dev,
 	struct SwapData swap,
 	struct DescData desc
@@ -1406,7 +1364,10 @@ struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkImageView views[SWAP_IMG_COUNT];
+	VkImageView *views = malloc(
+		sizeof(VkImageView) * SWAP_IMG_COUNT
+	);
+
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		view_create_info.image = swap.img[i];
 
@@ -1422,7 +1383,7 @@ struct GraphicsData mk_graphics(
 		}
 	}
 
-	printf("Created %d image views\n", SWAP_IMG_COUNT);
+	printf("Created %u image views\n", SWAP_IMG_COUNT);
 
 	VkFramebufferCreateInfo fbuffer_create_info = {
 	STYPE(FRAMEBUFFER_CREATE_INFO)
@@ -1455,14 +1416,17 @@ struct GraphicsData mk_graphics(
 
 	printf("Created %u framebuffers\n", SWAP_IMG_COUNT);
 	return (struct GraphicsData) {
+		vert_mod,
+		frag_mod,
 		pass,
+		views,
 		fbuffers,
 		null_pipe_layout,
 		pipeline,
 	};
 }
 
-VkCommandBuffer *record_graphics(
+static VkCommandBuffer *record_graphics(
 	VkDevice dev,
 	struct SwapData swap,
 	VkDescriptorSet *sets,
@@ -1590,7 +1554,7 @@ VkCommandBuffer *record_graphics(
 	return cmd;
 }
 
-struct SyncData mk_sync(VkDevice dev)
+static struct SyncData mk_sync(VkDevice dev)
 {
 	VkResult err;
 	VkFenceCreateInfo fence_create_info = {
@@ -1622,7 +1586,7 @@ struct SyncData mk_sync(VkDevice dev)
 	}
 
 	printf(
-		"Created acquisition and submit fences (%d)\n",
+		"Created acquisition and submit fences (%u)\n",
 		SWAP_IMG_COUNT + 1
 	);
 
@@ -1640,7 +1604,7 @@ struct SyncData mk_sync(VkDevice dev)
 		}
 	}
 
-	printf("Created %d semaphores\n", SWAP_IMG_COUNT);
+	printf("Created %u semaphores\n", SWAP_IMG_COUNT);
 	return (struct SyncData) {
 		acq_fence,
 		sub_fence,
@@ -1723,9 +1687,8 @@ void update(struct Frame data, struct Share *share)
 	share->vp = m4_mul(proj, view);
 }
 
-// FIXME
 static int done;
-void run(
+static void run(
 	GLFWwindow *win,
 	struct DevData dev,
 	VkSwapchainKHR swapchain,
@@ -1774,7 +1737,6 @@ void run(
 		}
 #endif
 		glfwPollEvents();
-		// TODO: lib
 		update(data, share_buf + img_i);
 		text_update(img_i, data);
 
@@ -1832,48 +1794,70 @@ void run(
 	vkDeviceWaitIdle(dev.log);
 }
 
-void app_free()
+static void app_free()
 {
-	/*
+	vkDestroyFence(app.dev.log, app.sync.acquire, NULL);
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
-		vkDestroyImage(dev, col_tex[i], NULL);
+		vkDestroyFence(app.dev.log, app.sync.submit[i], NULL);
+		vkDestroySemaphore(app.dev.log, app.sync.sem[i], NULL);
 	}
+	free(app.sync.submit);
+	free(app.sync.sem);
 
-	vkFreeMemory(dev, col_tex_mem, NULL);
-	vkUnmapMemory(dev, staging_mem);
-
-	vkDestroySampler(dev, sampler, NULL);
-	vkDestroyDescriptorSetLayout(dev, desc_layout, NULL);
-	vkDestroyDescriptorPool(dev, desc_pool, NULL);
-	vkDestroyShaderModule(dev, vert_mod, NULL);
-	vkDestroyShaderModule(dev, frag_mod, NULL);
-	vkDestroyRenderPass(dev, pass, NULL);
-	vkDestroyPipelineLayout(dev, null_pipe_layout, NULL);
-	vkDestroyPipeline(dev, pipeline, NULL);
+	vkDestroyShaderModule(app.dev.log, app.graphics.vert, NULL);
+	vkDestroyShaderModule(app.dev.log, app.graphics.frag, NULL);
+	vkDestroyRenderPass(app.dev.log, app.graphics.pass, NULL);
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
-		vkDestroyImageView(dev, tex_views[i], NULL);
-		vkDestroyImageView(dev, views[i], NULL);
-		vkDestroyFramebuffer(dev, fbuffers[i], NULL);
-		vkDestroyBuffer(dev, staging[i], NULL);
-	}
+		vkDestroyImageView(
+			app.dev.log,
+			app.graphics.views[i],
+			NULL
+		);
 
-	vkFreeMemory(dev, staging_mem, NULL);
-	vkDestroyCommandPool(dev, pool, NULL);
-	vkDestroyFence(dev, acq_fence, NULL);
-
-	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
-		vkDestroyFence(dev, sub_fence[i], NULL);
-		vkDestroySemaphore(dev, sem[i], NULL);
+		vkDestroyFramebuffer(
+			app.dev.log,
+			app.graphics.fbuffers[i],
+			NULL
+		);
 	}
-	*/
+	free(app.graphics.views);
+	free(app.graphics.fbuffers);
+
+	vkDestroyPipelineLayout(app.dev.log, app.graphics.layout, NULL);
+	vkDestroyPipeline(app.dev.log, app.graphics.pipeline, NULL);
+
+	for (size_t i = 0; i < 2; ++i) {
+		vkDestroyDescriptorSetLayout(
+			app.dev.log,
+			app.desc.layouts[i],
+			NULL
+		);
+	}
+	free(app.desc.layouts);
+	free(app.desc.sets);
+
+	vkDestroyDescriptorPool(app.dev.log, app.desc.pool, NULL);
+
+	free_buf(app.dev.log, app.text);
+	free_buf(app.dev.log, app.share);
+
+	// Font
+	vkDestroyImage(app.dev.log, app.font.img, NULL);
+	vkDestroyImageView(app.dev.log, app.font.view, NULL);
+	vkFreeMemory(app.dev.log, app.font.img_mem, NULL);
+	vkDestroySampler(app.dev.log, app.font.sampler, NULL);
+
+	vkFreeCommandBuffers(app.dev.log, app.pool, SWAP_IMG_COUNT, app.cmd);
+	free(app.cmd);
+	vkDestroyCommandPool(app.dev.log, app.pool, NULL);
 
 	vkDestroySwapchainKHR(app.dev.log, app.swap.chain, NULL);
-	vkDestroySurfaceKHR(app.inst, app.surf, NULL);
-	vkDestroyDevice(app.dev.log, NULL);
-	vkDestroyInstance(app.inst, NULL);
+	free(app.swap.img);
 
-	// TODO: free command buffers
+	vkDestroyDevice(app.dev.log, NULL);
+	vkDestroySurfaceKHR(app.inst, app.surf, NULL);
+	vkDestroyInstance(app.inst, NULL);
 
 	glfwDestroyWindow(app.win);
 	glfwTerminate();
@@ -1881,8 +1865,7 @@ void app_free()
 	printf("Cleanup complete\n");
 }
 
-// TODO: lib
-int main()
+void txtquad_init()
 {
 	app.win = mk_win();
 	app.inst = mk_inst(app.win);
@@ -1892,7 +1875,7 @@ int main()
 	app.pool = mk_pool(app.dev);
 	app.font = load_font(app.dev, app.pool);
 	app.share = prep_share(app.dev.log, &share_buf);
-	app.text = prep_text(app.dev.log, &text.char_buf);
+	app.text = prep_text(app.dev.log, &char_buf);
 	app.desc = mk_desc_sets(app.dev.log);
 
 	mk_bindings(
@@ -1913,9 +1896,12 @@ int main()
 	);
 
 	app.sync = mk_sync(app.dev.log);
-	run(app.win, app.dev, app.swap.chain, app.cmd, app.sync);
+	printf("Init success\n");
+}
 
-	//app_free();
+void txtquad_start()
+{
+	run(app.win, app.dev, app.swap.chain, app.cmd, app.sync);
+	app_free();
 	printf("Exit success\n");
-	exit(0);
 }

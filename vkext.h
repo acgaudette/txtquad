@@ -125,6 +125,13 @@ static void mk_buf_and_map(
 	printf("\t. backed\n");
 }
 
+static void free_buf(VkDevice dev, struct AkBuffer ak)
+{
+	vkDestroyBuffer(dev, ak.buf, NULL);
+	vkUnmapMemory(dev, ak.mem); // TODO: check if mapped
+	vkFreeMemory(dev, ak.mem, NULL);
+}
+
 #define MK_SET_LAYOUT(DEV, HANDLE, BINDINGS, COUNT, OUT) \
 { \
 	printf( \
