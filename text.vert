@@ -21,10 +21,10 @@ layout (location = 0) out vec2 uv;
 // TODO: generate via math?
 
 const vec4 vert[4] = {
-	  vec4(-.5f,  .5f, 0, 1)
-	, vec4( .5f,  .5f, 0, 1)
-	, vec4(-.5f, -.5f, 0, 1)
-	, vec4( .5f, -.5f, 0, 1)
+	  vec4(0, 1, 0, 1)
+	, vec4(1, 1, 0, 1)
+	, vec4(0, 0, 0, 1)
+	, vec4(1, 0, 0, 1)
 };
 
 const vec2 sq[4] = {

@@ -50,6 +50,12 @@ struct Char {
 	v4 col;
 };
 
+enum Justify {
+	  JUST_LEFT
+	, JUST_CENTER
+	, JUST_RIGHT
+};
+
 struct Block {
 	char *str; // TODO: fx/color tags?
 	size_t str_len;
@@ -57,6 +63,8 @@ struct Block {
 	v4 rot;
 	float scale;
 	v2 piv;
+	v2 off;
+	enum Justify just;
 	v4 col; // TODO: allow for mottle variation
 	float spacing;
 	size_t col_lim; // TODO: parse newline chars
@@ -95,32 +103,63 @@ void text_update(unsigned int index, struct Frame data)
 	size_t end = text.char_count;
 	for (size_t i = 0; i < text.block_count; ++i) {
 		struct Block block = text.blocks[i];
-		v3 pos = block.pos; // TODO: pivot
-		size_t lines = 0;
+		float line_scale = block.spacing * block.scale;
+		float height = line_scale;
+		float width = 0.f;
 
+		float k = 0;
+		for (size_t j = 0; j < block.str_len; ++j) {
+			if (block.str[j] == '\n') {
+				height += line_scale;
+				if (k > width) width = k;
+				k = 0;
+				continue;
+			}
+
+			k += block.scale;
+		}
+
+		if (k > width) width = k;
+
+		m3 rot = qt_to_m3(block.rot);
+		v3 right = rot.c0;
+		v3 left = v3_neg(right);
+		v3 up = rot.c1;
+		v3 down = v3_neg(up);
+
+		v2 off2 = v2_mul(block.off, block.scale);
+		v3 off3 = v3_add(
+			v3_mul(left, width * block.piv.x - off2.x),
+			v3_mul(up, height * block.piv.y - off2.y)
+		);
+
+		v3 start = v3_add(block.pos, off3);
+		v3 pos = start;
+
+		// TODO: for justification,
+		// need to know the width of each line.
+
+		size_t line = 0;
 		for (size_t j = 0; j < block.str_len; ++j) {
 			char c = block.str[j];
 			switch (c) {
 			case '\n':
-				++lines;
-				v3 dir = qt_app(block.rot, v3_neg(v3_up()));
-				float amt = lines
-					* block.spacing * block.scale;
-				pos = v3_add(block.pos, v3_mul(dir, amt));
+				++line;
+				float amt = line * line_scale;
+				pos = v3_add(start, v3_mul(down, amt));
 				continue;
 			}
 
-			buf[end + j - lines] = (struct RawChar) {
+			buf[end + j - line] = (struct RawChar) {
 				.model = m4_model(pos, block.rot, block.scale),
 				.col = block.col,
 				.off = char_off(c),
 			};
 
-			v3 dir = qt_app(block.rot, v3_right());
-			pos = v3_add(pos, v3_mul(dir, block.scale));
+			pos = v3_add(pos, v3_mul(right, block.scale));
 		}
 
-		end += block.str_len - lines;
+		end += block.str_len - line;
 		if (!block.cursor) continue;
 		int flag = fmodf(data.t, 1.f) > .5f;
 		if (flag) continue;
@@ -1611,60 +1650,77 @@ struct SyncData mk_sync(VkDevice dev)
 
 void update(struct Frame data, struct Share *share)
 {
-	float asp = (float)WIDTH / HEIGHT;
-	m4 view = m4_view(v3_zero(), qt_id());
-	m4 proj = m4_persp(60, asp, .001f, 1024);
-	share->vp = m4_mul(proj, view);
+	v3 cam_pos = v3_zero();
+	v4 cam_rot = qt_id();
 
-	/*
-	#include <math.h>
+#ifdef DEMO_0
+	cam_rot = qt_axis_angle(v3_up(), data.t);
+	cam_pos = qt_app(cam_rot, v3_neg(v3_fwd()));
+
+	text.char_count = 1;
+	text.chars[0] = (struct Char) {
+		.pos = { -.5f + PIX_WIDTH * .5f, -.5f, 0 },
+		.rot = qt_id(),
+		.scale = 1.f,
+		.v = 'A',
+		.col = v4_one(),
+	};
+#elif DEMO_1
 	char a = 'A' + (1 - .5f * (1 + cos(data.t * .5f))) * 26 + 0;
 	char z = 'Z' - (1 - .5f * (1 + cos(data.t * .5f))) * 26 + 1;
 
 	text.char_count = 4;
 	text.chars[0] = (struct Char) {
-		.pos = { -.5f, .5f, 0 },
+		.pos = { -.5f - .125f, .5f - .125f, 2 },
+		.rot = qt_id(),
 		.scale = .25f,
 		.v = a,
 		.col = v4_one(),
 	};
 	text.chars[1] = (struct Char) {
-		.pos = { .5f, .5f, 0 },
+		.pos = { .5f - .125f, .5f - .125f, 2 },
+		.rot = qt_id(),
 		.scale = .25f,
 		.v = z,
 		.col = v4_one(),
 	};
 	text.chars[2] = (struct Char) {
-		.pos = { -.5f, -.5f, 0 },
+		.pos = { -.5f - .125f, -.5f - .125f, 2 },
+		.rot = qt_id(),
 		.scale = .25f,
 		.v = z,
 		.col = v4_one(),
 	};
 	text.chars[3] = (struct Char) {
-		.pos = { .5f, -.5f, 0 },
+		.pos = { .5f - .125f, -.5f - .125f, 2 },
+		.rot = qt_id(),
 		.scale = .25f,
 		.v = a,
 		.col = v4_one(),
 	};
-	*/
-
+#elif DEMO_2
 	text.char_count = 0;
 	text.block_count = 1;
 	text.blocks[0] = (struct Block) {
-		/*
-		.str = "DANIEL",
-		.str_len = 6,
-		*/
 		.str = cli,
 		.str_len = cli_len,
-		.pos = { -.5f, -.5f, 0 },
+		.pos = { 0.f, -.9f, 2 },
+		.rot = qt_axis_angle(v3_right(), M_PI * .15f),
 		.scale = .25f,
-		.piv = v2_zero(),
+		.piv = { 0.f, 1.f },
+		.off = { 0.f, 0.f },
+		.just = JUST_LEFT,
 		.col = v4_one(),
 		.spacing = LINE_HEIGHT,
 		.col_lim = 8,
 		.cursor = 1,
 	};
+#endif
+
+	float asp = (float)WIDTH / HEIGHT;
+	m4 view = m4_view(cam_pos, cam_rot);
+	m4 proj = m4_persp(60, asp, .001f, 1024);
+	share->vp = m4_mul(proj, view);
 }
 
 // FIXME
