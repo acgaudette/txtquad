@@ -1,0 +1,10 @@
+#!/bin/sh
+
+mkdir -p bin && clang \
+-I . \
+-Wl,-rpath bin \
+-L bin -ltxtquad \
+-lm \
+-O0 -ggdb examples/demos.c \
+-DDEMO_2 \
+-o bin/demos
