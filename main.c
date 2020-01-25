@@ -5,6 +5,7 @@
 #include <vulkan/vulkan.h> // Must include before GLFW
 #include <GLFW/glfw3.h>
 #include "txtquad.h"
+#include "inp.h"
 #include "vkext.h"
 
 #define NAME "txtquad"
@@ -167,29 +168,17 @@ static struct App {
 	VkCommandBuffer *cmd;
 } app;
 
-#ifdef DEMO_2
-static char cli[1024];
-static size_t cli_len;
-static void input_char(GLFWwindow *win, unsigned int unicode)
+struct Input inp_data;
+void inp_init(int *handles, size_t count)
 {
-	char ascii = unicode > 'Z' && unicode <= 'z' ? unicode - 32 : unicode;
-	cli[cli_len++] = ascii;
+	inp_data.handles = handles;
+	inp_data.count = count;
 }
 
-static void input_key(GLFWwindow *win, int key, int code, int action, int mod)
+#ifdef INP_TEXT
+static void glfw_char_callback(GLFWwindow *win, unsigned int unicode)
 {
-	if (action != GLFW_PRESS) return;
-	switch (key) {
-	case GLFW_KEY_ENTER:
-		cli[cli_len++] = '\n';
-		break;
-	case GLFW_KEY_BACKSPACE:
-		if (cli_len) --cli_len;
-		break;
-	case GLFW_KEY_ESCAPE:
-		cli_len = 0;
-		break;
-	}
+	inp_ev_text(unicode);
 }
 #endif
 
@@ -213,9 +202,8 @@ static GLFWwindow *mk_win()
 
 	printf("Created GLFW window \"%s\"\n", NAME);
 
-#ifdef DEMO_2
-	glfwSetCharCallback(win, input_char);
-	glfwSetKeyCallback(win, input_key);
+#ifdef INP_TEXT
+	glfwSetCharCallback(win, glfw_char_callback);
 #endif
 	return win;
 }
@@ -1612,81 +1600,6 @@ static struct SyncData mk_sync(VkDevice dev)
 	};
 }
 
-void update(struct Frame data, struct Share *share)
-{
-	v3 cam_pos = v3_zero();
-	v4 cam_rot = qt_id();
-
-#ifdef DEMO_0
-	cam_rot = qt_axis_angle(v3_up(), data.t);
-	cam_pos = qt_app(cam_rot, v3_neg(v3_fwd()));
-
-	text.char_count = 1;
-	text.chars[0] = (struct Char) {
-		.pos = { -.5f + PIX_WIDTH * .5f, -.5f, 0 },
-		.rot = qt_id(),
-		.scale = 1.f,
-		.v = 'A',
-		.col = v4_one(),
-	};
-#elif DEMO_1
-	char a = 'A' + (1 - .5f * (1 + cos(data.t * .5f))) * 26 + 0;
-	char z = 'Z' - (1 - .5f * (1 + cos(data.t * .5f))) * 26 + 1;
-
-	text.char_count = 4;
-	text.chars[0] = (struct Char) {
-		.pos = { -.5f - .125f, .5f - .125f, 2 },
-		.rot = qt_id(),
-		.scale = .25f,
-		.v = a,
-		.col = v4_one(),
-	};
-	text.chars[1] = (struct Char) {
-		.pos = { .5f - .125f, .5f - .125f, 2 },
-		.rot = qt_id(),
-		.scale = .25f,
-		.v = z,
-		.col = v4_one(),
-	};
-	text.chars[2] = (struct Char) {
-		.pos = { -.5f - .125f, -.5f - .125f, 2 },
-		.rot = qt_id(),
-		.scale = .25f,
-		.v = z,
-		.col = v4_one(),
-	};
-	text.chars[3] = (struct Char) {
-		.pos = { .5f - .125f, -.5f - .125f, 2 },
-		.rot = qt_id(),
-		.scale = .25f,
-		.v = a,
-		.col = v4_one(),
-	};
-#elif DEMO_2
-	text.char_count = 0;
-	text.block_count = 1;
-	text.blocks[0] = (struct Block) {
-		.str = cli,
-		.str_len = cli_len,
-		.pos = { 0.f, -.9f, 2 },
-		.rot = qt_axis_angle(v3_right(), M_PI * .15f),
-		.scale = .25f,
-		.piv = { 0.f, 1.f },
-		.off = { 0.f, 0.f },
-		.just = JUST_LEFT,
-		.col = v4_one(),
-		.spacing = LINE_HEIGHT,
-		.col_lim = 8,
-		.cursor = 1,
-	};
-#endif
-
-	float asp = (float)WIDTH / HEIGHT;
-	m4 view = m4_view(cam_pos, cam_rot);
-	m4 proj = m4_persp(60, asp, .001f, 1024);
-	share->vp = m4_mul(proj, view);
-}
-
 static int done;
 static void run(
 	GLFWwindow *win,
@@ -1737,7 +1650,8 @@ static void run(
 		}
 #endif
 		glfwPollEvents();
-		update(data, share_buf + img_i);
+		inp_update(win);
+		*(share_buf + img_i) = update(data, &text);
 		text_update(img_i, data);
 
 		VkSubmitInfo submit_info = {
