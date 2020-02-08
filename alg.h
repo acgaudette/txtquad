@@ -187,6 +187,20 @@ DOT(3)
 DOT(4)
 #undef DOT
 
+#define LERP(N) static v ## N v ## N ## _lerp(v ## N a, v ## N b, float s) \
+{ \
+	v ## N v = v ## N ## _add( \
+		v ## N ## _mul(a, (1.f - s)), \
+		v ## N ## _mul(b, s) \
+	); \
+	return v; \
+}
+
+LERP(2)
+LERP(3)
+LERP(4)
+#undef LERP
+
 static v3 v3_cross(v3 a, v3 b)
 {
 	return (v3) {
