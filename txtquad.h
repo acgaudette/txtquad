@@ -53,7 +53,7 @@ struct Block {
 	v4 col; // TODO: allow for mottle variation
 	float spacing;
 	size_t col_lim; // TODO: parse newline chars
-	int cursor;
+	char cursor;
 };
 
 struct Text {

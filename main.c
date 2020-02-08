@@ -111,7 +111,7 @@ static void text_update(unsigned int index, struct Frame data)
 		buf[end] = (struct RawChar) {
 			.model = m4_model(pos, block.rot, block.scale),
 			.col = block.col,
-			.off = char_off(13),
+			.off = char_off(block.cursor),
 		};
 		++end;
 	}
