@@ -14,7 +14,7 @@ void inp_ev_text(unsigned int unicode)
 }
 #endif
 
-struct Share update(struct Frame data, struct Text *text)
+struct Share txtquad_update(struct Frame data, struct Text *text)
 {
 	v3 cam_pos = v3_zero();
 	v4 cam_rot = qt_id();
@@ -82,7 +82,7 @@ struct Share update(struct Frame data, struct Text *text)
 	text->blocks[0] = (struct Block) {
 		.str = cli,
 		.str_len = cli_len,
-		.pos = { 0.f, -.9f, 2 },
+		.pos = { -.9f, -.9f, 2 },
 		.rot = qt_axis_angle(v3_right(), M_PI * .15f),
 		.scale = .25f,
 		.piv = { 0.f, 1.f },
@@ -91,7 +91,7 @@ struct Share update(struct Frame data, struct Text *text)
 		.col = v4_one(),
 		.spacing = LINE_HEIGHT,
 		.col_lim = 8,
-		.cursor = 1,
+		.cursor = 13,
 	};
 #endif
 
