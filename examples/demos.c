@@ -117,7 +117,7 @@ int main()
 	};
 	inp_init(inp_handles, 3);
 #endif
-	txtquad_init();
+	txtquad_init("./");
 	txtquad_start();
 	exit(0);
 }

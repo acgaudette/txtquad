@@ -65,7 +65,7 @@ struct Text {
 
 struct Share txtquad_update(struct Frame data, struct Text *text);
 
-void txtquad_init();
+void txtquad_init(const char*);
 void txtquad_start();
 
 #endif

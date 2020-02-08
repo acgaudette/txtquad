@@ -17,6 +17,9 @@ static struct Share *share_buf;
 static struct RawChar *char_buf;
 static struct Text text;
 
+static char *root_path;
+static char *filename;
+
 struct RawChar {
 	m4 model;
 	v4 col;
@@ -488,10 +491,15 @@ static VkCommandPool mk_pool(struct DevData dev)
 static unsigned char *read_font() // Read custom PBM file
 {
 	errno = 0;
-	const char *path = "./font.pbm";
-	FILE *file = fopen(path, "r");
+	strncpy(filename, "font.pbm", 8 + 1);
+	FILE *file = fopen(root_path, "r");
 	if (errno) {
-		fprintf(stderr, "Error opening file at path \"%s\"\n", path);
+		fprintf(
+			stderr,
+			"Error opening file at path \"%s\"\n",
+			root_path
+		);
+
 		panic();
 	}
 
@@ -506,7 +514,7 @@ static unsigned char *read_font() // Read custom PBM file
 		fprintf(
 			stderr,
 			"Error reading file \"%s\" header\n",
-			path
+			root_path
 		);
 		panic();
 	}
@@ -516,7 +524,7 @@ static unsigned char *read_font() // Read custom PBM file
 			stderr,
 			"Invalid header in file \"%s\": "
 			"not a PBM file (\"%.2s\")\n",
-			path,
+			root_path,
 			head
 		);
 		panic();
@@ -528,14 +536,14 @@ static unsigned char *read_font() // Read custom PBM file
 			stderr,
 			"Invalid header in file \"%s\": "
 			"not a 128-pixel square image\n",
-			path
+			root_path
 		);
 		panic();
 	}
 
 	ptr += 7;
 	if (*ptr != '\n') {
-		fprintf(stderr, "Invalid header in file \"%s\"\n", path);
+		fprintf(stderr, "Invalid header in file \"%s\"\n", root_path);
 		panic();
 	}
 
@@ -552,7 +560,7 @@ static unsigned char *read_font() // Read custom PBM file
 		fprintf(
 			stderr,
 			"Error reading file \"%s\" data\n",
-			path
+			root_path
 		);
 		panic();
 	}
@@ -567,7 +575,7 @@ static unsigned char *read_font() // Read custom PBM file
 	fclose(file);
 	free(raw);
 
-	printf("Read %u bytes from \"%s\"\n", FONT_SIZE / 8, path);
+	printf("Read %u bytes from \"%s\"\n", FONT_SIZE / 8, root_path);
 	return exp;
 }
 
@@ -1061,7 +1069,8 @@ static struct GraphicsData mk_graphics(
 	VkResult err;
 	size_t spv_size;
 	uint32_t *spv;
-	read_shader("vert.spv", &spv, &spv_size);
+	strncpy(filename, "vert.spv", 8 + 1);
+	read_shader(root_path, &spv, &spv_size);
 
 	VkShaderModuleCreateInfo mod_create_info = {
 	STYPE(SHADER_MODULE_CREATE_INFO)
@@ -1081,7 +1090,8 @@ static struct GraphicsData mk_graphics(
 		);
 	}
 
-	read_shader("frag.spv", &spv, &spv_size);
+	strncpy(filename, "frag.spv", 8 + 1);
+	read_shader(root_path, &spv, &spv_size);
 	mod_create_info.codeSize = spv_size;
 	mod_create_info.pCode = spv;
 
@@ -1779,8 +1789,13 @@ static void app_free()
 	printf("Cleanup complete\n");
 }
 
-void txtquad_init()
+void txtquad_init(const char *asset_path)
 {
+	size_t len = strlen(asset_path);
+	root_path = malloc(len + 32);
+	strncpy(root_path, asset_path, len + 1);
+	filename = root_path + len;
+
 	app.win = mk_win();
 	app.inst = mk_inst(app.win);
 	app.surf = mk_surf(app.win, app.inst);
@@ -1816,6 +1831,7 @@ void txtquad_init()
 void txtquad_start()
 {
 	run(app.win, app.dev, app.swap.chain, app.cmd, app.sync);
+	free(root_path);
 	app_free();
 	printf("Exit success\n");
 }
