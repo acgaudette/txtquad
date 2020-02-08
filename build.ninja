@@ -1,0 +1,48 @@
+builddir = build
+
+flags = -O0 -ggdb -fPIC $
+    -DDEBUG -DALG_DEBUG -DINP_TEXT $
+    -fdiagnostics-color=always
+incl = -I lib/glfw*/include
+libs = -L lib/glfw*/src -lglfw -lvulkan $
+    -ldl -lX11 -lm -lpthread
+    # TODO: avoid linking against system libglfw
+
+rule cc
+    depfile = $out.d
+    deps = gcc
+    command = clang -MD -MF $out.d $
+              $flags $incl -c $in -o $out
+
+rule ld
+    command = ld.gold $in $libs -shared -o $out
+
+build $builddir/main.o: cc main.c
+build $builddir/inp.o: cc inp.c
+
+build bin/libtxtquad.so: $
+    ld $builddir/main.o $builddir/inp.o
+
+build so: phony bin/libtxtquad.so
+default so
+
+# EXAMPLES #
+
+rule shc
+    command = glslangValidator -V $in
+rule link
+    command = clang $in $libs -o $out
+
+build vert.spv: shc text.vert
+build frag.spv: shc text.frag
+
+demo = 2
+build $builddir/demos.o: cc examples/demos.c
+    flags = -O0 -ggdb -DDEMO_$demo
+    incl = -I .
+
+build bin/demos: $
+    link $builddir/demos.o $
+    | bin/libtxtquad.so vert.spv frag.spv
+    libs = -L bin -ltxtquad -rpath bin -lm
+build demos: phony bin/demos
