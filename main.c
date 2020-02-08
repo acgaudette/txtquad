@@ -1651,7 +1651,7 @@ static void run(
 #endif
 		glfwPollEvents();
 		inp_update(win);
-		*(share_buf + img_i) = update(data, &text);
+		*(share_buf + img_i) = txtquad_update(data, &text);
 		text_update(img_i, data);
 
 		VkSubmitInfo submit_info = {

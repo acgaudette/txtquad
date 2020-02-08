@@ -63,7 +63,7 @@ struct Text {
 	size_t char_count;
 };
 
-struct Share update(struct Frame data, struct Text *text);
+struct Share txtquad_update(struct Frame data, struct Text *text);
 
 void txtquad_init();
 void txtquad_start();
