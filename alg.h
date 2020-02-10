@@ -441,6 +441,33 @@ static m4 m4_persp(float fov, float asp, float near, float far)
 	return m;
 }
 
+/* Floating point functions */
+
+static inline float lerpf(const float a, const float b, const float t)
+{
+	return (1.f - t) * a + t * b;
+}
+
+static inline float minf(const float a, const float b)
+{
+	return a < b ? a : b;
+}
+
+static inline float maxf(const float a, const float b)
+{
+	return a < b ? b : a;
+}
+
+static inline float clampf(const float s, const float min, const float max)
+{
+	return minf(max, maxf(min, s));
+}
+
+static inline float clamp01f(const float s)
+{
+	return clampf(s, 0.f, 1.f);
+}
+
 #include <stdio.h>
 #define PRINT(N) static void v ## N ## _print(v ## N v) \
 { \
