@@ -12,6 +12,8 @@ void inp_ev_text(unsigned int unicode)
 	char ascii = unicode > 'Z' && unicode <= 'z' ? unicode - 32 : unicode;
 	cli[cli_len++] = ascii;
 }
+#else
+void inp_ev_text(unsigned int _) { }
 #endif
 
 struct Share txtquad_update(struct Frame data, struct Text *text)
@@ -92,6 +94,20 @@ struct Share txtquad_update(struct Frame data, struct Text *text)
 		.spacing = LINE_HEIGHT,
 		.col_lim = 8,
 		.cursor = 13,
+	};
+#elif DEMO_3
+	cam_rot = qt_axis_angle(v3_up(), sinf(data.t));
+	cam_pos = qt_app(cam_rot, v3_neg(v3_fwd()));
+
+	const float a = cosf(2.f * data.t) * .5f + .5f;
+
+	text->char_count = 1;
+	text->chars[0] = (struct Char) {
+		.pos = { -.5f + PIX_WIDTH * .5f, -.5f, .5f },
+		.rot = qt_id(),
+		.scale = 1.f,
+		.v = 'A',
+		.col = (v4) { 1.f, 1.f, 1.f, a },
 	};
 #endif
 

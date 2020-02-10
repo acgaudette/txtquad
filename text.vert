@@ -17,6 +17,8 @@ struct Char {
 layout (set = 1, binding = 0) uniform Share { mat4 vp; } share;
 layout (set = 2, binding = 0) uniform Data { Char chars[MAX_CHAR]; } data;
 layout (location = 0) out vec2 uv;
+layout (location = 1) out vec2 st;
+layout (location = 2) out vec4 col;
 
 // TODO: generate via math?
 
@@ -50,6 +52,9 @@ void main()
 	*/
 
 	Char char = data.chars[gl_InstanceIndex];
-	uv = SCALE * (sq[gl_VertexIndex] + char.off);
+	st = sq[gl_VertexIndex];
+	uv = SCALE * (st + char.off);
+	col = char.col;
+
 	gl_Position = share.vp * char.model * vert[gl_VertexIndex];
 }
