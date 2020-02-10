@@ -114,6 +114,18 @@ ADD(3)
 ADD(4)
 #undef ADD
 
+#define SUB(N) static v ## N v ## N ## _sub(v ## N a, v ## N b) \
+{ \
+	for (size_t i = 0; i < N; ++i) \
+		a.s[i] -= b.s[i]; \
+	return a; \
+}
+
+SUB(2)
+SUB(3)
+SUB(4)
+#undef SUB
+
 #define MUL(N) static v ## N v ## N ## _mul(v ## N v, float s) \
 { \
 	for (size_t i = 0; i < N; ++i) \
@@ -200,6 +212,16 @@ LERP(2)
 LERP(3)
 LERP(4)
 #undef LERP
+
+#define DIST(N) static float v ## N ## _dist(v ## N a, v ## N b) \
+{ \
+	return v ## N ## _mag(v ## N ## _sub(a, b)); \
+}
+
+DIST(2)
+DIST(3)
+DIST(4)
+#undef DIST
 
 static v3 v3_cross(v3 a, v3 b)
 {
