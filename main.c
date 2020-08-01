@@ -172,16 +172,29 @@ static struct App {
 } app;
 
 struct Input inp_data;
-void inp_init(int *handles, size_t count)
-{
-	inp_data.handles = handles;
-	inp_data.count = count;
+void inp_init(
+	int *key_handles,
+	size_t key_count,
+	int *but_handles,
+	size_t but_count
+) {
+	inp_data.key.handles = key_handles;
+	inp_data.key.count = key_count;
+	inp_data.but.handles = but_handles;
+	inp_data.but.count = but_count;
 }
 
 #ifdef INP_TEXT
 static void glfw_char_callback(GLFWwindow *win, unsigned int unicode)
 {
 	inp_ev_text(unicode);
+}
+#endif
+
+#ifdef INP_MOUSE
+static void glfw_mouse_callback(GLFWwindow *win, double x, double y)
+{
+	inp_ev_mouse(x, y);
 }
 #endif
 
@@ -207,6 +220,9 @@ static GLFWwindow *mk_win()
 
 #ifdef INP_TEXT
 	glfwSetCharCallback(win, glfw_char_callback);
+#endif
+#ifdef INP_MOUSE
+	glfwSetCursorPosCallback(win, glfw_mouse_callback);
 #endif
 	return win;
 }

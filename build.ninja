@@ -1,7 +1,8 @@
 builddir = build
 
 flags = -O0 -ggdb -fPIC $
-    -DDEBUG -DALG_DEBUG -DINP_TEXT $
+    -DDEBUG -DALG_DEBUG $
+    -DINP_TEXT -DINP_MOUSE $
     -fdiagnostics-color=always
 incl = -I lib/glfw*/include
 libs = -L lib/glfw*/src -lglfw -lvulkan $
