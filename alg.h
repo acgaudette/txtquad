@@ -2,10 +2,10 @@
 #define ALG_H
 
 #include <math.h>
-#include <stddef.h>
 #ifdef ALG_DEBUG
 #include <assert.h>
 #endif
+#include "types.h"
 
 #define VEC(N, ...) typedef union v ## N { \
         float s[N];                        \
@@ -34,6 +34,21 @@ FILL(2)
 FILL(3)
 FILL(4)
 #undef FILL
+
+#define SHIFT(N) static v ## N v ## N ## _shift(v ## N v, const u8 i) \
+{ \
+	v ## N swap = v; \
+	for (u8 j = 0; j < N; ++j) { \
+		u8 k = (i + j) % N; \
+		v.s[j] = swap.s[k]; \
+	} \
+	return v; \
+}
+
+SHIFT(2)
+SHIFT(3)
+SHIFT(4)
+#undef SHIFT
 
 #define ZERO(N) static v ## N v ## N ## _zero() \
 { \
@@ -90,6 +105,32 @@ FWD(3)
 FWD(4)
 #undef FWD
 
+#define EQ(N) static int v ## N ## _eq(v ## N a, v ## N b) \
+{ \
+	int result = 1; \
+	for (u8 i = 0; i < N; ++i) \
+		result &= a.s[i] == b.s[i]; \
+	return result; \
+}
+
+EQ(2)
+EQ(3)
+EQ(4)
+#undef EQ
+
+#define FZ_EQ(N) static int v ## N ## _fzeq(v ## N a, v ## N b) \
+{ \
+	int result = 1; \
+	for (u8 i = 0; i < N; ++i) \
+		result &= fabsf(a.s[i] - b.s[i]) < __FLT_EPSILON__; \
+	return result; \
+}
+
+FZ_EQ(2)
+FZ_EQ(3)
+FZ_EQ(4)
+#undef FZ_EQ
+
 #define NEG(N) static v ## N v ## N ## _neg(v ## N v) \
 { \
 	for (size_t i = 0; i < N; ++i) \
@@ -113,6 +154,16 @@ ADD(2)
 ADD(3)
 ADD(4)
 #undef ADD
+
+#define ADDEQ(N) static void v ## N ## _addeq(v ## N *a, v ## N b) \
+{ \
+	*a = v ## N ## _add(*a, b); \
+}
+
+ADDEQ(2)
+ADDEQ(3)
+ADDEQ(4)
+#undef ADD_EQ
 
 #define SUB(N) static v ## N v ## N ## _sub(v ## N a, v ## N b) \
 { \
@@ -178,7 +229,7 @@ NORM(4)
 #define IS_NORM(N) static int v ## N ## _is_norm(v ## N v) \
 { \
 	float mag_sq = v ## N ## _mag_sq(v); \
-	return fabsf(1.f - mag_sq) < __FLT_EPSILON__; \
+	return fabsf(1.f - mag_sq) < 0.000001f; \
 }
 
 IS_NORM(2)
@@ -335,14 +386,140 @@ FILL(4, 2)
 FILL(4, 3)
 #undef FILL
 
-static v4 qt_id()
+#define TRACE(N) static float m ## N ## _trace(m ## N m) \
+{ \
+	float result = 0.f; \
+	for (u8 i = 0; i < N; ++i) \
+		result += m.s[i + N * i]; \
+	return result; \
+}
+
+TRACE(2)
+TRACE(3)
+TRACE(4)
+#undef TRACE
+
+static v4 m3_to_qt(m3 m)
+{
+	const float trace = m3_trace(m);
+	const float a = m.v[0].s[0];
+	const float b = m.v[1].s[1];
+	const float c = m.v[2].s[2];
+
+	// TODO: debug check special orthogonal
+
+	if (trace > 0.f) {
+		const float s = 2.f * sqrtf(1.f + trace);
+		return (v4) {
+			(m.c1.z - m.c2.y) / s,
+			(m.c2.x - m.c0.z) / s,
+			(m.c0.y - m.c1.x) / s,
+			.25f * s,
+		};
+	} else if ((a > b) && (a > c)) {
+		float s = 2.f * sqrtf(1.f + a - b - c);
+		return (v4) {
+			.25f * s,
+			(m.c1.x + m.c0.y) / s,
+			(m.c2.x + m.c0.z) / s,
+			(m.c1.z - m.c2.y) / s,
+		};
+	} else if (b > c) {
+		const float s = 2.f * sqrtf(1.f + b - a - c);
+		return (v4) {
+			(m.c1.x + m.c0.y) / s,
+			.25f * s,
+			(m.c2.y + m.c1.z) / s,
+			(m.c2.x - m.c0.z) / s,
+		};
+	} else {
+		const float s = 2.f * sqrtf(1.f + c - a - b);
+		return (v4) {
+			(m.c2.x + m.c0.z) / s,
+			(m.c2.y + m.c1.z) / s,
+			.25f * s,
+			(m.c0.y - m.c1.x) / s,
+		};
+	}
+}
+
+static inline v4 qt_id()
 {
 	return (v4) { 0.f, 0.f, 0.f, 1.f };
 }
 
-static v4 qt_conj(v4 q)
+static inline v4 qt_conj(v4 q)
 {
 	return (v4) { -q.x, -q.y, -q.z, q.w, };
+}
+
+static v4 qt_mul(v4 a, v4 b)
+{
+	v4 c, d;
+
+	c = a;
+	c.z *= -1.f;
+	d.x = b.w;
+	d.y = b.z;
+	d.z = b.y;
+	d.w = b.x;
+	const float x = v4_dot(c, d);
+
+	c = a;
+	c.x *= -1.f;
+	d = v4_shift(b, 2);
+	const float y = v4_dot(c, d);
+
+	c = a;
+	c.y *= -1.f;
+	d.x = b.y;
+	d.y = b.x;
+	d.z = b.w;
+	d.w = b.z;
+	const float z = v4_dot(c, d);
+
+	c = v4_neg(a);
+	c.w *= -1.f;
+	d = b;
+	const float w = v4_dot(c, d);
+
+	return (v4) { x, y, z, w };
+}
+
+// Assume fwd and up are not orthogonal
+// (o/w should convert from m3 directly)
+static v4 qt_vecs_up(v3 fwd, v3 up)
+{
+	// assert(v3_is_norm(fwd));
+	// assert(v3_is_norm(up));
+
+	v3 right = v3_cross(up, fwd);
+	right = v3_norm(right); // TODO: if not already orthogonal
+	fwd = v3_cross(right, up);
+
+	m3 m;
+	m.c0 = right;
+	m.c1 = up;
+	m.c2 = fwd;
+
+	return m3_to_qt(m);
+}
+
+static v4 qt_vecs_fwd(v3 fwd, v3 up)
+{
+	// assert(v3_is_norm(fwd));
+	// assert(v3_is_norm(up));
+
+	v3 right = v3_cross(up, fwd);
+	right = v3_norm(right); // TODO: if not already orthogonal
+	up = v3_cross(fwd, right);
+
+	m3 m;
+	m.c0 = right;
+	m.c1 = up;
+	m.c2 = fwd;
+
+	return m3_to_qt(m);
 }
 
 static v4 qt_axis_angle(v3 axis, float angle)
@@ -463,6 +640,22 @@ static m4 m4_persp(float fov, float asp, float near, float far)
 	return m;
 }
 
+// Scale -> number of units that can fit in vertical height
+static m4 m4_ortho(float scale, float asp, float near, float far)
+{
+	const float range = far - near;
+	const float z_scale = 1.f / range;
+	const float z_off = -near / range;
+
+	m4 m = m4_zero();
+	m.c0.x = 2.f / (asp * scale);
+	m.c1.y = -2.f / scale;
+	m.c2.z = z_scale;
+	m.c3.w = 1.f;
+	m.c3.z = z_off;
+	return m;
+}
+
 /* Floating point functions */
 
 static inline float lerpf(const float a, const float b, const float t)
@@ -488,6 +681,12 @@ static inline float clampf(const float s, const float min, const float max)
 static inline float clamp01f(const float s)
 {
 	return clampf(s, 0.f, 1.f);
+}
+
+static inline float signf(const float s)
+{
+	u32 u = *((u32*)&s);
+	return (float)(u >> 31) * -2.f + 1.f;
 }
 
 #include <stdio.h>
