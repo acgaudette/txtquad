@@ -138,6 +138,7 @@ static struct App {
 		VkSwapchainKHR chain;
 		VkFormat format;
 		VkImage *img;
+		struct ak_img depth;
 	} swap;
 	struct FontData {
 		struct ak_img tex;
@@ -473,12 +474,24 @@ static struct SwapData mk_swap(struct DevData dev, VkSurfaceKHR surf)
 	img = malloc(sizeof(VkImage) * img_count);
 	assert( img);
 	vkGetSwapchainImagesKHR(dev.log, swapchain, &img_count, img);
-
 	printf("Created swapchain with %u images\n", img_count);
+
+	struct ak_img depth;
+	AK_IMG_MK(
+		dev.log,
+		"depth texture",
+		WIDTH, HEIGHT,
+		D32_SFLOAT,
+		AK_IMG_USAGE(DEPTH_STENCIL_ATTACHMENT),
+		DEPTH,
+		&depth
+	);
+
 	return (struct SwapData) {
 		swapchain,
 		format,
 		img,
+		depth,
 	};
 }
 
@@ -1149,6 +1162,21 @@ static struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
+	VkPipelineDepthStencilStateCreateInfo depth_stencil_state_create_info = {
+	STYPE(PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
+		.flags = 0,
+		.depthTestEnable = VK_TRUE,
+		.depthWriteEnable = VK_TRUE,
+		.depthCompareOp = VK_COMPARE_OP_LESS,
+		.depthBoundsTestEnable = VK_FALSE,
+		.stencilTestEnable = VK_FALSE,
+		.front = { },
+		.back = { },
+		.minDepthBounds = 0.f,
+		.maxDepthBounds = 1.f,
+		.pNext = NULL,
+	};
+
 	VkPipelineColorBlendAttachmentState blend_attach = {
 		.blendEnable = VK_FALSE,
 		.srcColorBlendFactor = 0,
@@ -1198,7 +1226,7 @@ static struct GraphicsData mk_graphics(
 
 	printf("Created pipeline layout\n");
 
-	VkAttachmentDescription color_attach = {
+	VkAttachmentDescription col_attach = {
 		.format = swap.format,
 		.samples = VK_SAMPLE_COUNT_1_BIT,
 		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
@@ -1209,9 +1237,25 @@ static struct GraphicsData mk_graphics(
 		.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
 	};
 
-	VkAttachmentReference attach_ref = {
+	VkAttachmentDescription depth_attach = {
+		.format = VK_FORMAT_D32_SFLOAT,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+		.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+	};
+
+	VkAttachmentReference col_attach_ref = {
 		.attachment = 0,
 		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	};
+
+	VkAttachmentReference depth_attach_ref = {
+		.attachment = 1,
+		.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 	};
 
 	VkSubpassDescription subpass = {
@@ -1220,18 +1264,20 @@ static struct GraphicsData mk_graphics(
 		.inputAttachmentCount = 0,
 		.pInputAttachments = NULL,
 		.colorAttachmentCount = 1,
-		.pColorAttachments = &attach_ref,
+		.pColorAttachments = &col_attach_ref,
 		.pResolveAttachments = NULL,
-		.pDepthStencilAttachment = NULL,
+		.pDepthStencilAttachment = &depth_attach_ref,
 		.preserveAttachmentCount = 0,
 		.pPreserveAttachments = NULL,
 	};
 
+	VkAttachmentDescription attach[] = { col_attach, depth_attach, };
+
 	VkRenderPassCreateInfo pass_create_info = {
 	STYPE(RENDER_PASS_CREATE_INFO)
 		.flags = 0,
-		.attachmentCount = 1,
-		.pAttachments = &color_attach,
+		.attachmentCount = 2,
+		.pAttachments = attach,
 		.subpassCount = 1,
 		.pSubpasses = &subpass,
 		.dependencyCount = 0,
@@ -1258,7 +1304,7 @@ static struct GraphicsData mk_graphics(
 		.pViewportState = &viewport_state_create_info,
 		.pRasterizationState = &raster_state_create_info,
 		.pMultisampleState = &null_multi_state_create_info,
-		.pDepthStencilState = NULL,
+		.pDepthStencilState = &depth_stencil_state_create_info,
 		.pColorBlendState = &blend_state_create_info,
 		.pDynamicState = NULL,
 		.layout = null_pipe_layout,
@@ -1309,23 +1355,21 @@ static struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkImageView *views = malloc(
-		sizeof(VkImageView) * SWAP_IMG_COUNT
-	);
-
+	VkImageView *views = malloc(2 * sizeof(VkImageView) * SWAP_IMG_COUNT);
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		view_create_info.image = swap.img[i];
-
 		err = vkCreateImageView(
 			dev,
 			&view_create_info,
 			NULL,
-			&views[i]
+			&views[2 * i]
 		);
 
 		if (err != VK_SUCCESS) {
 			panic_msg("unable to create image view");
 		}
+
+		views[2 * i + 1] = swap.depth.view;
 	}
 
 	printf("Created %u image views\n", SWAP_IMG_COUNT);
@@ -1334,7 +1378,7 @@ static struct GraphicsData mk_graphics(
 	STYPE(FRAMEBUFFER_CREATE_INFO)
 		.flags = 0,
 		.renderPass = pass,
-		.attachmentCount = 1,
+		.attachmentCount = 2,
 		.width = WIDTH,
 		.height = HEIGHT,
 		.layers = 1,
@@ -1346,7 +1390,7 @@ static struct GraphicsData mk_graphics(
 	);
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
-		fbuffer_create_info.pAttachments = &views[i];
+		fbuffer_create_info.pAttachments = views + 2 * i;
 		err = vkCreateFramebuffer(
 			dev,
 			&fbuffer_create_info,
@@ -1404,7 +1448,10 @@ static VkCommandBuffer *record_graphics(
 		.pNext = NULL,
 	};
 
-	VkClearValue clear = { 0, 0, 0, 1 };
+	VkClearValue clears[] = {
+		{ 0, 0, 0, 1 },
+		{ 1, 0 },
+	};
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		err = vkBeginCommandBuffer(cmd[i], &begin_info);
@@ -1420,8 +1467,8 @@ static VkCommandBuffer *record_graphics(
 				.offset = { 0, 0 },
 				.extent = { WIDTH, HEIGHT },
 			},
-			.clearValueCount = 1,
-			.pClearValues = &clear,
+			.clearValueCount = 2,
+			.pClearValues = clears,
 			.pNext = NULL,
 		};
 
@@ -1682,7 +1729,7 @@ static void app_free()
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		vkDestroyImageView(
 			app.dev.log,
-			app.graphics.views[i],
+			app.graphics.views[2 * i],
 			NULL
 		);
 
