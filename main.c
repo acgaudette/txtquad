@@ -27,7 +27,7 @@ struct RawChar {
 	v2 _slop;
 };
 
-static v2 char_off(char c)
+static v2 char_off(u8 c)
 {
 	return (v2) {
 		c % FONT_OFF,
@@ -1656,6 +1656,8 @@ static void run(
 		glfwPollEvents();
 		inp_update(win);
 		*(share_buf + img_i) = txtquad_update(data, &text);
+		assert(text.block_count <= MAX_BLCK);
+		assert(text.char_count <= MAX_CHAR);
 		text_update(img_i, data);
 
 		VkSubmitInfo submit_info = {

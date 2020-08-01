@@ -30,8 +30,8 @@ struct Share {
 struct Char {
 	v3 pos;
 	v4 rot;
-	float scale;
-	char v;
+	float scale; // Meters
+	u8 v;
 	v4 col;
 };
 
@@ -53,7 +53,7 @@ struct Block {
 	v4 col; // TODO: allow for mottle variation
 	float spacing;
 	size_t col_lim; // TODO: parse newline chars
-	char cursor;
+	u8 cursor;
 };
 
 struct Text {
