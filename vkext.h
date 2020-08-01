@@ -3,6 +3,7 @@
 
 #include <vulkan/vulkan.h>
 #include "sys.h"
+#include "types.h"
 
 #define STYPE(NAME) .sType = VK_STRUCTURE_TYPE_ ## NAME ,
 
@@ -26,7 +27,129 @@ static const char *mem_prop_flag_str(int flag)
 	}
 }
 
-struct AkBuffer {
+struct ak_img {
+	VkImage img;
+	VkDeviceMemory mem;
+	VkMemoryRequirements req;
+	VkImageView view;
+};
+
+#define AK_IMG_USAGE(STR) VK_IMAGE_USAGE_ ## STR ## _BIT
+
+#define AK_IMG_HEAD(HANDLE) \
+	printf("Making " HANDLE " image\n")
+#define AK_IMG_MK(DEV, HANDLE, W, H, FORMAT, USAGE, ASPECT, OUT) \
+{ \
+	AK_IMG_HEAD(HANDLE); \
+	ak_img_mk( \
+		DEV, \
+		W, H, \
+		VK_FORMAT_ ## FORMAT, \
+		USAGE, \
+		VK_IMAGE_ASPECT_ ## ASPECT ## _BIT, \
+		OUT \
+	); \
+}
+
+static void ak_img_mk(
+	VkDevice dev,
+	u32 width, u32 height,
+	VkFormat format,
+	VkImageUsageFlags usage,
+	VkImageAspectFlags aspect,
+	struct ak_img *const out
+) {
+	VkResult err;
+	VkImageCreateInfo img_create_info = {
+	STYPE(IMAGE_CREATE_INFO)
+		.flags = 0,
+		.imageType = VK_IMAGE_TYPE_2D,
+		.format = format,
+		.extent = { width, height, 1 },
+		.mipLevels = 1,
+		.arrayLayers = 1,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.tiling = VK_IMAGE_TILING_OPTIMAL,
+		.usage = usage,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+		.queueFamilyIndexCount = 0,
+		.pQueueFamilyIndices = NULL,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.pNext = NULL,
+	};
+
+	VkImage img;
+	err = vkCreateImage(dev, &img_create_info, NULL, &img);
+	if (err != VK_SUCCESS) {
+		panic_msg("unable to create image");
+	}
+
+	printf("\t. created\n");
+
+	/* TODO: validate hardware memory and select best heap */
+
+	VkMemoryRequirements req;
+	vkGetImageMemoryRequirements(dev, img, &req);
+
+	VkMemoryAllocateInfo alloc_info = {
+	STYPE(MEMORY_ALLOCATE_INFO)
+		.allocationSize = req.size,
+		.memoryTypeIndex = 0,
+		.pNext = NULL,
+	};
+
+	VkDeviceMemory mem;
+	err = vkAllocateMemory(dev, &alloc_info, NULL, &mem);
+	if (err != VK_SUCCESS) {
+		panic_msg("unable to allocate memory for image");
+	}
+
+	vkBindImageMemory(dev, img, mem, 0);
+	if (err != VK_SUCCESS) {
+		panic_msg("unable to bind image memory");
+	}
+
+	printf("\t. allocated\n");
+
+	VkImageView view;
+	VkImageViewCreateInfo view_create_info = {
+	STYPE(IMAGE_VIEW_CREATE_INFO)
+		.flags = 0,
+		.viewType = VK_IMAGE_VIEW_TYPE_2D,
+		.format = format,
+		.components = {
+			VK_COMPONENT_SWIZZLE_IDENTITY,
+		},
+		.subresourceRange = {
+			.aspectMask = aspect,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+		.pNext = NULL,
+	};
+
+	view_create_info.image = img;
+	err = vkCreateImageView(dev, &view_create_info, NULL, &view);
+	if (err != VK_SUCCESS) {
+		panic_msg("unable to create image view");
+	}
+
+	out->img = img;
+	out->mem = mem;
+	out->req = req;
+	out->view = view;
+}
+
+static void ak_img_free(VkDevice dev, struct ak_img ak)
+{
+	vkDestroyImage(dev, ak.img, NULL);
+	vkDestroyImageView(dev, ak.view, NULL);
+	vkFreeMemory(dev, ak.mem, NULL);
+}
+
+struct ak_buf {
 	VkBuffer buf;
 	VkDeviceMemory mem;
 	VkMemoryRequirements req;
@@ -47,7 +170,7 @@ static void mk_buf(
 	VkDevice dev,
 	VkDeviceSize size,
 	VkBufferUsageFlags usage,
-	struct AkBuffer *out
+	struct ak_buf *out
 ) {
 	VkResult err;
 	VkBufferCreateInfo buf_create_info = {
@@ -111,7 +234,7 @@ static void mk_buf_and_map(
 	VkDevice dev,
 	VkDeviceSize size,
 	VkBufferUsageFlags usage,
-	struct AkBuffer *out,
+	struct ak_buf *out,
 	void **src
 ) {
 	mk_buf(dev, size, usage, out);
@@ -125,7 +248,7 @@ static void mk_buf_and_map(
 	printf("\t. backed\n");
 }
 
-static void free_buf(VkDevice dev, struct AkBuffer ak)
+static void free_buf(VkDevice dev, struct ak_buf ak)
 {
 	vkDestroyBuffer(dev, ak.buf, NULL);
 	vkUnmapMemory(dev, ak.mem); // TODO: check if mapped

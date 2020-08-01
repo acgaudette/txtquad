@@ -140,13 +140,11 @@ static struct App {
 		VkImage *img;
 	} swap;
 	struct FontData {
-		VkImage img;
-		VkDeviceMemory img_mem;
-		VkImageView view;
+		struct ak_img tex;
 		VkSampler sampler;
 	} font;
-	struct AkBuffer share;
-	struct AkBuffer text;
+	struct ak_buf share;
+	struct ak_buf text;
 	struct DescData {
 		VkDescriptorSetLayout *layouts;
 		VkDescriptorSet *sets;
@@ -600,7 +598,7 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 	/* Staging buffer */
 
 	VkResult err;
-	struct AkBuffer staging;
+	struct ak_buf staging;
 	void *src;
 
 	MK_BUF_AND_MAP(
@@ -619,81 +617,16 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 
 	/* Texture */
 
-	VkFormat format = VK_FORMAT_R8_UNORM;
-	VkImageCreateInfo tex_create_info = {
-	STYPE(IMAGE_CREATE_INFO)
-		.flags = 0,
-		.imageType = VK_IMAGE_TYPE_2D,
-		.format = format,
-		.extent = { 128, 128, 1 },
-		.mipLevels = 1,
-		.arrayLayers = 1,
-		.samples = VK_SAMPLE_COUNT_1_BIT,
-		.tiling = VK_IMAGE_TILING_OPTIMAL,
-		.usage = VK_IMAGE_USAGE_SAMPLED_BIT
-		       | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-		.queueFamilyIndexCount = 0,
-		.pQueueFamilyIndices = NULL,
-		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-		.pNext = NULL,
-	};
-
-	VkImage tex;
-	err = vkCreateImage(dev.log, &tex_create_info, NULL, &tex);
-	if (err != VK_SUCCESS) {
-		panic_msg("unable to create font texture");
-	}
-
-	printf("Created font texture\n");
-
-	VkDeviceSize align_size = (staging.req.size + 0x1000 - 1)
-		& ~(0x1000 - 1);
-
-	VkMemoryAllocateInfo tex_alloc_info = {
-	STYPE(MEMORY_ALLOCATE_INFO)
-		.allocationSize = align_size,
-		.memoryTypeIndex = 0,
-		.pNext = NULL,
-	};
-
-	VkDeviceMemory tex_mem;
-	err = vkAllocateMemory(dev.log, &tex_alloc_info, NULL, &tex_mem);
-	if (err != VK_SUCCESS) {
-		panic_msg(
-			"unable to allocate memory for font texture"
-		);
-	}
-
-	vkBindImageMemory(dev.log, tex, tex_mem, 0);
-	printf("Backed font texture\n");
-
-	VkImageView tex_view;
-	VkImageViewCreateInfo view_create_info = {
-	STYPE(IMAGE_VIEW_CREATE_INFO)
-		.flags = 0,
-		.viewType = VK_IMAGE_VIEW_TYPE_2D,
-		.format = format,
-		.components = {
-			VK_COMPONENT_SWIZZLE_IDENTITY,
-		},
-		.subresourceRange = {
-			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-			.baseMipLevel = 0,
-			.levelCount = 1,
-			.baseArrayLayer = 0,
-			.layerCount = 1,
-		},
-		.pNext = NULL,
-	};
-
-	view_create_info.image = tex;
-	err = vkCreateImageView(dev.log, &view_create_info, NULL, &tex_view);
-	if (err != VK_SUCCESS) {
-		panic_msg("unable to create image view");
-	}
-
-	printf("Created font texture image view\n");
+	struct ak_img tex;
+	AK_IMG_MK(
+		dev.log,
+		"font texture",
+		128, 128,
+		R8_UNORM,
+		AK_IMG_USAGE(SAMPLED) | AK_IMG_USAGE(TRANSFER_DST),
+		COLOR,
+		&tex
+	);
 
 	VkSamplerCreateInfo sampler_create_info = {
 	STYPE(SAMPLER_CREATE_INFO)
@@ -762,7 +695,7 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 		.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-		.image = tex,
+		.image = tex.img,
 		.subresourceRange = {
 			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 			.baseMipLevel = 0,
@@ -800,7 +733,7 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 	vkCmdCopyBufferToImage(
 		cmd,
 		staging.buf,
-		tex,
+		tex.img,
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		1,
 		&dev_region
@@ -814,7 +747,7 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 		.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-		.image = tex,
+		.image = tex.img,
 		.subresourceRange = {
 			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 			.baseMipLevel = 0,
@@ -859,13 +792,11 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 
 	return (struct FontData) {
 		tex,
-		tex_mem,
-		tex_view,
 		sampler,
 	};
 }
 
-static struct AkBuffer prep_share(VkDevice dev, struct Share **data)
+static struct ak_buf prep_share(VkDevice dev, struct Share **data)
 {
 	/* Could combine with the text buffer
 	 * as they are updated at the same rate;
@@ -873,16 +804,16 @@ static struct AkBuffer prep_share(VkDevice dev, struct Share **data)
 	 * become larger in the future
 	 */
 
-	struct AkBuffer buf;
+	struct ak_buf buf;
 	size_t size = SWAP_IMG_COUNT * sizeof(struct Share);
 	MK_BUF_AND_MAP(dev, "share", size, UNIFORM_BUFFER, &buf, (void**)data);
 	(*data)->vp = m4_id();
 	return buf;
 }
 
-static struct AkBuffer prep_text(VkDevice dev, struct RawChar **data)
+static struct ak_buf prep_text(VkDevice dev, struct RawChar **data)
 {
-	struct AkBuffer buf;
+	struct ak_buf buf;
 	size_t size = SWAP_IMG_COUNT * MAX_CHAR * sizeof(struct RawChar);
 	MK_BUF_AND_MAP(dev, "char", size, UNIFORM_BUFFER, &buf, (void**)data);
 	memset(*data, 0, size);
@@ -985,12 +916,12 @@ static void mk_bindings(
 	VkDevice dev,
 	struct DescData desc,
 	struct FontData font,
-	struct AkBuffer share,
-	struct AkBuffer text
+	struct ak_buf share,
+	struct ak_buf text
 ) {
 	VkDescriptorImageInfo img_info = {
 		.sampler = font.sampler,
-		.imageView = font.view,
+		.imageView = font.tex.view,
 		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 	};
 
@@ -1783,9 +1714,7 @@ static void app_free()
 	free_buf(app.dev.log, app.share);
 
 	// Font
-	vkDestroyImage(app.dev.log, app.font.img, NULL);
-	vkDestroyImageView(app.dev.log, app.font.view, NULL);
-	vkFreeMemory(app.dev.log, app.font.img_mem, NULL);
+	ak_img_free(app.dev.log, app.font.tex);
 	vkDestroySampler(app.dev.log, app.font.sampler, NULL);
 
 	vkFreeCommandBuffers(app.dev.log, app.pool, SWAP_IMG_COUNT, app.cmd);
@@ -1794,6 +1723,7 @@ static void app_free()
 
 	vkDestroySwapchainKHR(app.dev.log, app.swap.chain, NULL);
 	free(app.swap.img);
+	ak_img_free(app.dev.log, app.swap.depth);
 
 	vkDestroyDevice(app.dev.log, NULL);
 	vkDestroySurfaceKHR(app.inst, app.surf, NULL);
