@@ -55,6 +55,5 @@ void main()
 	st = sq[gl_VertexIndex];
 	uv = SCALE * (st + char.off);
 	col = char.col;
-
 	gl_Position = share.vp * char.model * vert[gl_VertexIndex];
 }

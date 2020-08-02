@@ -29,7 +29,7 @@ default so
 # EXAMPLES #
 
 rule shc
-    command = glslangValidator -V $in
+    command = glslc $in -o $out
 rule lde
     command = clang $in $libs -o $out
 
