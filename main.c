@@ -1833,6 +1833,9 @@ void txtquad_init(const char *asset_path)
 
 void txtquad_start()
 {
+#ifdef DEBUG
+	printf("Text memory usage: %.2f MB\n", (float)sizeof(struct Text) / (1000 * 1000));
+#endif
 	run(app.win, app.dev, app.swap.chain, app.cmd, app.sync);
 	free(root_path);
 	app_free();
