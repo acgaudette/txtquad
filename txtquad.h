@@ -1,16 +1,11 @@
 #ifndef TXTQUAD_H
 #define TXTQUAD_H
 
+#include "config.h"
 #include "alg.h"
 
-#define WIDTH 512
-#define HEIGHT 512
-
-#define PIX_WIDTH (1.f / 8.f)
+#define PIX_WIDTH (1.f / CHAR_WIDTH)
 #define LINE_HEIGHT (PIX_WIDTH + 1.f)
-
-#define MAX_CHAR 4096
-#define MAX_BLCK 1024
 
 struct Frame {
 	size_t i;
@@ -42,7 +37,7 @@ enum Justify {
 };
 
 struct Block {
-	char *str; // TODO: fx/color tags?
+	char *str;
 	size_t str_len;
 	v3 pos;
 	v4 rot;
@@ -50,7 +45,7 @@ struct Block {
 	v2 piv;
 	v2 off;
 	enum Justify just;
-	v4 col; // TODO: allow for mottle variation
+	v4 col;
 	float spacing;
 	size_t col_lim; // TODO: parse newline chars
 	u8 cursor;

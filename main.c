@@ -11,10 +11,9 @@
 #include "inp.h"
 #endif
 
-#define NAME "txtquad"
-#define SWAP_IMG_COUNT 3
-#define FONT_SIZE (128 * 128)
-#define FONT_OFF (128 / 8)
+#define ENG_NAME "txtquad"
+#define FONT_SIZE (FONT_WIDTH * FONT_WIDTH)
+#define FONT_OFF  (FONT_WIDTH / CHAR_WIDTH)
 
 static struct Share *share_buf;
 static struct RawChar *char_buf;
@@ -213,14 +212,14 @@ static GLFWwindow *mk_win()
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // GLFW Vulkan support
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	GLFWwindow *win = glfwCreateWindow(
-		WIDTH,
-		HEIGHT,
-		NAME,
+		WIN_W,
+		WIN_H,
+		APP_NAME,
 		NULL,
 		NULL
 	);
 
-	printf("Created GLFW window \"%s\"\n", NAME);
+	printf("Created GLFW window \"%s\"\n", APP_NAME);
 
 #ifdef INP_TEXT
 	glfwSetCharCallback(win, glfw_char_callback);
@@ -235,9 +234,9 @@ static VkInstance mk_inst(GLFWwindow *win)
 {
 	VkApplicationInfo app_info = {
 	STYPE(APPLICATION_INFO)
-		.pApplicationName = NAME,
+		.pApplicationName = APP_NAME,
 		.applicationVersion = VK_MAKE_VERSION(0, 1, 0),
-		.pEngineName = NAME,
+		.pEngineName = ENG_NAME,
 		.engineVersion = VK_MAKE_VERSION(0, 1, 0),
 		.apiVersion = VK_API_VERSION_1_0,
 		.pNext = NULL,
@@ -443,7 +442,7 @@ static struct SwapData mk_swap(struct DevData dev, VkSurfaceKHR surf)
 		.minImageCount = img_count,
 		.imageFormat = format,
 		.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
-		.imageExtent = { WIDTH, HEIGHT },
+		.imageExtent = { WIN_W, WIN_H },
 		.imageArrayLayers = 1,
 		.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
@@ -485,7 +484,7 @@ static struct SwapData mk_swap(struct DevData dev, VkSurfaceKHR surf)
 	AK_IMG_MK(
 		dev.log,
 		"depth texture",
-		WIDTH, HEIGHT,
+		WIN_W, WIN_H,
 		D32_SFLOAT,
 		AK_IMG_USAGE(DEPTH_STENCIL_ATTACHMENT),
 		DEPTH,
@@ -1118,15 +1117,15 @@ static struct GraphicsData mk_graphics(
 	VkViewport viewport = {
 		.x = 0.f,
 		.y = 0.f,
-		.width = WIDTH,
-		.height = HEIGHT,
+		.width = WIN_W,
+		.height = WIN_H,
 		.minDepth = 0.f,
 		.maxDepth = 1.f,
 	};
 
 	VkRect2D scissor = {
 		.offset = { 0, 0 },
-		.extent = { WIDTH, HEIGHT },
+		.extent = { WIN_W, WIN_H },
 	};
 
 	VkPipelineViewportStateCreateInfo viewport_state_create_info = {
@@ -1384,8 +1383,8 @@ static struct GraphicsData mk_graphics(
 		.flags = 0,
 		.renderPass = pass,
 		.attachmentCount = 2,
-		.width = WIDTH,
-		.height = HEIGHT,
+		.width = WIN_W,
+		.height = WIN_H,
 		.layers = 1,
 		.pNext = NULL,
 	};
@@ -1470,7 +1469,7 @@ static VkCommandBuffer *record_graphics(
 			.framebuffer = graphics.fbuffers[i],
 			.renderArea = {
 				.offset = { 0, 0 },
-				.extent = { WIDTH, HEIGHT },
+				.extent = { WIN_W, WIN_H },
 			},
 			.clearValueCount = 2,
 			.pClearValues = clears,
