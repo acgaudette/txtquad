@@ -5,8 +5,11 @@
 #include <vulkan/vulkan.h> // Must include before GLFW
 #include <GLFW/glfw3.h>
 #include "txtquad.h"
-#include "inp.h"
 #include "vkext.h"
+
+#if defined(INP_KEYS) || defined(INP_TEXT) || defined(INP_MOUSE)
+#include "inp.h"
+#endif
 
 #define NAME "txtquad"
 #define SWAP_IMG_COUNT 3
@@ -170,7 +173,7 @@ static struct App {
 	VkCommandBuffer *cmd;
 } app;
 
-#if defined(INP_TEXT) || defined(INP_MOUSE)
+#ifdef INP_KEYS
 struct Input inp_data;
 void inp_init(
 	int *key_handles,
@@ -1656,7 +1659,7 @@ static void run(
 		}
 #endif
 		glfwPollEvents();
-#if defined(INP_TEXT) || defined(INP_MOUSE)
+#ifdef INP_KEYS
 		inp_update(win);
 #endif
 		*(share_buf + img_i) = txtquad_update(data, &text);

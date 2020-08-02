@@ -18,8 +18,6 @@ Notes:
       or the $demo var in ./build.ninja
 
 Using the input module:
-    - Define INP_TEXT and/or INP_MOUSE when compiling txtquad
-      (enabled by default--see ./build.ninja)
     - Include inp.h in your application's source
     - When compiling txtquad,
       define INP_KEYS for keyboard + mouse press/hold/release polling macros,

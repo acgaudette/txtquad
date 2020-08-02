@@ -2,7 +2,7 @@ builddir = obj
 
 flags = -O0 -ggdb -fPIC $
     -DDEBUG -DALG_DEBUG $
-    -DINP_TEXT -DINP_MOUSE $
+    -DINP_KEYS -DINP_TEXT -DINP_MOUSE $
     -fdiagnostics-color=always
 incl = -I . -I ext/include
 libs = -L ext/lib -lglfw3 -lvulkan $

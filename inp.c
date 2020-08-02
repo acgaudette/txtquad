@@ -1,4 +1,4 @@
-#if defined(INP_TEXT) || defined(INP_MOUSE)
+#ifdef INP_KEYS
 #include "inp.h"
 
 void inp_update(GLFWwindow *win)
