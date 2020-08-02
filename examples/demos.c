@@ -134,7 +134,7 @@ int main()
 	};
 	inp_init(inp_handles, 3, NULL, 0);
 #endif
-	txtquad_init("./");
+	txtquad_init("./assets/");
 	txtquad_start();
 	exit(0);
 }

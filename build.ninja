@@ -33,8 +33,8 @@ rule shc
 rule lde
     command = clang $in $libs -o $out
 
-build vert.spv: shc text.vert
-build frag.spv: shc text.frag
+build assets/vert.spv: shc text.vert
+build assets/frag.spv: shc text.frag
 
 demo = 2
 build $builddir/demos.o: cc examples/demos.c
@@ -42,6 +42,6 @@ build $builddir/demos.o: cc examples/demos.c
 
 build bin/demos: $
     lde $builddir/demos.o $
-    | bin/libtxtquad.so vert.spv frag.spv
+    | bin/libtxtquad.so assets/vert.spv assets/frag.spv
     libs = -L bin -ltxtquad -rpath bin -lm
 build demos: phony bin/demos
