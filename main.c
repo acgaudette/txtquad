@@ -1663,8 +1663,10 @@ static void run(
 		inp_update(win);
 #endif
 		*(share_buf + img_i) = txtquad_update(data, &text);
+#ifdef DEBUG
 		assert(text.block_count <= MAX_BLCK);
 		assert(text.char_count <= MAX_CHAR);
+#endif
 		text_update(img_i, data);
 
 		VkSubmitInfo submit_info = {

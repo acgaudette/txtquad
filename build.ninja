@@ -1,9 +1,10 @@
 builddir = obj
 
-flags = -O0 -ggdb -fPIC $
+config = $
+    -O0 -ggdb $
     -DDEBUG -DALG_DEBUG $
-    -DINP_KEYS -DINP_TEXT -DINP_MOUSE $
-    -fdiagnostics-color=always
+    -DINP_KEYS -DINP_TEXT -DINP_MOUSE
+flags = -fPIC -fdiagnostics-color=always
 incl = -I . -I ext/include
 libs = -L ext/lib -lglfw3 -lvulkan $
     -ldl -lX11 -lm -lpthread
@@ -12,7 +13,7 @@ rule cc
     depfile = $out.d
     deps = gcc
     command = clang -MD -MF $out.d $
-              $flags $incl -c $in -o $out
+              $config $flags $incl -c $in -o $out
 rule ld
     command = clang $in $libs -shared -o $out
 
@@ -37,7 +38,7 @@ build frag.spv: shc text.frag
 
 demo = 2
 build $builddir/demos.o: cc examples/demos.c
-    flags = -O0 -ggdb -DDEMO_$demo
+    config = -O0 -ggdb -DDEMO_$demo
 
 build bin/demos: $
     lde $builddir/demos.o $

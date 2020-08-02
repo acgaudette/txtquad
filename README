@@ -11,6 +11,12 @@ Building:
          running "ninja" in the root dir
          will build the .so by itself
 
+Configuration:
+    - All settings can be found in ./config.h
+    - See the $config var in ./build.ninja
+      to adjust compiler flags and switches
+      (the lib is compiled in debug mode by default)
+
 Notes:
     - glfw is compiled statically into the binary by default
     - There is one example executable, but four demos.
