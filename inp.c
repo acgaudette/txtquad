@@ -1,3 +1,4 @@
+#if defined(INP_TEXT) || defined(INP_MOUSE)
 #include "inp.h"
 
 void inp_update(GLFWwindow *win)
@@ -18,3 +19,5 @@ void inp_update(GLFWwindow *win)
 		inp_data.but.states[handle] = s;
 	}
 }
+
+#endif

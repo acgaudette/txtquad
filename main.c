@@ -170,6 +170,7 @@ static struct App {
 	VkCommandBuffer *cmd;
 } app;
 
+#if defined(INP_TEXT) || defined(INP_MOUSE)
 struct Input inp_data;
 void inp_init(
 	int *key_handles,
@@ -182,6 +183,7 @@ void inp_init(
 	inp_data.but.handles = but_handles;
 	inp_data.but.count = but_count;
 }
+#endif
 
 #ifdef INP_TEXT
 static void glfw_char_callback(GLFWwindow *win, unsigned int unicode)
@@ -1654,7 +1656,9 @@ static void run(
 		}
 #endif
 		glfwPollEvents();
+#if defined(INP_TEXT) || defined(INP_MOUSE)
 		inp_update(win);
+#endif
 		*(share_buf + img_i) = txtquad_update(data, &text);
 		assert(text.block_count <= MAX_BLCK);
 		assert(text.char_count <= MAX_CHAR);

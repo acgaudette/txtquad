@@ -16,3 +16,14 @@ Notes:
     - There is one example executable, but four demos.
       The demo selection can be controlled at compilation time by a define,
       or the $demo var in ./build.ninja
+
+Using the input module:
+    - Define INP_TEXT and/or INP_MOUSE when compiling txtquad
+      (enabled by default--see ./build.ninja)
+    - Include inp.h in your application's source
+    - When compiling txtquad,
+      define INP_KEYS for keyboard + mouse press/hold/release polling macros,
+      INP_TEXT for a text entry callback,
+      and/or INP_MOUSE for a mouse position callback
+    - You will also need the glfw header as a dev dependency
+    - See ./inp.h and ./examples for API usage
