@@ -1,4 +1,4 @@
-/lib
+/ext
 /bin
-/build
+/obj
 *.spv

@@ -1,5 +1,18 @@
 Dependencies:
-    libglfw.so    3.3.1
+    libglfw.so    3.3.2
 
-Unpack GLFW into ./lib
-Run ./mkdep
+This project uses clang and the ninja buildsystem.
+
+Building:
+    1. ./mkdep to download, build, and install glfw3 into ./ext
+    2. ./runex to build and launch ./bin/demos
+       - This will build ./bin/libtxtquad.so as a side effect
+       - Alternatively,
+         running "ninja" in the root dir
+         will build the .so by itself
+
+Notes:
+    - glfw is compiled statically into the binary by default
+    - There is one example executable, but four demos.
+      The demo selection can be controlled at compilation time by a define,
+      or the $demo var in ./build.ninja
