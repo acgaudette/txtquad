@@ -25,7 +25,7 @@ Dependencies:
 
 This project uses clang and the ninja buildsystem.
 
-1. ./mkdep to download, build, and install glfw3 into ./ext
+1. ./bootstrap to download, build, and install glfw3 into ./ext
 2. ./runex to build and launch ./bin/demos
    - This will build ./bin/libtxtquad.so as a side effect
    - Alternatively,
@@ -46,7 +46,7 @@ This project uses clang and the ninja buildsystem.
   containing the font and the compiled shaders,
   or just softlink the one from the repo (./assets)
   - The default shaders are compiled into here along with the demos
-  - If ./mkdep doesn't find a font in ./assets,
+  - If ./bootstrap doesn't find a font in ./assets,
     it downloads the one from the link above
 
 # API

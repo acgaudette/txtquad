@@ -94,7 +94,7 @@ struct Share txtquad_update(struct Frame data, struct Text *text)
 		.col = v4_one(),
 		.spacing = LINE_HEIGHT,
 		.col_lim = 8,
-		.cursor = 13,
+		.cursor = '_',
 	};
 #elif DEMO_3
 	cam_rot = qt_axis_angle(v3_up(), sinf(data.t));

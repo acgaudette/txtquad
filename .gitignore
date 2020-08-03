@@ -1,4 +1,4 @@
 /ext
 /bin
 /obj
-*.spv
+/assets
