@@ -1,3 +1,17 @@
+txtquad is a simple vulkan renderer built to do one thing:
+render "game jam" style 3D text in the most straightforward way possible.
+
+It supports a custom format that essentially boils down
+to a square, ASCII-indexed binary bitmap.
+The font file is encoded as a pbm, and WYSIWYG.
+
+Doodling your own fonts is easy,
+as long as you're in the market for monospace.
+Or, you can draw sprites, and render those instead.
+
+txtquad is feature sparse but functional.
+Maybe someday it won't create its own window.
+
 Dependencies:
     libglfw.so    3.3.2
 
@@ -17,11 +31,40 @@ Configuration:
       to adjust compiler flags and switches
       (the lib is compiled in debug mode by default)
 
+Usage:
+    - Link against libtxtquad.so in your app
+    - Set up an assets directory
+      containing the font and the compiled shaders,
+      or just softlink the one from the repo (./assets)
+      - The default shaders are compiled into here along with the demos
+      - If ./mkdep doesn't find a font in ./assets,
+        it downloads one I created myself in there automatically,
+        from github.com/acgaudette/kufont-ascii
+
+API:
+    txtquad_init(<asset-path>)
+    - Call this from your main function to boot up the engine,
+      passing in the dir you'd like to load your spv and pbm files from
+
+    txtquad_start()
+    - Call this to pass control
+      from your app to the engine
+
+    txtquad_update(struct Frame, struct Text*)
+    - Implement this callback,
+      it's called once per frame by the engine
+    - Grab your animation data from the Frame
+    - Write to the Text* to render stuff
+      (it's just a pointer to a blob of static memory)
+
 Notes:
     - glfw is compiled statically into the binary by default
     - There is one example executable, but four demos.
       The demo selection can be controlled at compilation time by a define,
       or the $demo var in ./build.ninja
+    - This repo has some other orbiting code in it,
+      like a corny single-header math library.
+      Maybe I'll move those out later
 
 Using the input module:
     - Include inp.h in your application's source
