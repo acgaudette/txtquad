@@ -7,7 +7,7 @@ config = $
 flags = -fPIC -fdiagnostics-color=always
 incl = -I . -I ext/include
 libs = -L ext/lib -lglfw3 -lvulkan $
-    -ldl -lX11 -lm -lpthread
+    -framework Cocoa -framework IOKit
 
 rule cc
     depfile = $out.d
@@ -15,7 +15,8 @@ rule cc
     command = clang -MD -MF $out.d $
               $config $flags $incl -c $in -o $out
 rule ld
-    command = clang $in $libs -shared -o $out
+    command = clang $in $libs $
+        -undefined dynamic_lookup -shared -o $out
 
 build $builddir/main.o: cc main.c
 build $builddir/inp.o: cc inp.c
