@@ -30,9 +30,9 @@ const vec2 sq[4] = {
 
 void main()
 {
-	Char char = data.chars[gl_InstanceIndex];
+	Char c = data.chars[gl_InstanceIndex];
 	st = sq[gl_VertexIndex];
-	uv = SCALE * (st + char.off);
-	col = char.col;
-	gl_Position = share.vp * char.model * vert[gl_VertexIndex];
+	uv = SCALE * (st + c.off);
+	col = c.col;
+	gl_Position = share.vp * c.model * vert[gl_VertexIndex];
 }
