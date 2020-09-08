@@ -6,24 +6,38 @@
 #include "types.h"
 
 #define STYPE(NAME) .sType = VK_STRUCTURE_TYPE_ ## NAME ,
+#define AK_MEM_PROP(STR) VK_MEMORY_PROPERTY_ ## STR ## _BIT
 
-static const char *mem_prop_flag_str(int flag)
+static const char *ak_mem_prop_flag_str(int flag)
 {
 	switch (flag) {
-	case VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT:
-		return "device_local";
-	case VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT:
-		return "host_visible";
-	case VK_MEMORY_PROPERTY_HOST_COHERENT_BIT:
-		return "host_coherent";
-	case VK_MEMORY_PROPERTY_HOST_CACHED_BIT:
-		return "host_cached";
-	case VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT:
-		return "lazily_allocated";
-	case VK_MEMORY_PROPERTY_PROTECTED_BIT:
+	case AK_MEM_PROP(DEVICE_LOCAL):
+		return "device-local";
+	case AK_MEM_PROP(HOST_VISIBLE):
+		return "host-visible";
+	case AK_MEM_PROP(HOST_COHERENT):
+		return "host-coherent";
+	case AK_MEM_PROP(HOST_CACHED):
+		return "host-cached";
+	case AK_MEM_PROP(LAZILY_ALLOCATED):
+		return "lazily-allocated";
+	case AK_MEM_PROP(PROTECTED):
 		return "protected";
 	default:
-		return "unknown_flag";
+		return "unknown-flag";
+	}
+}
+
+static void ak_print_mem_props(VkMemoryPropertyFlags prop_mask, const char *format)
+{
+	u32 j = 0;
+	while (prop_mask) {
+		if (prop_mask & 1) {
+			printf(format, ak_mem_prop_flag_str(1 << j));
+		}
+
+		prop_mask >>= 1;
+		++j;
 	}
 }
 

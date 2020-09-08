@@ -388,23 +388,11 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 	VkPhysicalDeviceMemoryProperties mem_props;
 	vkGetPhysicalDeviceMemoryProperties(hard_dev, &mem_props);
 
-	for (size_t i = 0; i < mem_props.memoryTypeCount; ++i) {
+	for (u32 i = 0; i < mem_props.memoryTypeCount; ++i) {
 		VkMemoryType t = mem_props.memoryTypes[i];
-		printf("Found memory type %lu:\n", i);
+		printf("Found memory type %u:\n", i);
 		VkMemoryPropertyFlags flags = t.propertyFlags;
-
-		size_t j = 0;
-		while (flags) {
-			if (flags & 1) {
-				printf(
-					"\t%s\n",
-					mem_prop_flag_str(1 << j)
-				);
-			}
-
-			flags >>= 1;
-			++j;
-		}
+		ak_print_mem_props(flags, "\t%s\n");
 	}
 
 	return (struct DevData) {
