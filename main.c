@@ -1792,11 +1792,11 @@ static void app_free()
 	printf("Cleanup complete\n");
 }
 
-void txtquad_init(const char *asset_path)
+void txtquad_init(const struct Settings settings)
 {
-	size_t len = strlen(asset_path);
+	size_t len = strlen(settings.asset_path);
 	root_path = malloc(len + 32);
-	strncpy(root_path, asset_path, len + 1);
+	strncpy(root_path, settings.asset_path, len + 1);
 	filename = root_path + len;
 
 	app.win = mk_win();

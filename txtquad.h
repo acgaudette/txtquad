@@ -7,6 +7,16 @@
 #define PIX_WIDTH (1.f / CHAR_WIDTH)
 #define LINE_HEIGHT (PIX_WIDTH + 1.f)
 
+struct Extent {
+	u16 w;
+	u16 h;
+};
+
+struct Settings {
+	const char *asset_path;
+	struct Extent win_size;
+};
+
 struct Frame {
 	size_t i;
 	size_t last_i;
@@ -60,7 +70,7 @@ struct Text {
 
 struct Share txtquad_update(struct Frame data, struct Text *text);
 
-void txtquad_init(const char*);
+void txtquad_init(const struct Settings);
 void txtquad_start();
 
 #endif

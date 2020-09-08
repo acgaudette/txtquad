@@ -134,7 +134,12 @@ int main()
 	};
 	inp_init(inp_handles, 3, NULL, 0);
 #endif
-	txtquad_init("./assets/");
+	struct Settings settings = {
+		.win_size = { 800, 800 },
+		.asset_path = "./assets/",
+	};
+
+	txtquad_init(settings);
 	txtquad_start();
 	exit(0);
 }
