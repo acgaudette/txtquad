@@ -41,6 +41,32 @@ static void ak_print_mem_props(VkMemoryPropertyFlags prop_mask, const char *form
 	}
 }
 
+static u32 ak_mem_type_idx(
+	VkPhysicalDeviceMemoryProperties mem_props,
+	u32 type_mask,
+	VkMemoryPropertyFlags prop_mask
+) {
+	printf("\t| ");
+	ak_print_mem_props(prop_mask, "%s ");
+	printf("\n");
+
+	for (u32 i = 0; i < mem_props.memoryTypeCount; ++i) {
+		int compat = type_mask & (1 << i);
+		if (!compat) continue;
+
+		VkMemoryType t = mem_props.memoryTypes[i];
+		VkMemoryPropertyFlags flags = t.propertyFlags;
+		compat = prop_mask == (flags & prop_mask);
+		if (!compat) continue;
+
+		printf("\t| using memory type %u\n", i);
+		return i;
+	}
+
+	panic_msg("no compatible memory type found");
+	return -1;
+}
+
 struct ak_img {
 	VkImage img;
 	VkDeviceMemory mem;
@@ -52,11 +78,12 @@ struct ak_img {
 
 #define AK_IMG_HEAD(HANDLE) \
 	printf("Making " HANDLE " image\n")
-#define AK_IMG_MK(DEV, HANDLE, W, H, FORMAT, USAGE, ASPECT, OUT) \
+#define AK_IMG_MK(DEV, MEM, HANDLE, W, H, FORMAT, USAGE, ASPECT, OUT) \
 { \
 	AK_IMG_HEAD(HANDLE); \
 	ak_img_mk( \
 		DEV, \
+		MEM, \
 		W, H, \
 		VK_FORMAT_ ## FORMAT, \
 		USAGE, \
@@ -67,6 +94,7 @@ struct ak_img {
 
 static void ak_img_mk(
 	VkDevice dev,
+	VkPhysicalDeviceMemoryProperties mem_info,
 	u32 width, u32 height,
 	VkFormat format,
 	VkImageUsageFlags usage,
@@ -100,15 +128,18 @@ static void ak_img_mk(
 
 	printf("\t. created\n");
 
-	/* TODO: validate hardware memory and select best heap */
-
 	VkMemoryRequirements req;
 	vkGetImageMemoryRequirements(dev, img, &req);
 
 	VkMemoryAllocateInfo alloc_info = {
 	STYPE(MEMORY_ALLOCATE_INFO)
 		.allocationSize = req.size,
-		.memoryTypeIndex = 0,
+		.memoryTypeIndex = ak_mem_type_idx(
+			mem_info,
+			req.memoryTypeBits,
+			// All images are currently host-inaccessible
+			AK_MEM_PROP(DEVICE_LOCAL)
+		),
 		.pNext = NULL,
 	};
 
@@ -174,16 +205,18 @@ struct ak_buf {
 	printf("Making " HANDLE " buffer with size %lu\n", (size_t)SZ)
 #define AK_BUF_USAGE(STR) VK_BUFFER_USAGE_ ## STR ## _BIT
 
-#define AK_BUF_MK(DEV, HANDLE, SZ, USAGE, OUT) \
+#define AK_BUF_MK(DEV, MEM, HANDLE, SZ, USAGE, PROPS, OUT) \
 { \
 	AK_BUF_HEAD(HANDLE, SZ); \
-	ak_buf_mk(DEV, SZ, AK_BUF_USAGE(USAGE), OUT); \
+	ak_buf_mk(DEV, MEM, SZ, AK_BUF_USAGE(USAGE), PROPS, OUT); \
 }
 
 static void ak_buf_mk(
 	VkDevice dev,
+	VkPhysicalDeviceMemoryProperties mem_info,
 	VkDeviceSize size,
 	VkBufferUsageFlags usage,
+	VkMemoryPropertyFlags mem_props,
 	struct ak_buf *out
 ) {
 	VkResult err;
@@ -206,8 +239,6 @@ static void ak_buf_mk(
 
 	printf("\t. created\n");
 
-	/* TODO: validate hardware memory and select best heap */
-
 	VkMemoryRequirements req;
 	vkGetBufferMemoryRequirements(dev, buf, &req);
 	assert(req.size == size);
@@ -215,7 +246,11 @@ static void ak_buf_mk(
 	VkMemoryAllocateInfo alloc_info = {
 	STYPE(MEMORY_ALLOCATE_INFO)
 		.allocationSize = size,
-		.memoryTypeIndex = 0,
+		.memoryTypeIndex = ak_mem_type_idx(
+			mem_info,
+			req.memoryTypeBits,
+			mem_props
+		),
 		.pNext = NULL,
 	};
 
@@ -238,14 +273,15 @@ static void ak_buf_mk(
 	out->size = size;
 }
 
-#define AK_BUF_MK_AND_MAP(DEV, HANDLE, SZ, USAGE, OUT, SRC) \
+#define AK_BUF_MK_AND_MAP(DEV, MEM, HANDLE, SZ, USAGE, OUT, SRC) \
 { \
 	AK_BUF_HEAD(HANDLE, SZ); \
-	ak_buf_mk_and_map(DEV, SZ, AK_BUF_USAGE(USAGE), OUT, SRC); \
+	ak_buf_mk_and_map(DEV, MEM, SZ, AK_BUF_USAGE(USAGE), OUT, SRC); \
 }
 
 static void ak_buf_mk_and_map(
 	VkDevice dev,
+	VkPhysicalDeviceMemoryProperties mem_props,
 	VkDeviceSize size,
 	VkBufferUsageFlags usage,
 	struct ak_buf *out,
@@ -253,8 +289,11 @@ static void ak_buf_mk_and_map(
 ) {
 	ak_buf_mk(
 		dev,
+		mem_props,
 		size,
 		usage,
+		// TODO: support uncached and/or non host-coherent heaps
+		AK_MEM_PROP(HOST_VISIBLE) | AK_MEM_PROP(HOST_COHERENT),
 		out
 	);
 

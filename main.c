@@ -131,6 +131,7 @@ static struct App {
 	VkSurfaceKHR surf;
 	struct DevData {
 		VkPhysicalDevice hard;
+		VkPhysicalDeviceMemoryProperties mem_props;
 		VkDevice log;
 		VkPhysicalDeviceProperties props;
 		size_t q_ind;
@@ -397,6 +398,7 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 
 	return (struct DevData) {
 		hard_dev,
+		mem_props,
 		dev,
 		dev_prop,
 		q_ind,
@@ -471,6 +473,7 @@ static struct SwapData mk_swap(struct DevData dev, VkSurfaceKHR surf)
 	struct ak_img depth;
 	AK_IMG_MK(
 		dev.log,
+		dev.mem_props,
 		"depth texture",
 		WIN_W, WIN_H,
 		D32_SFLOAT,
@@ -608,6 +611,7 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 
 	AK_BUF_MK_AND_MAP(
 		dev.log,
+		dev.mem_props,
 		"font staging",
 		FONT_SIZE,
 		TRANSFER_SRC,
@@ -625,6 +629,7 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 	struct ak_img tex;
 	AK_IMG_MK(
 		dev.log,
+		dev.mem_props,
 		"font texture",
 		128, 128,
 		R8_UNORM,
@@ -801,7 +806,7 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 	};
 }
 
-static struct ak_buf prep_share(VkDevice dev, struct Share **data)
+static struct ak_buf prep_share(struct DevData dev, struct Share **data)
 {
 	/* Could combine with the text buffer
 	 * as they are updated at the same rate;
@@ -814,6 +819,7 @@ static struct ak_buf prep_share(VkDevice dev, struct Share **data)
 
 	AK_BUF_MK_AND_MAP(
 		dev.log,
+		dev.mem_props,
 		"share",
 		size,
 		UNIFORM_BUFFER,
@@ -825,13 +831,14 @@ static struct ak_buf prep_share(VkDevice dev, struct Share **data)
 	return buf;
 }
 
-static struct ak_buf prep_text(VkDevice dev, struct RawChar **data)
+static struct ak_buf prep_text(struct DevData dev, struct RawChar **data)
 {
 	struct ak_buf buf;
 	size_t size = SWAP_IMG_COUNT * MAX_CHAR * sizeof(struct RawChar);
 
 	AK_BUF_MK_AND_MAP(
 		dev.log,
+		dev.mem_props,
 		"char",
 		size,
 		UNIFORM_BUFFER,
@@ -1812,8 +1819,8 @@ void txtquad_init(const char *asset_path)
 	app.swap = mk_swap(app.dev, app.surf);
 	app.pool = mk_pool(app.dev);
 	app.font = load_font(app.dev, app.pool);
-	app.share = prep_share(app.dev.log, &share_buf);
-	app.text = prep_text(app.dev.log, &char_buf);
+	app.share = prep_share(app.dev, &share_buf);
+	app.text = prep_text(app.dev, &char_buf);
 	app.desc = mk_desc_sets(app.dev.log);
 
 	mk_bindings(
