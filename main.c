@@ -437,6 +437,17 @@ static struct SwapData mk_swap(
 	u32 win_w = cap.currentExtent.width;
 	u32 win_h = cap.currentExtent.height;
 
+	if (win_w != extent.w || win_h != extent.h) {
+		printf(
+			"Warning: "
+			"current extent does not match what was requested\n"
+		);
+
+		float asp_cur = win_w / (float)win_h;
+		float asp_req = extent.w / (float)extent.h;
+		assert(asp_cur == asp_req);
+	}
+
 	printf("Image count range: %u-", cap.minImageCount);
 	if (cap.maxImageCount) {
 	       printf("%u\n", cap.maxImageCount);
