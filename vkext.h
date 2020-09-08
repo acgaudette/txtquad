@@ -170,17 +170,17 @@ struct ak_buf {
 	VkDeviceSize size;
 };
 
-#define BUF_HEAD(HANDLE, SZ) \
+#define AK_BUF_HEAD(HANDLE, SZ) \
 	printf("Making " HANDLE " buffer with size %lu\n", (size_t)SZ)
-#define BUF_USAGE(STR) VK_BUFFER_USAGE_ ## STR ## _BIT
+#define AK_BUF_USAGE(STR) VK_BUFFER_USAGE_ ## STR ## _BIT
 
-#define MK_BUF(DEV, HANDLE, SZ, USAGE, OUT) \
+#define AK_BUF_MK(DEV, HANDLE, SZ, USAGE, OUT) \
 { \
-	BUF_HEAD(HANDLE, SZ); \
-	mk_buf(DEV, SZ, BUF_USAGE(USAGE), OUT); \
+	AK_BUF_HEAD(HANDLE, SZ); \
+	ak_buf_mk(DEV, SZ, AK_BUF_USAGE(USAGE), OUT); \
 }
 
-static void mk_buf(
+static void ak_buf_mk(
 	VkDevice dev,
 	VkDeviceSize size,
 	VkBufferUsageFlags usage,
@@ -238,20 +238,25 @@ static void mk_buf(
 	out->size = size;
 }
 
-#define MK_BUF_AND_MAP(DEV, HANDLE, SZ, USAGE, OUT, SRC) \
+#define AK_BUF_MK_AND_MAP(DEV, HANDLE, SZ, USAGE, OUT, SRC) \
 { \
-	BUF_HEAD(HANDLE, SZ); \
-	mk_buf_and_map(DEV, SZ, BUF_USAGE(USAGE), OUT, SRC); \
+	AK_BUF_HEAD(HANDLE, SZ); \
+	ak_buf_mk_and_map(DEV, SZ, AK_BUF_USAGE(USAGE), OUT, SRC); \
 }
 
-static void mk_buf_and_map(
+static void ak_buf_mk_and_map(
 	VkDevice dev,
 	VkDeviceSize size,
 	VkBufferUsageFlags usage,
 	struct ak_buf *out,
 	void **src
 ) {
-	mk_buf(dev, size, usage, out);
+	ak_buf_mk(
+		dev,
+		size,
+		usage,
+		out
+	);
 
 	VkResult err;
 	err = vkMapMemory(dev, out->mem, 0, VK_WHOLE_SIZE, 0, src);
@@ -262,7 +267,7 @@ static void mk_buf_and_map(
 	printf("\t. backed\n");
 }
 
-static void free_buf(VkDevice dev, struct ak_buf ak)
+static void ak_buf_free(VkDevice dev, struct ak_buf ak)
 {
 	vkDestroyBuffer(dev, ak.buf, NULL);
 	vkUnmapMemory(dev, ak.mem); // TODO: check if mapped

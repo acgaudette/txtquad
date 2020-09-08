@@ -606,7 +606,7 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 	struct ak_buf staging;
 	void *src;
 
-	MK_BUF_AND_MAP(
+	AK_BUF_MK_AND_MAP(
 		dev.log,
 		"font staging",
 		FONT_SIZE,
@@ -793,7 +793,7 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 	vkQueueSubmit(dev.q, 1, &submit_info, NULL);
 	vkQueueWaitIdle(dev.q);
 	vkFreeCommandBuffers(dev.log, pool, 1, &cmd);
-	free_buf(dev.log, staging);
+	ak_buf_free(dev.log, staging);
 
 	return (struct FontData) {
 		tex,
@@ -811,7 +811,16 @@ static struct ak_buf prep_share(VkDevice dev, struct Share **data)
 
 	struct ak_buf buf;
 	size_t size = SWAP_IMG_COUNT * sizeof(struct Share);
-	MK_BUF_AND_MAP(dev, "share", size, UNIFORM_BUFFER, &buf, (void**)data);
+
+	AK_BUF_MK_AND_MAP(
+		dev.log,
+		"share",
+		size,
+		UNIFORM_BUFFER,
+		&buf,
+		(void**)data
+	);
+
 	(*data)->vp = m4_id();
 	return buf;
 }
@@ -820,7 +829,16 @@ static struct ak_buf prep_text(VkDevice dev, struct RawChar **data)
 {
 	struct ak_buf buf;
 	size_t size = SWAP_IMG_COUNT * MAX_CHAR * sizeof(struct RawChar);
-	MK_BUF_AND_MAP(dev, "char", size, UNIFORM_BUFFER, &buf, (void**)data);
+
+	AK_BUF_MK_AND_MAP(
+		dev.log,
+		"char",
+		size,
+		UNIFORM_BUFFER,
+		&buf,
+		(void**)data
+	);
+
 	memset(*data, 0, size);
 	return buf;
 }
@@ -1755,8 +1773,8 @@ static void app_free()
 
 	vkDestroyDescriptorPool(app.dev.log, app.desc.pool, NULL);
 
-	free_buf(app.dev.log, app.text);
-	free_buf(app.dev.log, app.share);
+	ak_buf_free(app.dev.log, app.text);
+	ak_buf_free(app.dev.log, app.share);
 
 	// Font
 	ak_img_free(app.dev.log, app.font.tex);
