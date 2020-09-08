@@ -1624,7 +1624,7 @@ static int done;
 static void run(
 	GLFWwindow *win,
 	struct DevData dev,
-	VkSwapchainKHR swapchain,
+	struct SwapData swap,
 	VkCommandBuffer *cmd,
 	struct SyncData sync
 ) {
@@ -1634,6 +1634,7 @@ static void run(
 	printf("Entering render loop...\n");
 	unsigned int img_i;
 	struct Frame data = {
+		.win_size = swap.extent,
 		.i = 0,
 	};
 
@@ -1645,7 +1646,7 @@ static void run(
 
 		vkAcquireNextImageKHR(
 			dev.log,
-			swapchain,
+			swap.chain,
 			UINT64_MAX,
 			NULL,
 			sync.acquire,
@@ -1719,7 +1720,7 @@ static void run(
 			.waitSemaphoreCount = 1,
 			.pWaitSemaphores = sync.sem + img_i,
 			.swapchainCount = 1,
-			.pSwapchains = &swapchain,
+			.pSwapchains = &swap.chain,
 			.pImageIndices = &img_i,
 			.pResults = NULL,
 			.pNext = NULL,
@@ -1848,7 +1849,7 @@ void txtquad_start()
 #ifdef DEBUG
 	printf("Text memory usage: %.2f MB\n", (float)sizeof(struct Text) / (1000 * 1000));
 #endif
-	run(app.win, app.dev, app.swap.chain, app.cmd, app.sync);
+	run(app.win, app.dev, app.swap, app.cmd, app.sync);
 	free(root_path);
 	app_free();
 	printf("Exit success\n");

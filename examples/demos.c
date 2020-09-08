@@ -112,7 +112,7 @@ struct Share txtquad_update(struct Frame data, struct Text *text)
 	};
 #endif
 
-	float asp = (float)WIN_W / WIN_H;
+	float asp = (float)data.win_size.w / data.win_size.h;
 	m4 view = m4_view(cam_pos, cam_rot);
 	m4 proj = m4_persp(60, asp, .001f, 1024);
 	m4 vp = m4_mul(proj, view);

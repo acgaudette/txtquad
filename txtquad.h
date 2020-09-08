@@ -18,6 +18,7 @@ struct Settings {
 };
 
 struct Frame {
+	struct Extent win_size;
 	size_t i;
 	size_t last_i;
 	float t;
