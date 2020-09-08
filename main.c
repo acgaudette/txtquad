@@ -139,6 +139,7 @@ static struct App {
 	struct SwapData {
 		VkSwapchainKHR chain;
 		VkFormat format;
+		struct Extent extent;
 		VkImage *img;
 		struct ak_img depth;
 	} swap;
@@ -201,7 +202,7 @@ static void glfw_mouse_callback(GLFWwindow *win, double x, double y)
 }
 #endif
 
-static GLFWwindow *mk_win()
+static GLFWwindow *mk_win(struct Extent extent)
 {
 	if (!glfwInit()) {
 		panic_msg("unable to initialize GLFW");
@@ -211,15 +212,19 @@ static GLFWwindow *mk_win()
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // GLFW Vulkan support
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
 	GLFWwindow *win = glfwCreateWindow(
-		WIN_W,
-		WIN_H,
+		extent.w,
+		extent.h,
 		APP_NAME,
 		NULL,
 		NULL
 	);
 
-	printf("Created GLFW window \"%s\"\n", APP_NAME);
+	printf(
+		"Created window and requested extent %ux%u\n",
+		extent.w, extent.h
+	);
 
 #ifdef INP_TEXT
 	glfwSetCharCallback(win, glfw_char_callback);
@@ -416,8 +421,11 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 	};
 }
 
-static struct SwapData mk_swap(struct DevData dev, VkSurfaceKHR surf)
-{
+static struct SwapData mk_swap(
+	struct Extent extent,
+	struct DevData dev,
+	VkSurfaceKHR surf
+) {
 	VkSurfaceCapabilitiesKHR cap;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev.hard, surf, &cap);
 	printf(
@@ -425,6 +433,9 @@ static struct SwapData mk_swap(struct DevData dev, VkSurfaceKHR surf)
 		cap.currentExtent.width,
 		cap.currentExtent.height
 	);
+
+	u32 win_w = cap.currentExtent.width;
+	u32 win_h = cap.currentExtent.height;
 
 	printf("Image count range: %u-", cap.minImageCount);
 	if (cap.maxImageCount) {
@@ -442,7 +453,7 @@ static struct SwapData mk_swap(struct DevData dev, VkSurfaceKHR surf)
 		.minImageCount = img_count,
 		.imageFormat = format,
 		.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
-		.imageExtent = { WIN_W, WIN_H },
+		.imageExtent = { win_w, win_h },
 		.imageArrayLayers = 1,
 		.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
@@ -484,7 +495,7 @@ static struct SwapData mk_swap(struct DevData dev, VkSurfaceKHR surf)
 	AK_IMG_MK(
 		dev.log,
 		"depth texture",
-		WIN_W, WIN_H,
+		win_w, win_h,
 		D32_SFLOAT,
 		AK_IMG_USAGE(DEPTH_STENCIL_ATTACHMENT),
 		DEPTH,
@@ -494,6 +505,7 @@ static struct SwapData mk_swap(struct DevData dev, VkSurfaceKHR surf)
 	return (struct SwapData) {
 		swapchain,
 		format,
+		{ win_w, win_h },
 		img,
 		depth,
 	};
@@ -1117,15 +1129,15 @@ static struct GraphicsData mk_graphics(
 	VkViewport viewport = {
 		.x = 0.f,
 		.y = 0.f,
-		.width = WIN_W,
-		.height = WIN_H,
+		.width = swap.extent.w,
+		.height = swap.extent.h,
 		.minDepth = 0.f,
 		.maxDepth = 1.f,
 	};
 
 	VkRect2D scissor = {
 		.offset = { 0, 0 },
-		.extent = { WIN_W, WIN_H },
+		.extent = { swap.extent.w, swap.extent.h },
 	};
 
 	VkPipelineViewportStateCreateInfo viewport_state_create_info = {
@@ -1383,8 +1395,8 @@ static struct GraphicsData mk_graphics(
 		.flags = 0,
 		.renderPass = pass,
 		.attachmentCount = 2,
-		.width = WIN_W,
-		.height = WIN_H,
+		.width = swap.extent.w,
+		.height = swap.extent.h,
 		.layers = 1,
 		.pNext = NULL,
 	};
@@ -1469,7 +1481,7 @@ static VkCommandBuffer *record_graphics(
 			.framebuffer = graphics.fbuffers[i],
 			.renderArea = {
 				.offset = { 0, 0 },
-				.extent = { WIN_W, WIN_H },
+				.extent = { swap.extent.w, swap.extent.h },
 			},
 			.clearValueCount = 2,
 			.pClearValues = clears,
@@ -1799,11 +1811,11 @@ void txtquad_init(const struct Settings settings)
 	strncpy(root_path, settings.asset_path, len + 1);
 	filename = root_path + len;
 
-	app.win = mk_win();
+	app.win = mk_win(settings.win_size);
 	app.inst = mk_inst(app.win);
 	app.surf = mk_surf(app.win, app.inst);
 	app.dev = mk_dev(app.inst, app.surf);
-	app.swap = mk_swap(app.dev, app.surf);
+	app.swap = mk_swap(settings.win_size, app.dev, app.surf);
 	app.pool = mk_pool(app.dev);
 	app.font = load_font(app.dev, app.pool);
 	app.share = prep_share(app.dev.log, &share_buf);
