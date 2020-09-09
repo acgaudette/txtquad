@@ -621,7 +621,7 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 		dev.log,
 		dev.mem_props,
 		"font staging",
-		FONT_SIZE,
+		FONT_SIZE, 0,
 		TRANSFER_SRC,
 		&staging,
 		&src
@@ -830,7 +830,7 @@ static struct ak_buf prep_share(struct DevData dev, struct Share **data)
 		dev.log,
 		dev.mem_props,
 		"share",
-		size,
+		size, align,
 		UNIFORM_BUFFER,
 		&buf,
 		(void**)data
@@ -851,7 +851,7 @@ static struct ak_buf prep_text(struct DevData dev, struct RawChar **data)
 		dev.log,
 		dev.mem_props,
 		"char",
-		size,
+		size, align,
 		UNIFORM_BUFFER,
 		&buf,
 		(void**)data
