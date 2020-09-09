@@ -83,6 +83,12 @@ static u32 ak_mem_type_idx(
 	return -1;
 }
 
+static inline u64 ak_align_up(u64 size, u64 align)
+{
+	--align;
+	return (size + align) & ~align;
+}
+
 struct ak_img {
 	VkImage img;
 	VkDeviceMemory mem;
@@ -213,8 +219,8 @@ static void ak_img_free(VkDevice dev, struct ak_img ak)
 struct ak_buf {
 	VkBuffer buf;
 	VkDeviceMemory mem;
-	VkMemoryRequirements req;
 	VkDeviceSize size;
+	VkMemoryRequirements alloc_info;
 };
 
 #define AK_BUF_HEAD(HANDLE, SZ) \
@@ -257,11 +263,15 @@ static void ak_buf_mk(
 
 	VkMemoryRequirements req;
 	vkGetBufferMemoryRequirements(dev, buf, &req);
-	assert(req.size == size);
+
+	if (size != req.size) {
+		assert(req.size > size);
+		printf("\t| aligned up to %lu\n", req.size);
+	}
 
 	VkMemoryAllocateInfo alloc_info = {
 	STYPE(MEMORY_ALLOCATE_INFO)
-		.allocationSize = size,
+		.allocationSize = req.size,
 		.memoryTypeIndex = ak_mem_type_idx(
 			mem_info,
 			req.memoryTypeBits,
@@ -285,8 +295,8 @@ static void ak_buf_mk(
 
 	out->buf = buf;
 	out->mem = mem;
-	out->req = req;
 	out->size = size;
+	out->alloc_info = req;
 }
 
 #define AK_BUF_MK_AND_MAP(DEV, MEM, HANDLE, SZ, USAGE, OUT, SRC) \
