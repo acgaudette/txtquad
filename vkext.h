@@ -83,6 +83,12 @@ static u32 ak_mem_type_idx(
 	return -1;
 }
 
+static inline u64 ak_align_up(u64 size, u64 align)
+{
+	--align;
+	return (size + align) & ~align;
+}
+
 struct ak_img {
 	VkImage img;
 	VkDeviceMemory mem;

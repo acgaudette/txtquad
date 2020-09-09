@@ -823,7 +823,8 @@ static struct ak_buf prep_share(struct DevData dev, struct Share **data)
 	 */
 
 	struct ak_buf buf;
-	size_t size = SWAP_IMG_COUNT * sizeof(struct Share);
+	u64 align = dev.props.limits.minUniformBufferOffsetAlignment;
+	u64 size = ak_align_up(sizeof(struct Share), align) * SWAP_IMG_COUNT;
 
 	AK_BUF_MK_AND_MAP(
 		dev.log,
@@ -842,7 +843,9 @@ static struct ak_buf prep_share(struct DevData dev, struct Share **data)
 static struct ak_buf prep_text(struct DevData dev, struct RawChar **data)
 {
 	struct ak_buf buf;
-	size_t size = SWAP_IMG_COUNT * MAX_CHAR * sizeof(struct RawChar);
+	u64 align = dev.props.limits.minUniformBufferOffsetAlignment;
+	u64 size = ak_align_up(MAX_CHAR * sizeof(struct RawChar), align)
+		* SWAP_IMG_COUNT;
 
 	AK_BUF_MK_AND_MAP(
 		dev.log,
