@@ -226,17 +226,16 @@ struct ak_buf {
 	printf("Making " HANDLE " buffer with size %lu\n", (size_t)SZ)
 #define AK_BUF_USAGE(STR) VK_BUFFER_USAGE_ ## STR ## _BIT
 
-#define AK_BUF_MK(DEV, MEM, HANDLE, SZ, ALIGN, USAGE, PROPS, OUT) \
+#define AK_BUF_MK(DEV, MEM, HANDLE, SZ, USAGE, PROPS, OUT) \
 { \
 	AK_BUF_HEAD(HANDLE, SZ); \
-	ak_buf_mk(DEV, MEM, SZ, ALIGN, AK_BUF_USAGE(USAGE), PROPS, OUT); \
+	ak_buf_mk(DEV, MEM, SZ, AK_BUF_USAGE(USAGE), PROPS, OUT); \
 }
 
 static void ak_buf_mk(
 	VkDevice dev,
 	VkPhysicalDeviceMemoryProperties mem_info,
 	VkDeviceSize size,
-	VkDeviceSize align, // Pass zero to auto-align
 	VkBufferUsageFlags usage,
 	VkMemoryPropertyFlags mem_props,
 	struct ak_buf *out
@@ -264,20 +263,14 @@ static void ak_buf_mk(
 	VkMemoryRequirements req;
 	vkGetBufferMemoryRequirements(dev, buf, &req);
 
-	if (align > 0) {
-		assert(req.size == size);
-		assert(req.alignment == align);
-	} else if (size != req.size) {
+	if (size != req.size) {
 		assert(req.size > size);
-		size = req.size;
-		printf("\t| resized to %lu\n", size);
+		printf("\t| alloc resized to %lu\n", req.size);
 	}
-
-	printf("\t| alignment %lu\n", req.alignment);
 
 	VkMemoryAllocateInfo alloc_info = {
 	STYPE(MEMORY_ALLOCATE_INFO)
-		.allocationSize = size,
+		.allocationSize = req.size,
 		.memoryTypeIndex = ak_mem_type_idx(
 			mem_info,
 			req.memoryTypeBits,
@@ -304,17 +297,16 @@ static void ak_buf_mk(
 	out->req = req;
 }
 
-#define AK_BUF_MK_AND_MAP(DEV, MEM, HANDLE, SZ, ALIGN, USAGE, OUT, SRC) \
+#define AK_BUF_MK_AND_MAP(DEV, MEM, HANDLE, SZ, USAGE, OUT, SRC) \
 { \
 	AK_BUF_HEAD(HANDLE, SZ); \
-	ak_buf_mk_and_map(DEV, MEM, SZ, ALIGN, AK_BUF_USAGE(USAGE), OUT, SRC); \
+	ak_buf_mk_and_map(DEV, MEM, SZ, AK_BUF_USAGE(USAGE), OUT, SRC); \
 }
 
 static void ak_buf_mk_and_map(
 	VkDevice dev,
 	VkPhysicalDeviceMemoryProperties mem_props,
 	VkDeviceSize size,
-	VkDeviceSize align,
 	VkBufferUsageFlags usage,
 	struct ak_buf *out,
 	void **src
@@ -323,7 +315,6 @@ static void ak_buf_mk_and_map(
 		dev,
 		mem_props,
 		size,
-		align,
 		usage,
 		// TODO: support uncached and/or non host-coherent heaps
 		AK_MEM_PROP(HOST_VISIBLE) | AK_MEM_PROP(HOST_COHERENT),
