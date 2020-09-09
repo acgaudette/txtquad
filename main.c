@@ -131,9 +131,9 @@ static struct App {
 	VkSurfaceKHR surf;
 	struct DevData {
 		VkPhysicalDevice hard;
+		VkPhysicalDeviceProperties props;
 		VkPhysicalDeviceMemoryProperties mem_props;
 		VkDevice log;
-		VkPhysicalDeviceProperties props;
 		size_t q_ind;
 		VkQueue q;
 	} dev;
@@ -319,9 +319,17 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 		panic_msg("no physical devices available");
 	}
 
-	VkPhysicalDeviceProperties dev_prop;
-	vkGetPhysicalDeviceProperties(hard_dev, &dev_prop);
-	printf("Found device \"%s\"\n", dev_prop.deviceName);
+	VkPhysicalDeviceProperties dev_props;
+	vkGetPhysicalDeviceProperties(hard_dev, &dev_props);
+	printf(
+		"Found device \"%s\" (%s)\n"
+		"API version %u.%u.%u\n",
+		dev_props.deviceName,
+		ak_dev_type_str(dev_props.deviceType),
+		VK_VERSION_MAJOR(dev_props.apiVersion),
+		VK_VERSION_MINOR(dev_props.apiVersion),
+		VK_VERSION_PATCH(dev_props.apiVersion)
+	);
 
 	unsigned int q_family_count = 1;
 	VkQueueFamilyProperties q_prop;
@@ -398,9 +406,9 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 
 	return (struct DevData) {
 		hard_dev,
+		dev_props,
 		mem_props,
 		dev,
-		dev_prop,
 		q_ind,
 		q,
 	};

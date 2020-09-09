@@ -28,6 +28,22 @@ static const char *ak_mem_prop_flag_str(int flag)
 	}
 }
 
+static const char *ak_dev_type_str(int e)
+{
+	switch (e) {
+	case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+		return "integrated";
+	case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+		return "discrete";
+	case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+		return "virtual";
+	case VK_PHYSICAL_DEVICE_TYPE_CPU:
+		return "cpu";
+	default:
+		return "unknown-device-type";
+	}
+}
+
 static void ak_print_mem_props(VkMemoryPropertyFlags prop_mask, const char *format)
 {
 	u32 j = 0;
