@@ -219,7 +219,8 @@ static void ak_img_free(VkDevice dev, struct ak_img ak)
 struct ak_buf {
 	VkBuffer buf;
 	VkDeviceMemory mem;
-	VkMemoryRequirements req;
+	VkDeviceSize size;
+	VkMemoryRequirements alloc_info;
 };
 
 #define AK_BUF_HEAD(HANDLE, SZ) \
@@ -294,7 +295,8 @@ static void ak_buf_mk(
 
 	out->buf = buf;
 	out->mem = mem;
-	out->req = req;
+	out->size = size;
+	out->alloc_info = req;
 }
 
 #define AK_BUF_MK_AND_MAP(DEV, MEM, HANDLE, SZ, USAGE, OUT, SRC) \

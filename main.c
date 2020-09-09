@@ -998,7 +998,7 @@ static void mk_bindings(
 	writes[1] = sampler;
 
 	VkDescriptorBufferInfo buf_infos[2 * SWAP_IMG_COUNT];
-	size_t range = share.req.size / SWAP_IMG_COUNT;
+	size_t range = share.size / SWAP_IMG_COUNT;
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		buf_infos[i] = (VkDescriptorBufferInfo) {
@@ -1021,7 +1021,7 @@ static void mk_bindings(
 		};
 	}
 
-	range = text.req.size / SWAP_IMG_COUNT;
+	range = text.size / SWAP_IMG_COUNT;
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		buf_infos[SWAP_IMG_COUNT + i] = (VkDescriptorBufferInfo) {
 			.buffer = text.buf,
