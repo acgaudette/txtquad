@@ -214,7 +214,6 @@ struct ak_buf {
 	VkBuffer buf;
 	VkDeviceMemory mem;
 	VkMemoryRequirements req;
-	VkDeviceSize size;
 };
 
 #define AK_BUF_HEAD(HANDLE, SZ) \
@@ -286,7 +285,6 @@ static void ak_buf_mk(
 	out->buf = buf;
 	out->mem = mem;
 	out->req = req;
-	out->size = size;
 }
 
 #define AK_BUF_MK_AND_MAP(DEV, MEM, HANDLE, SZ, USAGE, OUT, SRC) \
