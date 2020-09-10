@@ -201,7 +201,9 @@ static void glfw_char_callback(GLFWwindow *win, unsigned int unicode)
 #ifdef INP_MOUSE
 static void glfw_mouse_callback(GLFWwindow *win, double x, double y)
 {
-	inp_ev_mouse(x, y);
+	int win_w, win_h;
+	glfwGetWindowSize(win, &win_w, &win_h);
+	inp_ev_mouse(x, y, (struct Extent) { win_w, win_h });
 }
 #endif
 

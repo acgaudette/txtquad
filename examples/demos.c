@@ -15,7 +15,7 @@ void inp_ev_text(unsigned int unicode)
 #else
 void inp_ev_text(unsigned int _) { }
 #endif
-void inp_ev_mouse(float _a, float _b) { }
+void inp_ev_mouse(float _a, float _b, struct Extent _e) { }
 
 struct Share txtquad_update(struct Frame data, struct Text *text)
 {

@@ -20,7 +20,7 @@ extern struct Input {
  * Implemented by consumer, called by engine
  */
 void inp_ev_text(unsigned int unicode);
-void inp_ev_mouse(float x, float y);
+void inp_ev_mouse(float x, float y, struct Extent win_size);
 
 /*
  * Implemented by engine, called by consumer
