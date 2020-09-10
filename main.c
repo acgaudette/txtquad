@@ -1818,7 +1818,7 @@ static void app_free()
 	vkDestroyPipelineLayout(app.dev.log, app.graphics.layout, NULL);
 	vkDestroyPipeline(app.dev.log, app.graphics.pipeline, NULL);
 
-	for (size_t i = 0; i < 2; ++i) {
+	for (size_t i = 0; i < app.desc.lay_count; ++i) {
 		vkDestroyDescriptorSetLayout(
 			app.dev.log,
 			app.desc.layouts[i],
