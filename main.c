@@ -151,8 +151,10 @@ static struct App {
 	struct ak_buf text;
 	struct DescData {
 		VkDescriptorSetLayout *layouts;
+		u32 lay_count;
+		VkDescriptorSetLayout *layouts_exp;
 		VkDescriptorSet *sets;
-		size_t count;
+		u32 set_count;
 		VkDescriptorPool pool;
 	} desc;
 	struct GraphicsData {
@@ -849,7 +851,7 @@ static struct ak_buf prep_share(struct DevData dev, struct Share **data)
 static struct ak_buf prep_text(struct DevData dev, struct RawChar **data)
 {
 	struct ak_buf buf;
-	u64 align = dev.props.limits.minUniformBufferOffsetAlignment;
+	u64 align = dev.props.limits.minStorageBufferOffsetAlignment;
 	u64 size = ak_align_up(MAX_CHAR * sizeof(struct RawChar), align)
 		* SWAP_IMG_COUNT;
 
@@ -858,7 +860,7 @@ static struct ak_buf prep_text(struct DevData dev, struct RawChar **data)
 		dev.mem_props,
 		"char",
 		size,
-		UNIFORM_BUFFER,
+		STORAGE_BUFFER,
 		&buf,
 		(void**)data
 	);
@@ -870,7 +872,14 @@ static struct ak_buf prep_text(struct DevData dev, struct RawChar **data)
 static struct DescData mk_desc_sets(VkDevice dev)
 {
 	VkResult err;
-	#define POOL_SIZE_COUNT 3
+
+	// One UBO/SSBO per independent swap chain image
+	u32 set_count = 1 + 2 * SWAP_IMG_COUNT;
+	u32 lay_count = 3;
+
+	/* Pool */
+
+	#define POOL_SIZE_COUNT 4
 	VkDescriptorPoolSize pool_sizes[POOL_SIZE_COUNT] = {
 		{
 			.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
@@ -880,12 +889,13 @@ static struct DescData mk_desc_sets(VkDevice dev)
 			.descriptorCount = 1,
 		}, {
 			.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-			.descriptorCount = 2 * SWAP_IMG_COUNT,
+			.descriptorCount = SWAP_IMG_COUNT,
+		}, {
+			.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			.descriptorCount = SWAP_IMG_COUNT,
 		}
 	};
 
-	// Two UBOs per independent swap chain image
-	size_t set_count = 1 + 2 * SWAP_IMG_COUNT;
 	VkDescriptorPoolCreateInfo desc_pool_create_info = {
 	STYPE(DESCRIPTOR_POOL_CREATE_INFO)
 		.flags = 0,
@@ -904,8 +914,10 @@ static struct DescData mk_desc_sets(VkDevice dev)
 
 	printf("Created descriptor pool\n");
 
-	VkDescriptorSetLayoutBinding bindings[3] = {
-		{
+	/* Bindings */
+
+	VkDescriptorSetLayoutBinding bindings[4] = {
+		{ // Set 0 //
 			.binding = 0,
 			.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
 			.descriptorCount = 1,
@@ -917,29 +929,50 @@ static struct DescData mk_desc_sets(VkDevice dev)
 			.descriptorCount = 1,
 			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
 			.pImmutableSamplers = NULL,
-		}, {
+		},
+
+		{ // Set 1 //
 			.binding = 0,
 			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			.descriptorCount = 1,
+			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+			.pImmutableSamplers = NULL,
+		},
+
+		{ // Set 2 //
+			.binding = 0,
+			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 			.descriptorCount = 1,
 			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
 			.pImmutableSamplers = NULL,
 		}
 	};
 
-	VkDescriptorSetLayout *layouts = malloc(
-		set_count * sizeof(VkDescriptorSetLayout)
-	);
+	/* Sets */
 
-	MK_SET_LAYOUT(dev, "font", bindings + 0, 2, layouts + 0);
-	MK_SET_LAYOUT(dev, "vert", bindings + 2, 1, layouts + 1);
-	for (size_t i = 1; i < set_count - 1; ++i)
-		layouts[i + 1] = layouts[i];
+	VkDescriptorSetLayout *layouts;
+	layouts = malloc(lay_count * sizeof(VkDescriptorSetLayout));
+	AK_MK_SET_LAYOUT(dev, "font",  bindings + 0, 2, layouts + 0);
+	AK_MK_SET_LAYOUT(dev, "share", bindings + 2, 1, layouts + 1);
+	AK_MK_SET_LAYOUT(dev, "text",  bindings + 3, 1, layouts + 2);
+
+	VkDescriptorSetLayout *layouts_exp; // Expand layouts for the alloc call
+	layouts_exp = malloc(set_count * sizeof(VkDescriptorSetLayout));
+	layouts_exp[0] = layouts[0];
+
+	layouts_exp[1] = layouts[1];
+	for (size_t i = 1; i < SWAP_IMG_COUNT; ++i)
+		layouts_exp[i + 1] = layouts_exp[i];
+
+	layouts_exp[1 + SWAP_IMG_COUNT] = layouts[2];
+	for (size_t i = 1 + SWAP_IMG_COUNT; i < set_count - 1; ++i)
+		layouts_exp[i + 1] = layouts_exp[i];
 
 	VkDescriptorSetAllocateInfo desc_alloc_info = {
 	STYPE(DESCRIPTOR_SET_ALLOCATE_INFO)
 		.descriptorPool = pool,
 		.descriptorSetCount = set_count,
-		.pSetLayouts = layouts,
+		.pSetLayouts = layouts_exp,
 		.pNext = NULL,
 	};
 
@@ -953,6 +986,8 @@ static struct DescData mk_desc_sets(VkDevice dev)
 
 	return (struct DescData) {
 		layouts,
+		lay_count,
+		layouts_exp,
 		sets,
 		set_count,
 		pool,
@@ -966,13 +1001,16 @@ static void mk_bindings(
 	struct ak_buf share,
 	struct ak_buf text
 ) {
+	size_t write_count = 2 + 2 * SWAP_IMG_COUNT;
+	VkWriteDescriptorSet writes[write_count];
+
 	VkDescriptorImageInfo img_info = {
 		.sampler = font.sampler,
 		.imageView = font.tex.view,
 		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 	};
 
-	VkWriteDescriptorSet tex = {
+	writes[0] = (VkWriteDescriptorSet) {
 	STYPE(WRITE_DESCRIPTOR_SET)
 		.dstSet = desc.sets[0],
 		.dstBinding = 0,
@@ -985,7 +1023,7 @@ static void mk_bindings(
 		.pNext = NULL,
 	};
 
-	VkWriteDescriptorSet sampler = {
+	writes[1] = (VkWriteDescriptorSet) {
 	STYPE(WRITE_DESCRIPTOR_SET)
 		.dstSet = desc.sets[0],
 		.dstBinding = 1,
@@ -997,11 +1035,6 @@ static void mk_bindings(
 		.pTexelBufferView = NULL,
 		.pNext = NULL,
 	};
-
-	size_t write_count = 2 + 2 * SWAP_IMG_COUNT;
-	VkWriteDescriptorSet writes[write_count];
-	writes[0] = tex;
-	writes[1] = sampler;
 
 	VkDescriptorBufferInfo buf_infos[2 * SWAP_IMG_COUNT];
 	size_t range = share.size / SWAP_IMG_COUNT;
@@ -1041,7 +1074,7 @@ static void mk_bindings(
 			.dstBinding = 0,
 			.dstArrayElement = 0,
 			.descriptorCount = 1,
-			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 			.pImageInfo = NULL,
 			.pBufferInfo = buf_infos + SWAP_IMG_COUNT + i,
 			.pTexelBufferView = NULL,
@@ -1239,7 +1272,7 @@ static struct GraphicsData mk_graphics(
 	VkPipelineLayoutCreateInfo pipe_layout_create_info = {
 	STYPE(PIPELINE_LAYOUT_CREATE_INFO)
 		.flags = 0,
-		.setLayoutCount = desc.count,
+		.setLayoutCount = desc.lay_count,
 		.pSetLayouts = desc.layouts,
 		.pushConstantRangeCount = 0,
 		.pPushConstantRanges = NULL,
@@ -1785,7 +1818,7 @@ static void app_free()
 	vkDestroyPipelineLayout(app.dev.log, app.graphics.layout, NULL);
 	vkDestroyPipeline(app.dev.log, app.graphics.pipeline, NULL);
 
-	for (size_t i = 0; i < 2; ++i) {
+	for (size_t i = 0; i < app.desc.lay_count; ++i) {
 		vkDestroyDescriptorSetLayout(
 			app.dev.log,
 			app.desc.layouts[i],
@@ -1793,6 +1826,7 @@ static void app_free()
 		);
 	}
 	free(app.desc.layouts);
+	free(app.desc.layouts_exp);
 	free(app.desc.sets);
 
 	vkDestroyDescriptorPool(app.dev.log, app.desc.pool, NULL);

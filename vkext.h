@@ -339,17 +339,17 @@ static void ak_buf_free(VkDevice dev, struct ak_buf ak)
 	vkFreeMemory(dev, ak.mem, NULL);
 }
 
-#define MK_SET_LAYOUT(DEV, HANDLE, BINDINGS, COUNT, OUT) \
+#define AK_MK_SET_LAYOUT(DEV, HANDLE, BINDINGS, COUNT, OUT) \
 { \
 	printf( \
 		"Making " HANDLE " descriptor set " \
-		"with %lu binding(s)\n", \
-		(size_t)COUNT \
+		"with %u binding(s)\n", \
+		COUNT \
 	); \
-	mk_set_layout(DEV, BINDINGS, COUNT, OUT); \
+	ak_mk_set_layout(DEV, BINDINGS, COUNT, OUT); \
 }
 
-static void mk_set_layout(
+static void ak_mk_set_layout(
 	VkDevice dev,
 	VkDescriptorSetLayoutBinding *bindings,
 	size_t count,
