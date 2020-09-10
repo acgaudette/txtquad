@@ -404,6 +404,12 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 		ak_print_mem_props(flags, "\t%s\n");
 	}
 
+	for (u32 i = 0; i < mem_props.memoryHeapCount; ++i) {
+		VkMemoryHeap h = mem_props.memoryHeaps[i];
+		float size = (float)h.size / (1024 * 1024);
+		printf("Found heap %u with size %.1fMB\n", i, size);
+	}
+
 	return (struct DevData) {
 		hard_dev,
 		dev_props,
