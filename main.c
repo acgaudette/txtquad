@@ -151,8 +151,10 @@ static struct App {
 	struct ak_buf text;
 	struct DescData {
 		VkDescriptorSetLayout *layouts;
+		u32 lay_count;
+		VkDescriptorSetLayout *layouts_exp;
 		VkDescriptorSet *sets;
-		size_t count;
+		u32 set_count;
 		VkDescriptorPool pool;
 	} desc;
 	struct GraphicsData {
@@ -873,6 +875,7 @@ static struct DescData mk_desc_sets(VkDevice dev)
 
 	// One UBO/SSBO per independent swap chain image
 	u32 set_count = 1 + 2 * SWAP_IMG_COUNT;
+	u32 lay_count = 3;
 
 	/* Pool */
 
@@ -945,20 +948,31 @@ static struct DescData mk_desc_sets(VkDevice dev)
 		}
 	};
 
-	VkDescriptorSetLayout *layouts = malloc(
-		set_count * sizeof(VkDescriptorSetLayout)
-	);
+	/* Sets */
 
-	MK_SET_LAYOUT(dev, "font", bindings + 0, 2, layouts + 0);
-	MK_SET_LAYOUT(dev, "vert", bindings + 2, 1, layouts + 1);
-	for (size_t i = 1; i < set_count - 1; ++i)
-		layouts[i + 1] = layouts[i];
+	VkDescriptorSetLayout *layouts;
+	layouts = malloc(lay_count * sizeof(VkDescriptorSetLayout));
+	AK_MK_SET_LAYOUT(dev, "font",  bindings + 0, 2, layouts + 0);
+	AK_MK_SET_LAYOUT(dev, "share", bindings + 2, 1, layouts + 1);
+	AK_MK_SET_LAYOUT(dev, "text",  bindings + 3, 1, layouts + 2);
+
+	VkDescriptorSetLayout *layouts_exp; // Expand layouts for the alloc call
+	layouts_exp = malloc(set_count * sizeof(VkDescriptorSetLayout));
+	layouts_exp[0] = layouts[0];
+
+	layouts_exp[1] = layouts[1];
+	for (size_t i = 1; i < SWAP_IMG_COUNT; ++i)
+		layouts_exp[i + 1] = layouts_exp[i];
+
+	layouts_exp[1 + SWAP_IMG_COUNT] = layouts[2];
+	for (size_t i = 1 + SWAP_IMG_COUNT; i < set_count - 1; ++i)
+		layouts_exp[i + 1] = layouts_exp[i];
 
 	VkDescriptorSetAllocateInfo desc_alloc_info = {
 	STYPE(DESCRIPTOR_SET_ALLOCATE_INFO)
 		.descriptorPool = pool,
 		.descriptorSetCount = set_count,
-		.pSetLayouts = layouts,
+		.pSetLayouts = layouts_exp,
 		.pNext = NULL,
 	};
 
@@ -972,6 +986,8 @@ static struct DescData mk_desc_sets(VkDevice dev)
 
 	return (struct DescData) {
 		layouts,
+		lay_count,
+		layouts_exp,
 		sets,
 		set_count,
 		pool,
@@ -1256,7 +1272,7 @@ static struct GraphicsData mk_graphics(
 	VkPipelineLayoutCreateInfo pipe_layout_create_info = {
 	STYPE(PIPELINE_LAYOUT_CREATE_INFO)
 		.flags = 0,
-		.setLayoutCount = desc.count,
+		.setLayoutCount = desc.lay_count,
 		.pSetLayouts = desc.layouts,
 		.pushConstantRangeCount = 0,
 		.pPushConstantRanges = NULL,
@@ -1810,6 +1826,7 @@ static void app_free()
 		);
 	}
 	free(app.desc.layouts);
+	free(app.desc.layouts_exp);
 	free(app.desc.sets);
 
 	vkDestroyDescriptorPool(app.dev.log, app.desc.pool, NULL);
