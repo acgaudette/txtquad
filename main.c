@@ -849,7 +849,7 @@ static struct ak_buf prep_share(struct DevData dev, struct Share **data)
 static struct ak_buf prep_text(struct DevData dev, struct RawChar **data)
 {
 	struct ak_buf buf;
-	u64 align = dev.props.limits.minUniformBufferOffsetAlignment;
+	u64 align = dev.props.limits.minStorageBufferOffsetAlignment;
 	u64 size = ak_align_up(MAX_CHAR * sizeof(struct RawChar), align)
 		* SWAP_IMG_COUNT;
 
@@ -858,7 +858,7 @@ static struct ak_buf prep_text(struct DevData dev, struct RawChar **data)
 		dev.mem_props,
 		"char",
 		size,
-		UNIFORM_BUFFER,
+		STORAGE_BUFFER,
 		&buf,
 		(void**)data
 	);
@@ -870,7 +870,7 @@ static struct ak_buf prep_text(struct DevData dev, struct RawChar **data)
 static struct DescData mk_desc_sets(VkDevice dev)
 {
 	VkResult err;
-	#define POOL_SIZE_COUNT 3
+	#define POOL_SIZE_COUNT 4
 	VkDescriptorPoolSize pool_sizes[POOL_SIZE_COUNT] = {
 		{
 			.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
@@ -880,7 +880,10 @@ static struct DescData mk_desc_sets(VkDevice dev)
 			.descriptorCount = 1,
 		}, {
 			.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-			.descriptorCount = 2 * SWAP_IMG_COUNT,
+			.descriptorCount = SWAP_IMG_COUNT,
+		}, {
+			.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			.descriptorCount = SWAP_IMG_COUNT,
 		}
 	};
 
@@ -904,7 +907,7 @@ static struct DescData mk_desc_sets(VkDevice dev)
 
 	printf("Created descriptor pool\n");
 
-	VkDescriptorSetLayoutBinding bindings[3] = {
+	VkDescriptorSetLayoutBinding bindings[4] = {
 		{
 			.binding = 0,
 			.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
@@ -920,6 +923,12 @@ static struct DescData mk_desc_sets(VkDevice dev)
 		}, {
 			.binding = 0,
 			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			.descriptorCount = 1,
+			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+			.pImmutableSamplers = NULL,
+		}, {
+			.binding = 0,
+			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 			.descriptorCount = 1,
 			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
 			.pImmutableSamplers = NULL,
@@ -1041,7 +1050,7 @@ static void mk_bindings(
 			.dstBinding = 0,
 			.dstArrayElement = 0,
 			.descriptorCount = 1,
-			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 			.pImageInfo = NULL,
 			.pBufferInfo = buf_infos + SWAP_IMG_COUNT + i,
 			.pTexelBufferView = NULL,
