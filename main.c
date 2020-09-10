@@ -870,6 +870,12 @@ static struct ak_buf prep_text(struct DevData dev, struct RawChar **data)
 static struct DescData mk_desc_sets(VkDevice dev)
 {
 	VkResult err;
+
+	// One UBO/SSBO per independent swap chain image
+	u32 set_count = 1 + 2 * SWAP_IMG_COUNT;
+
+	/* Pool */
+
 	#define POOL_SIZE_COUNT 4
 	VkDescriptorPoolSize pool_sizes[POOL_SIZE_COUNT] = {
 		{
@@ -887,8 +893,6 @@ static struct DescData mk_desc_sets(VkDevice dev)
 		}
 	};
 
-	// Two UBOs per independent swap chain image
-	size_t set_count = 1 + 2 * SWAP_IMG_COUNT;
 	VkDescriptorPoolCreateInfo desc_pool_create_info = {
 	STYPE(DESCRIPTOR_POOL_CREATE_INFO)
 		.flags = 0,
@@ -907,8 +911,10 @@ static struct DescData mk_desc_sets(VkDevice dev)
 
 	printf("Created descriptor pool\n");
 
+	/* Bindings */
+
 	VkDescriptorSetLayoutBinding bindings[4] = {
-		{
+		{ // Set 0 //
 			.binding = 0,
 			.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
 			.descriptorCount = 1,
@@ -920,13 +926,17 @@ static struct DescData mk_desc_sets(VkDevice dev)
 			.descriptorCount = 1,
 			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
 			.pImmutableSamplers = NULL,
-		}, {
+		},
+
+		{ // Set 1 //
 			.binding = 0,
 			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
 			.descriptorCount = 1,
 			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
 			.pImmutableSamplers = NULL,
-		}, {
+		},
+
+		{ // Set 2 //
 			.binding = 0,
 			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 			.descriptorCount = 1,
@@ -975,13 +985,16 @@ static void mk_bindings(
 	struct ak_buf share,
 	struct ak_buf text
 ) {
+	size_t write_count = 2 + 2 * SWAP_IMG_COUNT;
+	VkWriteDescriptorSet writes[write_count];
+
 	VkDescriptorImageInfo img_info = {
 		.sampler = font.sampler,
 		.imageView = font.tex.view,
 		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 	};
 
-	VkWriteDescriptorSet tex = {
+	writes[0] = (VkWriteDescriptorSet) {
 	STYPE(WRITE_DESCRIPTOR_SET)
 		.dstSet = desc.sets[0],
 		.dstBinding = 0,
@@ -994,7 +1007,7 @@ static void mk_bindings(
 		.pNext = NULL,
 	};
 
-	VkWriteDescriptorSet sampler = {
+	writes[1] = (VkWriteDescriptorSet) {
 	STYPE(WRITE_DESCRIPTOR_SET)
 		.dstSet = desc.sets[0],
 		.dstBinding = 1,
@@ -1006,11 +1019,6 @@ static void mk_bindings(
 		.pTexelBufferView = NULL,
 		.pNext = NULL,
 	};
-
-	size_t write_count = 2 + 2 * SWAP_IMG_COUNT;
-	VkWriteDescriptorSet writes[write_count];
-	writes[0] = tex;
-	writes[1] = sampler;
 
 	VkDescriptorBufferInfo buf_infos[2 * SWAP_IMG_COUNT];
 	size_t range = share.size / SWAP_IMG_COUNT;
