@@ -130,6 +130,7 @@ static struct App {
 	VkInstance inst;
 	VkSurfaceKHR surf;
 	struct DevData {
+		VkPhysicalDevice *devices;
 		VkPhysicalDevice hard;
 		VkPhysicalDeviceProperties props;
 		VkPhysicalDeviceMemoryProperties mem_props;
@@ -320,18 +321,25 @@ static VkSurfaceKHR mk_surf(GLFWwindow *win, VkInstance inst)
 
 static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 {
-	unsigned int dev_count = 1;
-	VkPhysicalDevice hard_dev;
-	vkEnumeratePhysicalDevices(inst, &dev_count, &hard_dev);
+	unsigned int dev_count;
+	VkPhysicalDevice *hard_devs, hard_dev;
+
+	vkEnumeratePhysicalDevices(inst, &dev_count, NULL);
+	printf("Found %u device(s)\n", dev_count);
 
 	if (!dev_count) {
 		panic_msg("no physical devices available");
 	}
 
+	hard_devs = malloc(dev_count * sizeof(VkPhysicalDevice));
+	vkEnumeratePhysicalDevices(inst, &dev_count, hard_devs);
+	assert(GPU_IDX < dev_count);
+	hard_dev = hard_devs[GPU_IDX];
+
 	VkPhysicalDeviceProperties dev_props;
 	vkGetPhysicalDeviceProperties(hard_dev, &dev_props);
 	printf(
-		"Found device \"%s\" (%s)\n"
+		"Using device \"%s\" (%s)\n"
 		"API version %u.%u.%u\n",
 		dev_props.deviceName,
 		ak_dev_type_str(dev_props.deviceType),
@@ -420,6 +428,7 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 	}
 
 	return (struct DevData) {
+		hard_devs,
 		hard_dev,
 		dev_props,
 		mem_props,
@@ -1873,6 +1882,8 @@ static void app_free()
 	ak_img_free(app.dev.log, app.swap.depth);
 
 	vkDestroyDevice(app.dev.log, NULL);
+	free(app.dev.devices);
+
 	vkDestroySurfaceKHR(app.inst, app.surf, NULL);
 	vkDestroyInstance(app.inst, NULL);
 
