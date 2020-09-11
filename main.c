@@ -1884,6 +1884,10 @@ static void app_free()
 
 void txtquad_init(const struct Settings settings)
 {
+	assert(NULL != settings.app_name);
+	assert(settings.win_size.w > 0);
+	assert(settings.win_size.h > 0);
+
 	size_t len = strlen(settings.asset_path);
 	root_path = malloc(len + 32);
 	strncpy(root_path, settings.asset_path, len + 1);
