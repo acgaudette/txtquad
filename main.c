@@ -15,10 +15,7 @@
 #define FONT_SIZE (FONT_WIDTH * FONT_WIDTH)
 #define FONT_OFF  (FONT_WIDTH / CHAR_WIDTH)
 
-static struct Share *share_buf;
-static struct RawChar *char_buf;
 static struct Text text;
-
 static char *root_path;
 static char *filename;
 
@@ -37,10 +34,8 @@ static v2 char_off(u8 c)
 	};
 }
 
-static void text_update(unsigned int index, struct Frame data)
+static void text_update(struct RawChar *buf, struct Frame data)
 {
-	struct RawChar *buf = char_buf + index * MAX_CHAR;
-
 	for (size_t i = 0; i < text.char_count; ++i) {
 		struct Char c = text.chars[i];
 		buf[i] = (struct RawChar) {
@@ -149,8 +144,12 @@ static struct App {
 		struct ak_img tex;
 		VkSampler sampler;
 	} font;
-	struct ak_buf share;
-	struct ak_buf text;
+	struct BufData {
+		struct ak_buf gpu;
+		void *mapped;
+		u64 align;
+		u64 frame_size;
+	} share, rchar;
 	struct DescData {
 		VkDescriptorSetLayout *layouts;
 		u32 lay_count;
@@ -856,9 +855,9 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 	};
 }
 
-static struct ak_buf prep_share(struct DevData dev, struct Share **data)
+static void prep_share(struct DevData dev, struct BufData *out)
 {
-	/* Could combine with the text buffer
+	/* Could combine with the rchar buffer
 	 * as they are updated at the same rate;
 	 * however, this structure may
 	 * become larger in the future
@@ -866,7 +865,8 @@ static struct ak_buf prep_share(struct DevData dev, struct Share **data)
 
 	struct ak_buf buf;
 	u64 align = dev.props.limits.minUniformBufferOffsetAlignment;
-	u64 size = ak_align_up(sizeof(struct Share), align) * SWAP_IMG_COUNT;
+	u64 frame_size = ak_align_up(sizeof(struct Share), align);
+	u64 size = frame_size * SWAP_IMG_COUNT;
 
 	AK_BUF_MK_AND_MAP(
 		dev.log,
@@ -875,19 +875,21 @@ static struct ak_buf prep_share(struct DevData dev, struct Share **data)
 		size,
 		UNIFORM_BUFFER,
 		&buf,
-		(void**)data
+		&out->mapped
 	);
 
-	(*data)->vp = m4_id();
-	return buf;
+	out->gpu = buf;
+	((struct Share*)out->mapped)->vp = m4_id();
+	out->align = align;
+	out->frame_size = frame_size;
 }
 
-static struct ak_buf prep_text(struct DevData dev, struct RawChar **data)
+static void prep_rchar(struct DevData dev, struct BufData *out)
 {
 	struct ak_buf buf;
 	u64 align = dev.props.limits.minStorageBufferOffsetAlignment;
-	u64 size = ak_align_up(MAX_CHAR * sizeof(struct RawChar), align)
-		* SWAP_IMG_COUNT;
+	u64 frame_size = ak_align_up(MAX_CHAR * sizeof(struct RawChar), align);
+	u64 size = frame_size * SWAP_IMG_COUNT;
 
 	AK_BUF_MK_AND_MAP(
 		dev.log,
@@ -896,11 +898,13 @@ static struct ak_buf prep_text(struct DevData dev, struct RawChar **data)
 		size,
 		STORAGE_BUFFER,
 		&buf,
-		(void**)data
+		&out->mapped
 	);
 
-	memset(*data, 0, size);
-	return buf;
+	out->gpu = buf;
+	memset(out->mapped, 0, size);
+	out->align = align;
+	out->frame_size = frame_size;
 }
 
 static struct DescData mk_desc_sets(VkDevice dev)
@@ -1032,8 +1036,8 @@ static void mk_bindings(
 	VkDevice dev,
 	struct DescData desc,
 	struct FontData font,
-	struct ak_buf share,
-	struct ak_buf text
+	struct BufData share,
+	struct BufData rchar
 ) {
 	size_t write_count = 2 + 2 * SWAP_IMG_COUNT;
 	VkWriteDescriptorSet writes[write_count];
@@ -1071,11 +1075,11 @@ static void mk_bindings(
 	};
 
 	VkDescriptorBufferInfo buf_infos[2 * SWAP_IMG_COUNT];
-	size_t range = share.size / SWAP_IMG_COUNT;
+	size_t range = share.gpu.size / SWAP_IMG_COUNT;
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		buf_infos[i] = (VkDescriptorBufferInfo) {
-			.buffer = share.buf,
+			.buffer = share.gpu.buf,
 			.offset = i * range,
 			.range = range,
 		};
@@ -1094,10 +1098,10 @@ static void mk_bindings(
 		};
 	}
 
-	range = text.size / SWAP_IMG_COUNT;
+	range = rchar.gpu.size / SWAP_IMG_COUNT;
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		buf_infos[SWAP_IMG_COUNT + i] = (VkDescriptorBufferInfo) {
-			.buffer = text.buf,
+			.buffer = rchar.gpu.buf,
 			.offset = i * range,
 			.range = range,
 		};
@@ -1711,7 +1715,9 @@ static void run(
 	struct DevData dev,
 	struct SwapData swap,
 	VkCommandBuffer *cmd,
-	struct SyncData sync
+	struct SyncData sync,
+	struct BufData share,
+	struct BufData rchar
 ) {
 	printf("Initializing update data...\n");
 	glfwSetTime(0);
@@ -1759,12 +1765,14 @@ static void run(
 #ifdef INP_KEYS
 		inp_update(win);
 #endif
-		*(share_buf + img_i) = txtquad_update(data, &text);
+		void *share_buf = share.mapped + img_i * share.frame_size;
+		*((struct Share*)share_buf) = txtquad_update(data, &text);
 #ifdef DEBUG
 		assert(text.block_count <= MAX_BLCK);
 		assert(text.char_count <= MAX_CHAR);
 #endif
-		text_update(img_i, data);
+		void *rchar_buf = rchar.mapped + img_i * rchar.frame_size;
+		text_update((struct RawChar*)rchar_buf, data);
 
 		VkSubmitInfo submit_info = {
 		STYPE(SUBMIT_INFO)
@@ -1866,8 +1874,8 @@ static void app_free()
 
 	vkDestroyDescriptorPool(app.dev.log, app.desc.pool, NULL);
 
-	ak_buf_free(app.dev.log, app.text);
-	ak_buf_free(app.dev.log, app.share);
+	ak_buf_free(app.dev.log, app.rchar.gpu);
+	ak_buf_free(app.dev.log, app.share.gpu);
 
 	// Font
 	ak_img_free(app.dev.log, app.font.tex);
@@ -1911,8 +1919,9 @@ void txtquad_init(const struct Settings settings)
 	app.swap = mk_swap(settings.win_size, app.dev, app.surf);
 	app.pool = mk_pool(app.dev);
 	app.font = load_font(app.dev, app.pool);
-	app.share = prep_share(app.dev, &share_buf);
-	app.text = prep_text(app.dev, &char_buf);
+
+	prep_share(app.dev, &app.share);
+	prep_rchar(app.dev, &app.rchar);
 	app.desc = mk_desc_sets(app.dev.log);
 
 	mk_bindings(
@@ -1920,7 +1929,7 @@ void txtquad_init(const struct Settings settings)
 		app.desc,
 		app.font,
 		app.share,
-		app.text
+		app.rchar
 	);
 
 	app.graphics = mk_graphics(app.dev.log, app.swap, app.desc);
@@ -1941,7 +1950,7 @@ void txtquad_start()
 #ifdef DEBUG
 	printf("Text memory usage: %.2f MB\n", (float)sizeof(struct Text) / (1000 * 1000));
 #endif
-	run(app.win, app.dev, app.swap, app.cmd, app.sync);
+	run(app.win, app.dev, app.swap, app.cmd, app.sync, app.share, app.rchar);
 	free(root_path);
 	app_free();
 	printf("Exit success\n");
