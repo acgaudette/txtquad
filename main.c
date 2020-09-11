@@ -207,7 +207,7 @@ static void glfw_mouse_callback(GLFWwindow *win, double x, double y)
 }
 #endif
 
-static GLFWwindow *mk_win(struct Extent extent)
+static GLFWwindow *mk_win(const char *name, struct Extent extent)
 {
 	if (!glfwInit()) {
 		panic_msg("unable to initialize GLFW");
@@ -221,7 +221,7 @@ static GLFWwindow *mk_win(struct Extent extent)
 	GLFWwindow *win = glfwCreateWindow(
 		extent.w,
 		extent.h,
-		APP_NAME,
+		name,
 		NULL,
 		NULL
 	);
@@ -240,11 +240,11 @@ static GLFWwindow *mk_win(struct Extent extent)
 	return win;
 }
 
-static VkInstance mk_inst(GLFWwindow *win)
+static VkInstance mk_inst(GLFWwindow *win, const char *name)
 {
 	VkApplicationInfo app_info = {
 	STYPE(APPLICATION_INFO)
-		.pApplicationName = APP_NAME,
+		.pApplicationName = name,
 		.applicationVersion = VK_MAKE_VERSION(0, 1, 0),
 		.pEngineName = ENG_NAME,
 		.engineVersion = VK_MAKE_VERSION(0, 1, 0),
@@ -1889,8 +1889,8 @@ void txtquad_init(const struct Settings settings)
 	strncpy(root_path, settings.asset_path, len + 1);
 	filename = root_path + len;
 
-	app.win = mk_win(settings.win_size);
-	app.inst = mk_inst(app.win);
+	app.win = mk_win(settings.app_name, settings.win_size);
+	app.inst = mk_inst(app.win, settings.app_name);
 	app.surf = mk_surf(app.win, app.inst);
 	app.dev = mk_dev(app.inst, app.surf);
 	app.swap = mk_swap(settings.win_size, app.dev, app.surf);

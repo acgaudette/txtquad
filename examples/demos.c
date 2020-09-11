@@ -135,6 +135,7 @@ int main()
 	inp_init(inp_handles, 3, NULL, 0);
 #endif
 	struct Settings settings = {
+		.app_name = "txtquad-demo",
 		.win_size = { 800, 800 },
 		.asset_path = "./assets/",
 	};

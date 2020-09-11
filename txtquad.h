@@ -13,6 +13,7 @@ struct Extent {
 };
 
 struct Settings {
+	const char *app_name;
 	const char *asset_path;
 	struct Extent win_size;
 };
