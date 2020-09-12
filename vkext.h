@@ -381,15 +381,16 @@ static void ak_mk_set_layout(
 	*out = desc_layout;
 }
 
-static void read_shader(const char *name, uint32_t **out, size_t *out_len)
+// Note: memory owned by caller
+static u32 *ak_read_shader(const char *filename, size_t *out_size)
 {
-	uint32_t *buffer;
-	size_t len;
+	char *buf;
+	long size;
 
 	errno = 0;
-	FILE *file = fopen(name, "rb");
+	FILE *file = fopen(filename, "rb");
 	if (errno) {
-		fprintf(stderr, "Error opening file at path \"%s\"\n", name);
+		fprintf(stderr, "Error opening file at path \"%s\"\n", filename);
 		panic();
 	}
 
@@ -399,7 +400,7 @@ static void read_shader(const char *name, uint32_t **out, size_t *out_len)
 	}
 
 	errno = 0;
-	len = ftell(file);
+	size = ftell(file);
 	if (errno) {
 		perror("Error acquiring length of file");
 		exit(EXIT_FAILURE);
@@ -410,27 +411,29 @@ static void read_shader(const char *name, uint32_t **out, size_t *out_len)
 		exit(EXIT_FAILURE);
 	}
 
-	buffer = malloc(len);
-	assert(buffer);
+	buf = malloc(size);
+	assert(buf);
 
 	clearerr(file);
-	fread(buffer, 1, len, file);
+	assert(size == fread(buf, 1, size, file));
 	if (ferror(file)) {
 		fprintf(
 			stderr,
 			"Error reading file \"%s\"\n",
-			name
+			filename
 		);
 		exit(EXIT_FAILURE);
 	}
 
 	fclose(file);
-	assert(buffer[0] == 0x07230203);
 
-	*out = buffer;
-	*out_len = len;
+	u32 *out = (u32*)buf;
+	assert(out[0] == 0x07230203);
+	assert(!(size % 4));
 
-	printf("Read %lu words from \"%s\"\n", len, name);
+	printf("Read %lu words from \"%s\"\n", size / 4, filename);
+	*out_size = size;
+	return out;
 }
 
 #endif
