@@ -23,9 +23,12 @@ Dependencies:
     libglfw.so    3.3.2
 ```
 
-This project uses clang and the ninja buildsystem.
+This project uses clang, git LFS, and the ninja buildsystem.
 
 1. ./bootstrap to download, build, and install glfw3 into ./ext
+   - This also grabs the font from the link above
+     and installs it into ./assets
+     if a font doesn't already exist at that location
 2. ./runex to build and launch ./bin/demos
    - This will build ./bin/libtxtquad.so as a side effect
    - Alternatively,
@@ -34,10 +37,13 @@ This project uses clang and the ninja buildsystem.
 
 # Configuration
 
-- All settings can be found in ./config.h
+- Library settings can be found in ./config.h
 - See the $config var in ./build.ninja
   to adjust compiler flags and switches
   (the lib is compiled in debug mode by default)
+- Runtime configuration
+  is possible via the Settings struct
+  (see below)
 
 # Usage
 
@@ -46,14 +52,13 @@ This project uses clang and the ninja buildsystem.
   containing the font and the compiled shaders,
   or just softlink the one from the repo (./assets)
   - The default shaders are compiled into here along with the demos
-  - If ./bootstrap doesn't find a font in ./assets,
-    it downloads the one from the link above
 
 # API
 
-`txtquad_init(<asset-path>)`
-- Call this from your main function to boot up the engine,
-  passing in the dir you'd like to load your spv and pbm files from
+`txtquad_init(struct Settings)`
+- Call this from your main function to boot up the engine
+- See the struct definition in ./txtquad.h
+  for more details regarding configuration
 
 `txtquad_start()`
 - Call this to pass control

@@ -14,7 +14,7 @@ struct Extent {
 
 struct Settings {
 	const char *app_name;
-	const char *asset_path;
+	const char *asset_path; // .spv and .pbm files are loaded from here
 	struct Extent win_size;
 };
 
