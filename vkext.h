@@ -436,4 +436,45 @@ static u32 *ak_read_shader(const char *filename, size_t *out_size)
 	return out;
 }
 
+struct ak_shader {
+	VkShaderModule mod;
+	u32 *words;
+	size_t size;
+	size_t len;
+};
+
+static struct ak_shader ak_shader_mk(VkDevice dev, const char *filename)
+{
+	VkResult err;
+	size_t size;
+	u32 *spv = ak_read_shader(filename, &size);
+
+	VkShaderModuleCreateInfo mod_create_info = {
+	STYPE(SHADER_MODULE_CREATE_INFO)
+		.flags = 0,
+		.codeSize = size,
+		.pCode = spv,
+		.pNext = NULL,
+	};
+
+	VkShaderModule mod;
+	err = vkCreateShaderModule(dev, &mod_create_info, NULL, &mod);
+	if (err != VK_SUCCESS) {
+		panic_msg("unable to create shader module\n");
+	}
+
+	return (struct ak_shader) {
+		mod,
+		.words = spv,
+		size,
+		.len = size / 4,
+	};
+}
+
+static void ak_shader_free(VkDevice dev, struct ak_shader shader)
+{
+	vkDestroyShaderModule(dev, shader.mod, NULL);
+	free(shader.words);
+}
+
 #endif
