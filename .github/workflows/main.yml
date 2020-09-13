@@ -1,0 +1,18 @@
+name: Build
+
+on:
+    push:
+        branches: [master, feature/actions]
+    pull_request:
+        branches: [master]
+    workflow_dispatch:
+
+jobs:
+    build-linux:
+        runs-on: ubuntu-16.04
+        steps:
+            - uses: actions/checkout@v2
+            - name: bootstrap
+              run: sh bootstrap
+            - name: build-all
+              run: ninja demos
