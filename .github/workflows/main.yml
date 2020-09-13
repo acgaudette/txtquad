@@ -29,3 +29,8 @@ jobs:
               run: sh bootstrap
             - name: build-all
               run: ninja demos
+            - name: upload
+              uses: actions/upload-artifact@v2
+              with:
+                name: libtxtquad
+                path: bin/libtxtquad.so
