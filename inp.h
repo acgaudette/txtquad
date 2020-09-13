@@ -10,6 +10,7 @@ struct {                                               \
 	unsigned char states[GLFW_ ## T ## _LAST + 1]; \
 }
 
+__declspec(dllexport)
 extern struct Input {
 	INP_DATA_STRUCT(KEY) key;
 	INP_DATA_STRUCT(MOUSE_BUTTON) but;
@@ -25,6 +26,7 @@ void inp_ev_mouse(float x, float y, struct Extent win_size);
 /*
  * Implemented by engine, called by consumer
  */
+__declspec(dllexport)
 void inp_init(
 	int *key_handles,
 	size_t key_count,

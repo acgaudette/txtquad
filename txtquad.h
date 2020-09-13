@@ -72,7 +72,9 @@ struct Text {
 
 struct Share txtquad_update(struct Frame data, struct Text *text);
 
+__declspec(dllexport)
 void txtquad_init(const struct Settings);
+__declspec(dllexport)
 void txtquad_start();
 
 #endif
