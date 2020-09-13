@@ -1,6 +1,7 @@
 #ifndef INP_H
 #define INP_H
 
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
 #define INP_DATA_STRUCT(T)                             \

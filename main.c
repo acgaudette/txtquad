@@ -2,8 +2,11 @@
 #include <math.h>
 #include <assert.h>
 #include <errno.h>
+
 #include <vulkan/vulkan.h> // Must include before GLFW
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+
 #include "txtquad.h"
 #include "vkext.h"
 
