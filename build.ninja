@@ -16,16 +16,21 @@ rule cc
     command = clang -MD -MF $out.d $
               $config $flags $incl -c $in -o $out
 rule ld
-    # command = clang $in $libs -shared -o $out
-    command = llvm-ar rc $out $in
+    command = clang $in $libs -shared -o $out
+
+rule lb
+    command = mklib.bat
 
 build $builddir/main.o: cc main.c
 build $builddir/inp.o: cc inp.c
 
-build bin/libtxtquad.a: $
+build bin/libtxtquad.dll: $
     ld $builddir/main.o $builddir/inp.o
 
-build so: phony bin/libtxtquad.a
+build bin/libtxtquad.lib: lb $
+    | bin/libtxtquad.dll
+
+build so: phony bin/libtxtquad.lib
 default so
 
 # EXAMPLES #
@@ -43,7 +48,7 @@ build $builddir/demos.o: cc examples/demos.c
     config = -O0 -ggdb -DDEMO_$demo
 
 build bin/demos.exe: $
-    lde $builddir/demos.o bin/libtxtquad.a $
-    | bin/libtxtquad.a assets/vert.spv assets/frag.spv
-    # libs = -L bin -ltxtquad
+    lde $builddir/demos.o $
+    | bin/libtxtquad.lib assets/vert.spv assets/frag.spv
+    libs = -L bin -llibtxtquad
 build demos: phony bin/demos.exe
