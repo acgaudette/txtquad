@@ -1956,3 +1956,21 @@ void txtquad_start()
 	app_free();
 	printf("Exit success\n");
 }
+
+/* FIXME */
+
+struct Share txtquad_update(struct Frame data, struct Text *text)
+{
+	printf("DEFAULT TXTQUAD UPDATE\n");
+	return (struct Share) { .vp = m4_id() };
+}
+
+void inp_ev_text(unsigned int unicode)
+{
+	printf("DEFAULT INP EV TEXT\n");
+}
+
+void inp_ev_mouse(float x, float y, struct Extent win_size)
+{
+	printf("DEFAULT INP EV MOUSE\n");
+}
