@@ -12,6 +12,11 @@ jobs:
         runs-on: ubuntu-16.04
         steps:
             - uses: actions/checkout@v2
+            - name: package-setup
+              run: |
+                sudo apt-get install libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+                sudo apt-get install libvulkan-dev vulkan-utils
+                sudo apt-get install ninja-build
             - name: bootstrap
               run: sh bootstrap
             - name: build-all
