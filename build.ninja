@@ -4,10 +4,12 @@ config = $
     -O0 -ggdb $
     -DDEBUG -DALG_DEBUG $
     -DINP_KEYS -DINP_TEXT -DINP_MOUSE
-flags = -fPIC -fdiagnostics-color=always
+flags = -fdiagnostics-color=always
 incl = -I . -I ext/include
 libs = -L ext/lib -lglfw3 -lvulkan $
-    -ldl -lX11 -lm -lpthread
+    -lvcruntime -lmsvcrt -lucrt -luser32 -lOneCore -lshell32 -lgdi32 $
+    -Wl,-nodefaultlib:libcmt -Wl,-nodefaultlib:msvcrtd -D_DLL $
+    -Wl,-force:unresolved
 
 rule cc
     depfile = $out.d
@@ -15,15 +17,16 @@ rule cc
     command = clang -MD -MF $out.d $
               $config $flags $incl -c $in -o $out
 rule ld
-    command = clang $in $libs -shared -o $out
+    # command = clang $in $libs -shared -o $out
+    command = llvm-ar rc $out $in
 
 build $builddir/main.o: cc main.c
 build $builddir/inp.o: cc inp.c
 
-build bin/libtxtquad.so: $
+build bin/libtxtquad.a: $
     ld $builddir/main.o $builddir/inp.o
 
-build so: phony bin/libtxtquad.so
+build so: phony bin/libtxtquad.a
 default so
 
 # EXAMPLES #
@@ -40,8 +43,8 @@ demo = 2
 build $builddir/demos.o: cc examples/demos.c
     config = -O0 -ggdb -DDEMO_$demo
 
-build bin/demos: $
-    lde $builddir/demos.o $
-    | bin/libtxtquad.so assets/vert.spv assets/frag.spv
-    libs = -L bin -ltxtquad -rpath bin -lm
-build demos: phony bin/demos
+build bin/demos.exe: $
+    lde $builddir/demos.o bin/libtxtquad.a $
+    | bin/libtxtquad.a assets/vert.spv assets/frag.spv
+    # libs = -L bin -ltxtquad
+build demos: phony bin/demos.exe
