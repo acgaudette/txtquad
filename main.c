@@ -162,8 +162,8 @@ static struct App {
 		VkDescriptorPool pool;
 	} desc;
 	struct GraphicsData {
-		VkShaderModule vert;
-		VkShaderModule frag;
+		struct ak_shader vert;
+		struct ak_shader frag;
 		VkRenderPass pass;
 		VkImageView *views;
 		VkFramebuffer *fbuffers;
@@ -1132,44 +1132,15 @@ static struct GraphicsData mk_graphics(
 	struct SwapData swap,
 	struct DescData desc
 ) {
+	VkResult err;
+
 	/* Shader modules */
 
-	VkResult err;
-	size_t spv_size;
-	uint32_t *spv;
 	strncpy(filename, "vert.spv", 8 + 1);
-	read_shader(root_path, &spv, &spv_size);
-
-	VkShaderModuleCreateInfo mod_create_info = {
-	STYPE(SHADER_MODULE_CREATE_INFO)
-		.flags = 0,
-		.codeSize = spv_size,
-		.pCode = spv,
-		.pNext = NULL,
-	};
-
-	VkShaderModule vert_mod, frag_mod;
-
-	err = vkCreateShaderModule(dev, &mod_create_info, NULL, &vert_mod);
-	if (err != VK_SUCCESS) {
-		panic_msg(
-			"unable to create vertex "
-			"shader module\n"
-		);
-	}
+	struct ak_shader vert = ak_shader_mk(dev, root_path);
 
 	strncpy(filename, "frag.spv", 8 + 1);
-	read_shader(root_path, &spv, &spv_size);
-	mod_create_info.codeSize = spv_size;
-	mod_create_info.pCode = spv;
-
-	err = vkCreateShaderModule(dev, &mod_create_info, NULL, &frag_mod);
-	if (err != VK_SUCCESS) {
-		panic_msg(
-			"unable to create fragment "
-			"shader module\n"
-		);
-	}
+	struct ak_shader frag = ak_shader_mk(dev, root_path);
 
 	printf("Created shader modules (2)\n");
 
@@ -1179,7 +1150,7 @@ static struct GraphicsData mk_graphics(
 	STYPE(PIPELINE_SHADER_STAGE_CREATE_INFO)
 		.flags = 0,
 		.stage = VK_SHADER_STAGE_VERTEX_BIT,
-		.module = vert_mod,
+		.module = vert.mod,
 		.pName = "main",
 		.pSpecializationInfo = NULL,
 		.pNext = NULL,
@@ -1189,7 +1160,7 @@ static struct GraphicsData mk_graphics(
 	STYPE(PIPELINE_SHADER_STAGE_CREATE_INFO)
 		.flags = 0,
 		.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-		.module = frag_mod,
+		.module = frag.mod,
 		.pName = "main",
 		.pSpecializationInfo = NULL,
 		.pNext = NULL,
@@ -1513,8 +1484,8 @@ static struct GraphicsData mk_graphics(
 
 	printf("Created %u framebuffers\n", SWAP_IMG_COUNT);
 	return (struct GraphicsData) {
-		vert_mod,
-		frag_mod,
+		vert,
+		frag,
 		pass,
 		views,
 		fbuffers,
@@ -1841,8 +1812,8 @@ static void app_free()
 	free(app.sync.submit);
 	free(app.sync.sem);
 
-	vkDestroyShaderModule(app.dev.log, app.graphics.vert, NULL);
-	vkDestroyShaderModule(app.dev.log, app.graphics.frag, NULL);
+	ak_shader_free(app.dev.log, app.graphics.vert);
+	ak_shader_free(app.dev.log, app.graphics.frag);
 	vkDestroyRenderPass(app.dev.log, app.graphics.pass, NULL);
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
