@@ -274,29 +274,45 @@ static VkInstance mk_inst(GLFWwindow *win, const char *name)
 
 	/* TODO: validate instance extensions */
 
-	const char *layer_names[] = { "VK_LAYER_KHRONOS_validation" };
-	VkValidationFeatureEnableEXT feature_names[] = {
-		VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT
-	};
+	u32 layer_count;
+#ifdef  VALIDATION_LAYERS
+#define VALIDATION_LAYER_NAME "VK_LAYER_KHRONOS_validation"
+#define VALIDATION_LAYER_NAME_LEN 27
+	vkEnumerateInstanceLayerProperties(&layer_count, NULL);
+	VkLayerProperties *layers = malloc(layer_count * sizeof(VkLayerProperties));
+	assert(layers);
 
-	/* TODO: validate layers */
+	vkEnumerateInstanceLayerProperties(&layer_count, layers);
+	int found;
 
-	VkValidationFeaturesEXT features = {
-	STYPE(VALIDATION_FEATURES_EXT)
-		.enabledValidationFeatureCount = 1,
-		.pEnabledValidationFeatures = feature_names,
-		.pDisabledValidationFeatures = NULL,
-		.pNext = NULL,
-	};
+	for (size_t i = 0; i < layer_count; ++i) {
+		found = !strncmp(
+			layers[i].layerName,
+			VALIDATION_LAYER_NAME,
+			VALIDATION_LAYER_NAME_LEN
+		);
 
+		if (found) break;
+	}
+
+	assert(found);
+	printf("Enabled validation layers at app level\n");
+	const char *layer_names[] = { VALIDATION_LAYER_NAME };
+#undef VALIDATION_LAYER_NAME
+#undef VALIDATION_LAYER_NAME_LEN
+	layer_count = 1;
+#else
+	const char **layer_names = NULL;
+	layer_count = 0;
+#endif
 	VkInstanceCreateInfo inst_create_info = {
 	STYPE(INSTANCE_CREATE_INFO)
 		.pApplicationInfo = &app_info,
 		.enabledExtensionCount = inst_ext_count,
 		.ppEnabledExtensionNames = inst_ext_names,
-		.enabledLayerCount = 1,
+		.enabledLayerCount = layer_count,
 		.ppEnabledLayerNames = layer_names,
-		.pNext = &features,
+		.pNext = NULL,
 	};
 
 	VkInstance inst;
