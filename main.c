@@ -350,6 +350,8 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 	}
 
 	hard_devs = malloc(dev_count * sizeof(VkPhysicalDevice));
+	assert(hard_devs);
+
 	vkEnumeratePhysicalDevices(inst, &dev_count, hard_devs);
 	assert(GPU_IDX < dev_count);
 	hard_dev = hard_devs[GPU_IDX];
@@ -643,6 +645,8 @@ static unsigned char *read_font() // Read custom PBM file
 
 	unsigned char *raw = malloc(FONT_SIZE / 8);
 	unsigned char *exp = malloc(FONT_SIZE);
+	assert(raw);
+	assert(exp);
 
 	clearerr(file);
 	fread(raw, 1, FONT_SIZE / 8, file);
@@ -1009,12 +1013,15 @@ static struct DescData mk_desc_sets(VkDevice dev)
 
 	VkDescriptorSetLayout *layouts;
 	layouts = malloc(lay_count * sizeof(VkDescriptorSetLayout));
+	assert(layouts);
+
 	AK_MK_SET_LAYOUT(dev, "font",  bindings + 0, 2, layouts + 0);
 	AK_MK_SET_LAYOUT(dev, "share", bindings + 2, 1, layouts + 1);
 	AK_MK_SET_LAYOUT(dev, "text",  bindings + 3, 1, layouts + 2);
 
 	VkDescriptorSetLayout *layouts_exp; // Expand layouts for the alloc call
 	layouts_exp = malloc(set_count * sizeof(VkDescriptorSetLayout));
+	assert(layouts_exp);
 	layouts_exp[0] = layouts[0];
 
 	layouts_exp[1] = layouts[1];
@@ -1034,6 +1041,8 @@ static struct DescData mk_desc_sets(VkDevice dev)
 	};
 
 	VkDescriptorSet *sets = malloc(set_count * sizeof(VkDescriptorSet));
+	assert(sets);
+
 	err = vkAllocateDescriptorSets(dev, &desc_alloc_info, sets);
 	if (err != VK_SUCCESS) {
 		panic_msg("unable to allocate descriptor sets");
@@ -1451,6 +1460,8 @@ static struct GraphicsData mk_graphics(
 	};
 
 	VkImageView *views = malloc(2 * sizeof(VkImageView) * SWAP_IMG_COUNT);
+	assert(views);
+
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		view_create_info.image = swap.img[i];
 		err = vkCreateImageView(
@@ -1483,6 +1494,8 @@ static struct GraphicsData mk_graphics(
 	VkFramebuffer *fbuffers = malloc(
 		sizeof(VkFramebuffer) * SWAP_IMG_COUNT
 	);
+
+	assert(fbuffers);
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		fbuffer_create_info.pAttachments = views + 2 * i;
@@ -1528,6 +1541,8 @@ static VkCommandBuffer *record_graphics(
 	VkCommandBuffer *cmd = malloc(
 		sizeof(VkCommandBuffer) * SWAP_IMG_COUNT
 	);
+
+	assert(cmd);
 
 	VkResult err = vkAllocateCommandBuffers(dev, &cmd_alloc_info, cmd);
 	if (err != VK_SUCCESS) {
@@ -1656,8 +1671,9 @@ static struct SyncData mk_sync(VkDevice dev)
 		panic_msg("unable to create acquisition fence");
 	}
 
-	VkFence *sub_fence = malloc(sizeof(VkFence) * SWAP_IMG_COUNT);
 	fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+	VkFence *sub_fence = malloc(sizeof(VkFence) * SWAP_IMG_COUNT);
+	assert(sub_fence);
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		err = vkCreateFence(
@@ -1684,8 +1700,10 @@ static struct SyncData mk_sync(VkDevice dev)
 	};
 
 	VkSemaphore *sem = malloc(sizeof(VkSemaphore) * SWAP_IMG_COUNT);
+	assert(sem);
+
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
-	err = vkCreateSemaphore(dev, &sem_create_info, NULL, &sem[i]);
+		err = vkCreateSemaphore(dev, &sem_create_info, NULL, &sem[i]);
 		if (err != VK_SUCCESS) {
 			panic_msg("unable to create semaphore");
 		}
@@ -1899,6 +1917,8 @@ void txtquad_init(const struct Settings settings)
 
 	size_t len = strlen(settings.asset_path);
 	root_path = malloc(len + 32);
+	assert(root_path);
+
 	strncpy(root_path, settings.asset_path, len + 1);
 	filename = root_path + len;
 
