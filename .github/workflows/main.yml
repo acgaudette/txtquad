@@ -8,7 +8,7 @@ on:
     workflow_dispatch:
 
 jobs:
-    build-linux:
+    linux:
         runs-on: ubuntu-18.04
         steps:
             - uses: actions/checkout@v2
@@ -32,5 +32,28 @@ jobs:
             - name: upload
               uses: actions/upload-artifact@v2
               with:
-                name: libtxtquad
+                name: libtxtquad.so
                 path: bin/libtxtquad.so
+    macos:
+        runs-on: macos-10.15
+        steps:
+            - uses: actions/checkout@v2
+            - name: package-setup
+              run: |
+                brew install ninja
+            - name: vulkan-sdk
+              run: |
+                wget -nv https://sdk.lunarg.com/sdk/download/1.2.148.1/mac/vulkansdk-macos-1.2.148.1.dmg
+                mkdir sdk && hdiutil attach *.dmg -mountpoint ./sdk
+                cd sdk && ./install_vulkan.py
+            - name: post
+              run: vulkaninfo
+            - name: bootstrap
+              run: sh bootstrap
+            - name: build-all
+              run: ninja demos.macos
+            - name: upload
+              uses: actions/upload-artifact@v2
+              with:
+                name: libtxtquad.dylib
+                path: bin/libtxtquad.dylib
