@@ -23,21 +23,28 @@ build $builddir/inp.o: cc inp.c
 
 build bin/libtxtquad.so: $
     ld $builddir/main.o $builddir/inp.o
-
+    corelibs = -ldl -lX11 -lm -lpthread
 build so: phony bin/libtxtquad.so
-default so
 
-# EXAMPLES #
+build bin/libtxtquad.dylib: $
+    ld $builddir/main.o $builddir/inp.o
+    corelibs = -framework Cocoa -framework IOKit
+    lflags = -undefined dynamic_lookup -shared
+build dylib: phony bin/libtxtquad.dylib
+
+### EXAMPLES ###
+
+demo = 2
 
 rule shc
     command = glslc $in -o $out
+
 rule lde
     command = clang $in $libs -o $out
 
 build assets/vert.spv: shc text.vert
 build assets/frag.spv: shc text.frag
 
-demo = 2
 build $builddir/demos.o: cc examples/demos.c
     config = -O0 -ggdb -DDEMO_$demo
 
@@ -46,3 +53,9 @@ build bin/demos: $
     | bin/libtxtquad.so assets/vert.spv assets/frag.spv
     libs = -L bin -ltxtquad -rpath bin -lm
 build demos: phony bin/demos
+
+build bin/demos.macos: $
+    lde $builddir/demos.o $
+    | bin/libtxtquad.dylib assets/vert.spv assets/frag.spv
+    libs = -L bin -ltxtquad -rpath bin
+build demos.macos: phony bin/demos.macos
