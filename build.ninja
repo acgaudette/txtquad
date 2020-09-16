@@ -4,19 +4,19 @@ config = $
     -O0 -ggdb $
     -DDEBUG -DALG_DEBUG $
     -DINP_KEYS -DINP_TEXT -DINP_MOUSE
-flags = -fPIC -fdiagnostics-color=always
+cflags = -fPIC -fdiagnostics-color=always
+lflags = -shared
 incl = -I . -I ext/include
-libs = -L ext/lib -lglfw3 -lvulkan $
-    -framework Cocoa -framework IOKit
+libs = -L ext/lib -lglfw3 -lvulkan
+corelibs = ERROR_PLATFORM_UNDEFINED
 
 rule cc
     depfile = $out.d
     deps = gcc
     command = clang -MD -MF $out.d $
-              $config $flags $incl -c $in -o $out
+              $config $cflags $incl -c $in -o $out
 rule ld
-    command = clang $in $libs $
-        -undefined dynamic_lookup -shared -o $out
+    command = clang $in $corelibs $libs $lflags -o $out
 
 build $builddir/main.o: cc main.c
 build $builddir/inp.o: cc inp.c
