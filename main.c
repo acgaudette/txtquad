@@ -3,8 +3,11 @@
 #include <math.h>
 #include <assert.h>
 #include <errno.h>
+
 #include <vulkan/vulkan.h> // Must include before GLFW
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+
 #include "txtquad.h"
 #include "vkext.h"
 
@@ -160,8 +163,8 @@ static struct App {
 		VkDescriptorPool pool;
 	} desc;
 	struct GraphicsData {
-		VkShaderModule vert;
-		VkShaderModule frag;
+		struct ak_shader vert;
+		struct ak_shader frag;
 		VkRenderPass pass;
 		VkImageView *views;
 		VkFramebuffer *fbuffers;
@@ -272,29 +275,45 @@ static VkInstance mk_inst(GLFWwindow *win, const char *name)
 
 	/* TODO: validate instance extensions */
 
-	const char *layer_names[] = { "VK_LAYER_KHRONOS_validation" };
-	VkValidationFeatureEnableEXT feature_names[] = {
-		VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT
-	};
+	u32 layer_count;
+#ifdef  VALIDATION_LAYERS
+#define VALIDATION_LAYER_NAME "VK_LAYER_KHRONOS_validation"
+#define VALIDATION_LAYER_NAME_LEN 27
+	vkEnumerateInstanceLayerProperties(&layer_count, NULL);
+	VkLayerProperties *layers = malloc(layer_count * sizeof(VkLayerProperties));
+	assert(layers);
 
-	/* TODO: validate layers */
+	vkEnumerateInstanceLayerProperties(&layer_count, layers);
+	int found;
 
-	VkValidationFeaturesEXT features = {
-	STYPE(VALIDATION_FEATURES_EXT)
-		.enabledValidationFeatureCount = 1,
-		.pEnabledValidationFeatures = feature_names,
-		.pDisabledValidationFeatures = NULL,
-		.pNext = NULL,
-	};
+	for (size_t i = 0; i < layer_count; ++i) {
+		found = !strncmp(
+			layers[i].layerName,
+			VALIDATION_LAYER_NAME,
+			VALIDATION_LAYER_NAME_LEN
+		);
 
+		if (found) break;
+	}
+
+	assert(found);
+	printf("Enabled validation layers at app level\n");
+	const char *layer_names[] = { VALIDATION_LAYER_NAME };
+#undef VALIDATION_LAYER_NAME
+#undef VALIDATION_LAYER_NAME_LEN
+	layer_count = 1;
+#else
+	const char **layer_names = NULL;
+	layer_count = 0;
+#endif
 	VkInstanceCreateInfo inst_create_info = {
 	STYPE(INSTANCE_CREATE_INFO)
 		.pApplicationInfo = &app_info,
 		.enabledExtensionCount = inst_ext_count,
 		.ppEnabledExtensionNames = inst_ext_names,
-		.enabledLayerCount = 1,
+		.enabledLayerCount = layer_count,
 		.ppEnabledLayerNames = layer_names,
-		.pNext = &features,
+		.pNext = NULL,
 	};
 
 	VkInstance inst;
@@ -332,6 +351,8 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 	}
 
 	hard_devs = malloc(dev_count * sizeof(VkPhysicalDevice));
+	assert(hard_devs);
+
 	vkEnumeratePhysicalDevices(inst, &dev_count, hard_devs);
 	assert(GPU_IDX < dev_count);
 	hard_dev = hard_devs[GPU_IDX];
@@ -625,6 +646,8 @@ static unsigned char *read_font() // Read custom PBM file
 
 	unsigned char *raw = malloc(FONT_SIZE / 8);
 	unsigned char *exp = malloc(FONT_SIZE);
+	assert(raw);
+	assert(exp);
 
 	clearerr(file);
 	fread(raw, 1, FONT_SIZE / 8, file);
@@ -991,12 +1014,15 @@ static struct DescData mk_desc_sets(VkDevice dev)
 
 	VkDescriptorSetLayout *layouts;
 	layouts = malloc(lay_count * sizeof(VkDescriptorSetLayout));
+	assert(layouts);
+
 	AK_MK_SET_LAYOUT(dev, "font",  bindings + 0, 2, layouts + 0);
 	AK_MK_SET_LAYOUT(dev, "share", bindings + 2, 1, layouts + 1);
 	AK_MK_SET_LAYOUT(dev, "text",  bindings + 3, 1, layouts + 2);
 
 	VkDescriptorSetLayout *layouts_exp; // Expand layouts for the alloc call
 	layouts_exp = malloc(set_count * sizeof(VkDescriptorSetLayout));
+	assert(layouts_exp);
 	layouts_exp[0] = layouts[0];
 
 	layouts_exp[1] = layouts[1];
@@ -1016,6 +1042,8 @@ static struct DescData mk_desc_sets(VkDevice dev)
 	};
 
 	VkDescriptorSet *sets = malloc(set_count * sizeof(VkDescriptorSet));
+	assert(sets);
+
 	err = vkAllocateDescriptorSets(dev, &desc_alloc_info, sets);
 	if (err != VK_SUCCESS) {
 		panic_msg("unable to allocate descriptor sets");
@@ -1130,44 +1158,15 @@ static struct GraphicsData mk_graphics(
 	struct SwapData swap,
 	struct DescData desc
 ) {
+	VkResult err;
+
 	/* Shader modules */
 
-	VkResult err;
-	size_t spv_size;
-	uint32_t *spv;
 	strncpy(filename, "vert.spv", 8 + 1);
-	read_shader(root_path, &spv, &spv_size);
-
-	VkShaderModuleCreateInfo mod_create_info = {
-	STYPE(SHADER_MODULE_CREATE_INFO)
-		.flags = 0,
-		.codeSize = spv_size,
-		.pCode = spv,
-		.pNext = NULL,
-	};
-
-	VkShaderModule vert_mod, frag_mod;
-
-	err = vkCreateShaderModule(dev, &mod_create_info, NULL, &vert_mod);
-	if (err != VK_SUCCESS) {
-		panic_msg(
-			"unable to create vertex "
-			"shader module\n"
-		);
-	}
+	struct ak_shader vert = ak_shader_mk(dev, root_path);
 
 	strncpy(filename, "frag.spv", 8 + 1);
-	read_shader(root_path, &spv, &spv_size);
-	mod_create_info.codeSize = spv_size;
-	mod_create_info.pCode = spv;
-
-	err = vkCreateShaderModule(dev, &mod_create_info, NULL, &frag_mod);
-	if (err != VK_SUCCESS) {
-		panic_msg(
-			"unable to create fragment "
-			"shader module\n"
-		);
-	}
+	struct ak_shader frag = ak_shader_mk(dev, root_path);
 
 	printf("Created shader modules (2)\n");
 
@@ -1177,7 +1176,7 @@ static struct GraphicsData mk_graphics(
 	STYPE(PIPELINE_SHADER_STAGE_CREATE_INFO)
 		.flags = 0,
 		.stage = VK_SHADER_STAGE_VERTEX_BIT,
-		.module = vert_mod,
+		.module = vert.mod,
 		.pName = "main",
 		.pSpecializationInfo = NULL,
 		.pNext = NULL,
@@ -1187,7 +1186,7 @@ static struct GraphicsData mk_graphics(
 	STYPE(PIPELINE_SHADER_STAGE_CREATE_INFO)
 		.flags = 0,
 		.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-		.module = frag_mod,
+		.module = frag.mod,
 		.pName = "main",
 		.pSpecializationInfo = NULL,
 		.pNext = NULL,
@@ -1462,6 +1461,8 @@ static struct GraphicsData mk_graphics(
 	};
 
 	VkImageView *views = malloc(2 * sizeof(VkImageView) * SWAP_IMG_COUNT);
+	assert(views);
+
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		view_create_info.image = swap.img[i];
 		err = vkCreateImageView(
@@ -1495,6 +1496,8 @@ static struct GraphicsData mk_graphics(
 		sizeof(VkFramebuffer) * SWAP_IMG_COUNT
 	);
 
+	assert(fbuffers);
+
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		fbuffer_create_info.pAttachments = views + 2 * i;
 		err = vkCreateFramebuffer(
@@ -1511,8 +1514,8 @@ static struct GraphicsData mk_graphics(
 
 	printf("Created %u framebuffers\n", SWAP_IMG_COUNT);
 	return (struct GraphicsData) {
-		vert_mod,
-		frag_mod,
+		vert,
+		frag,
 		pass,
 		views,
 		fbuffers,
@@ -1539,6 +1542,8 @@ static VkCommandBuffer *record_graphics(
 	VkCommandBuffer *cmd = malloc(
 		sizeof(VkCommandBuffer) * SWAP_IMG_COUNT
 	);
+
+	assert(cmd);
 
 	VkResult err = vkAllocateCommandBuffers(dev, &cmd_alloc_info, cmd);
 	if (err != VK_SUCCESS) {
@@ -1667,8 +1672,9 @@ static struct SyncData mk_sync(VkDevice dev)
 		panic_msg("unable to create acquisition fence");
 	}
 
-	VkFence *sub_fence = malloc(sizeof(VkFence) * SWAP_IMG_COUNT);
 	fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+	VkFence *sub_fence = malloc(sizeof(VkFence) * SWAP_IMG_COUNT);
+	assert(sub_fence);
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		err = vkCreateFence(
@@ -1695,8 +1701,10 @@ static struct SyncData mk_sync(VkDevice dev)
 	};
 
 	VkSemaphore *sem = malloc(sizeof(VkSemaphore) * SWAP_IMG_COUNT);
+	assert(sem);
+
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
-	err = vkCreateSemaphore(dev, &sem_create_info, NULL, &sem[i]);
+		err = vkCreateSemaphore(dev, &sem_create_info, NULL, &sem[i]);
 		if (err != VK_SUCCESS) {
 			panic_msg("unable to create semaphore");
 		}
@@ -1839,8 +1847,8 @@ static void app_free()
 	free(app.sync.submit);
 	free(app.sync.sem);
 
-	vkDestroyShaderModule(app.dev.log, app.graphics.vert, NULL);
-	vkDestroyShaderModule(app.dev.log, app.graphics.frag, NULL);
+	ak_shader_free(app.dev.log, app.graphics.vert);
+	ak_shader_free(app.dev.log, app.graphics.frag);
 	vkDestroyRenderPass(app.dev.log, app.graphics.pass, NULL);
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
@@ -1910,6 +1918,8 @@ void txtquad_init(const struct Settings settings)
 
 	size_t len = strlen(settings.asset_path);
 	root_path = malloc(len + 32);
+	assert(root_path);
+
 	strncpy(root_path, settings.asset_path, len + 1);
 	filename = root_path + len;
 

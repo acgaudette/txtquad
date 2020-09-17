@@ -4,19 +4,19 @@ config = $
     -O0 -ggdb $
     -DDEBUG -DALG_DEBUG $
     -DINP_KEYS -DINP_TEXT -DINP_MOUSE
-flags = -fdiagnostics-color=always
+cflags = -fPIC -fdiagnostics-color=always
+lflags = -shared
 incl = -I . -I ext/include
-corelibs = -lmsvcrt -luser32 -lshell32 -lgdi32 $
-    -Wl,-nodefaultlib:libcmt -Wl,-nodefaultlib:msvcrtd
 libs = -L ext/lib -lglfw3 -lvulkan
+corelibs = ERROR_PLATFORM_UNDEFINED
 
 rule cc
     depfile = $out.d
     deps = gcc
     command = clang -MD -MF $out.d $
-              $config $flags $incl -c $in -o $out
+              $config $cflags $incl -c $in -o $out
 rule ld
-    command = clang $in $libs -o $out
+    command = clang $in $corelibs $libs $lflags -o $out
 rule ar
     command = lib $in $libs /out:$out
 
@@ -25,24 +25,35 @@ build $builddir/inp.o: cc inp.c
 
 build bin/libtxtquad.so: $
     ld $builddir/main.o $builddir/inp.o
+    corelibs = -ldl -lX11 -lm -lpthread
 build so: phony bin/libtxtquad.so
+
+build bin/libtxtquad.dylib: $
+    ld $builddir/main.o $builddir/inp.o
+    corelibs = -framework Cocoa -framework IOKit
+    lflags = -undefined dynamic_lookup -shared
+build dylib: phony bin/libtxtquad.dylib
 
 build bin/txtquad.lib: $
     ar $builddir/main.o $builddir/inp.o
+    corelibs = -lmsvcrt -luser32 -lshell32 -lgdi32 $
+               -Wl,-nodefaultlib:libcmt -Wl,-nodefaultlib:msvcrtd
     libs = ext/lib/glfw3.lib ext/lib/vulkan.lib
 build lib: phony bin/txtquad.lib
 
-# EXAMPLES #
+### EXAMPLES ###
+
+demo = 2
 
 rule shc
     command = glslc $in -o $out
+
 rule lde
     command = clang $in $corelibs $libs -o $out
 
 build assets/vert.spv: shc text.vert
 build assets/frag.spv: shc text.frag
 
-demo = 2
 build $builddir/demos.o: cc examples/demos.c
     config = -O0 -ggdb -DDEMO_$demo
 
@@ -51,6 +62,12 @@ build bin/demos: $
     | bin/libtxtquad.so assets/vert.spv assets/frag.spv
     libs = -L bin -ltxtquad
 build demos: phony bin/demos
+
+build bin/demos.macos: $
+    lde $builddir/demos.o $
+    | bin/libtxtquad.dylib assets/vert.spv assets/frag.spv
+    libs = -L bin -ltxtquad -rpath bin
+build demos.macos: phony bin/demos.macos
 
 build bin/demos.exe: $
     lde $builddir/demos.o $

@@ -1,6 +1,7 @@
 #ifndef INP_H
 #define INP_H
 
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
 #define INP_DATA_STRUCT(T)                             \
@@ -19,7 +20,9 @@ extern struct Input {
 /*
  * Implemented by consumer, called by engine
  */
+__attribute__((weak))
 void inp_ev_text(unsigned int unicode);
+__attribute__((weak))
 void inp_ev_mouse(float x, float y, struct Extent win_size);
 
 /*

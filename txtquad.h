@@ -70,6 +70,7 @@ struct Text {
 	size_t char_count;
 };
 
+__attribute__((weak))
 struct Share txtquad_update(struct Frame data, struct Text *text);
 
 void txtquad_init(const struct Settings);
