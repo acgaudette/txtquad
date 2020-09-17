@@ -33,7 +33,7 @@ if (-Not (Test-Path "include/vulkan")) {
 cd src
 
 if (-Not (Test-Path "glfw*.zip")) {
-	wget $GLFW_URL -OutFile glfw.zip
+	Invoke-WebRequest $GLFW_URL -OutFile glfw.zip
 }
 
 if (-Not (Test-Path -PathType Container "glfw-*")) {
