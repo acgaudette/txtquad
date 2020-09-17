@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$VK_SDK="C:\VulkanSDK\1.2.148.1"
+$VK_SDK="C:\VulkanSDK\1.2.*"
 $GLFW_URL="https://github.com/glfw/glfw/releases/download/3.3.2/glfw-3.3.2.zip"
 $FONT_URL="https://github.com/acgaudette/kufont-ascii.git"
 
