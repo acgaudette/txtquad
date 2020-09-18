@@ -17,9 +17,16 @@ rule cc
               $config $cflags $incl -c $in -o $out
 rule ld
     command = clang $in $corelibs $libs $lflags -o $out
+rule ar
+    command = lib $in $libs /out:$out
 
 build $builddir/main.o: cc main.c
 build $builddir/inp.o: cc inp.c
+
+build $builddir/main_nopic.o: cc main.c
+    cflags =
+build $builddir/inp_nopic.o: cc inp.c
+    cflags =
 
 build bin/libtxtquad.so: $
     ld $builddir/main.o $builddir/inp.o
@@ -32,13 +39,18 @@ build bin/libtxtquad.dylib: $
     lflags = -undefined dynamic_lookup -shared
 build dylib: phony bin/libtxtquad.dylib
 
+build bin/txtquad.lib: $
+    ar $builddir/main_nopic.o $builddir/inp_nopic.o
+    corelibs =
+    libs = ext/lib/glfw3.lib ext/lib/vulkan.lib
+build lib: phony bin/txtquad.lib
+
 ### EXAMPLES ###
 
 demo = 2
 
 rule shc
     command = glslc $in -o $out
-
 rule lde
     command = clang $in $libs -o $out
 
@@ -47,6 +59,9 @@ build assets/frag.spv: shc text.frag
 
 build $builddir/demos.o: cc examples/demos.c
     config = -O0 -ggdb -DDEMO_$demo
+build $builddir/demos_nopic.o: cc examples/demos.c
+    config = -O0 -ggdb -DDEMO_$demo
+    cflags =
 
 build bin/demos: $
     lde $builddir/demos.o $
@@ -59,3 +74,11 @@ build bin/demos.macos: $
     | bin/libtxtquad.dylib assets/vert.spv assets/frag.spv
     libs = -L bin -ltxtquad -rpath bin
 build demos.macos: phony bin/demos.macos
+
+build bin/demos.exe: $
+    lde $builddir/demos_nopic.o $
+    | bin/txtquad.lib assets/vert.spv assets/frag.spv
+    libs = -L bin -ltxtquad $
+           -lmsvcrt -luser32 -lshell32 -lgdi32 $
+           -Wl,-nodefaultlib:libcmt -Wl,-nodefaultlib:msvcrtd
+build demos.exe: phony bin/demos.exe

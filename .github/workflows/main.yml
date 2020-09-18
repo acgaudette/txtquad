@@ -57,3 +57,27 @@ jobs:
               with:
                 name: libtxtquad.dylib
                 path: bin/libtxtquad.dylib
+    win:
+        runs-on: windows-2019
+        steps:
+            - uses: actions/checkout@v2
+            - uses: microsoft/setup-msbuild@v1.0.1
+            - name: package-setup
+              run: |
+                choco install ninja
+                choco install vulkan-sdk
+            - name: post
+              run: C:/VulkanSDK/1.2.*/Bin/vulkaninfoSDK.exe
+            - name: bootstrap-posh
+              run: ./bootstrap.ps1
+            - name: build-all
+              run: |
+                $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\MSVC\14.27.29110\bin\Hostx64\x86"
+                $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin"
+                $env:Path += ";C:\VulkanSDK\1.2.141.0\Bin"
+                ninja demos.exe
+            - name: upload
+              uses: actions/upload-artifact@v2
+              with:
+                name: txtquad.lib
+                path: bin/txtquad.lib

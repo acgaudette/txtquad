@@ -1,6 +1,7 @@
 #ifndef ALG_H
 #define ALG_H
 
+#define _USE_MATH_DEFINES
 #include <math.h>
 #ifdef ALG_DEBUG
 #include <assert.h>
