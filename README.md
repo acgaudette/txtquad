@@ -21,9 +21,11 @@ Maybe someday it won't create its own window.
 ```
 Dependencies:
     libglfw.so    3.3.2
+    libvulkan.so  1.2.x
 ```
 
 This project uses clang, git LFS, and the ninja buildsystem.
+You will additionally require the vulkan headers + libs, and glslc.
 
 1. ./bootstrap to download, build, and install glfw3 into ./ext
    - This also grabs the font from the link above
@@ -74,6 +76,9 @@ This project uses clang, git LFS, and the ninja buildsystem.
 # Notes
 
 - glfw is compiled statically into the binary by default
+- libtxtquad resolves user callback symbols at runtime via weak linking.
+  You _must_ implement txtquad_update(),
+  otherwise the lib will panic.
 - There is one example executable, but four demos.
   The demo selection can be controlled at compilation time by a define,
   or the $demo var in ./build.ninja
@@ -88,5 +93,12 @@ This project uses clang, git LFS, and the ninja buildsystem.
   define INP_KEYS for keyboard + mouse press/hold/release polling macros,
   INP_TEXT for a text entry callback,
   and/or INP_MOUSE for a mouse position callback
+  - Input support is compiled into the binary by default
+    (see ./build.ninja) using these defines
 - You will also need the glfw header as a dev dependency
 - See ./inp.h and ./examples for API usage
+  - You _must_ implement inp_ev_text()
+    if libtxtquad is compiled with INP_TEXT,
+    and/or inp_ev_mouse()
+    if libtxtquad is compiled with INP_MOUSE,
+    otherwise the lib will panic.
