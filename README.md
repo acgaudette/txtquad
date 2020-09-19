@@ -16,7 +16,10 @@ can be found [here](https://github.com/acgaudette/kufont-ascii).
 txtquad is feature sparse but functional.
 Maybe someday it won't create its own window.
 
-# Building
+# Getting Started
+
+_The instructions below are for linux._
+_For macos and windows, see [PLATFORMS.md](PLATFORMS.md)._
 
 ```
 Dependencies:
@@ -34,7 +37,7 @@ You will additionally require the vulkan headers + libs, and glslc.
 2. ./runex to build and launch ./bin/demos
    - This will build ./bin/libtxtquad.so as a side effect
    - Alternatively,
-     running "ninja" in the root dir
+     running "ninja so" in the root dir
      will build the .so by itself
 
 # Configuration
