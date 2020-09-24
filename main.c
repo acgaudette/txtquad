@@ -222,6 +222,21 @@ static GLFWwindow *mk_win(const char *name, struct Extent extent)
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // GLFW Vulkan support
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
+	int mon_count;
+	GLFWmonitor **mons = glfwGetMonitors(&mon_count);
+
+	if (NULL == mons) {
+		panic_msg("no monitors found");
+	}
+
+	printf("Found %d monitor(s)\n", mon_count);
+
+	int mon_ind = 0;
+	GLFWmonitor *mon = *(mons + mon_ind);
+	const GLFWvidmode *mode = glfwGetVideoMode(mon);
+	const char *mon_name = glfwGetMonitorName(mon);
+	printf("\tUsing \"%s\"\n", mon_name);
+
 	GLFWwindow *win = glfwCreateWindow(
 		extent.w,
 		extent.h,
