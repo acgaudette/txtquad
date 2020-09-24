@@ -211,7 +211,7 @@ static void glfw_mouse_callback(GLFWwindow *win, double x, double y)
 }
 #endif
 
-static GLFWwindow *mk_win(const char *name, struct Extent extent)
+static GLFWwindow *mk_win(const char *name, struct Extent *extent)
 {
 	if (!glfwInit()) {
 		panic_msg("unable to initialize GLFW");
@@ -237,17 +237,26 @@ static GLFWwindow *mk_win(const char *name, struct Extent extent)
 	const char *mon_name = glfwGetMonitorName(mon);
 	printf("\tUsing \"%s\"\n", mon_name);
 
+	// Render at monitor resolution if fullscreen
+	if (0 == *(u32*)extent) {
+		extent->w = mode->width;
+		extent->h = mode->height;
+		printf("Creating fullscreen window at current resolution\n");
+	} else {
+		mon = NULL;
+	}
+
 	GLFWwindow *win = glfwCreateWindow(
-		extent.w,
-		extent.h,
+		extent->w,
+		extent->h,
 		name,
-		NULL,
+		mon,
 		NULL
 	);
 
 	printf(
 		"Created window and requested extent %ux%u\n",
-		extent.w, extent.h
+		extent->w, extent->h
 	);
 
 #ifdef INP_TEXT
@@ -1943,7 +1952,7 @@ void txtquad_init(struct Settings settings)
 	strncpy(root_path, settings.asset_path, len + 1);
 	filename = root_path + len;
 
-	app.win = mk_win(settings.app_name, settings.win_size);
+	app.win = mk_win(settings.app_name, &settings.win_size);
 	app.inst = mk_inst(app.win, settings.app_name);
 	app.surf = mk_surf(app.win, app.inst);
 	app.dev = mk_dev(app.inst, app.surf);
