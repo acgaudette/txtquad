@@ -15,6 +15,7 @@ struct Extent {
 struct Settings {
 	const char *app_name;
 	const char *asset_path; // .spv and .pbm files are loaded from here
+	int fullscreen; // Note: if fullscreen, win_size is ignored
 	struct Extent win_size;
 };
 

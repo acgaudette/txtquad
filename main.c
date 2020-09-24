@@ -1910,11 +1910,16 @@ static void app_free()
 	printf("Cleanup complete\n");
 }
 
-void txtquad_init(const struct Settings settings)
+void txtquad_init(struct Settings settings)
 {
 	assert(NULL != settings.app_name);
-	assert(settings.win_size.w > 0);
-	assert(settings.win_size.h > 0);
+
+	if (settings.fullscreen) {
+		memset(&settings.win_size, 0, sizeof(struct Extent));
+	} else {
+		assert(settings.win_size.w > 0);
+		assert(settings.win_size.h > 0);
+	}
 
 	size_t len = strlen(settings.asset_path);
 	root_path = malloc(len + 32);
