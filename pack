@@ -1,0 +1,14 @@
+#!/bin/sh
+
+VERSION=$(git rev-list HEAD -1 | cut -c -8)
+PACKOUT="libtxtquad_$VERSION"
+
+rm -fr ./libtxtquad_* && mkdir ./$PACKOUT/ \
+    && mkdir ./$PACKOUT/include/ \
+    && mkdir ./$PACKOUT/lib/
+
+cp ./bin/*txtquad* ./$PACKOUT/lib/ || exit 1
+cp ./*.h ./$PACKOUT/include/ || exit 1
+rm ./$PACKOUT/include/vkext.h || exit 1
+
+cd $PACKOUT && zip -r ../$PACKOUT.zip *
