@@ -38,7 +38,7 @@ struct Share {
 struct Char {
 	v3 pos;
 	v4 rot;
-	float scale; // Meters
+	float scale; // ... of one char, regardless of CHAR_WIDTH
 	u8 v;
 	v4 col;
 };
