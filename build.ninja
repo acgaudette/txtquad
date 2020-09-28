@@ -54,7 +54,8 @@ rule shc
 rule lde
     command = clang $in $libs -o $out
 
-build assets/vert.spv: shc text.vert
+build assets/vert.spv: shc text.vert $
+    | config.h
 build assets/frag.spv: shc text.frag
 
 build $builddir/demos.o: cc examples/demos.c
