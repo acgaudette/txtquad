@@ -1232,27 +1232,34 @@ static struct GraphicsData mk_graphics(
 			dev.log,
 			dev.mem_props,
 			"compat vertex",
-			4 * sizeof(float) * 2,
+			4 * sizeof(float) * 4,
 			VERTEX_BUFFER,
 			&quad,
 			(void**)&verts
 		);
 
-		float raw[] = { 0, 1, 1, 1, 0, 0, 1, 0 };
-		memcpy(verts, raw, 4 * sizeof(float) * 2);
+		float raw[] = { 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1 };
+		memcpy(verts, raw, 4 * sizeof(float) * 4);
 	}
 
 	VkVertexInputBindingDescription binding_desc = {
 		.binding = 0,
-		.stride = sizeof(float) * 2,
+		.stride = sizeof(float) * 4,
 		.inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
 	};
 
-	VkVertexInputAttributeDescription attr_desc = {
-		.binding = 0,
-		.location = 0,
-		.format = VK_FORMAT_R32G32_SFLOAT,
-		.offset = 0,
+	VkVertexInputAttributeDescription attr_desc[2] = {
+		{
+			.binding = 0,
+			.location = 0,
+			.format = VK_FORMAT_R32G32_SFLOAT,
+			.offset = 0,
+		}, {
+			.binding = 0,
+			.location = 1,
+			.format = VK_FORMAT_R32G32_SFLOAT,
+			.offset = sizeof(float) * 2,
+		},
 	};
 
 	VkPipelineVertexInputStateCreateInfo compat_vert_state_create_info = {
@@ -1260,8 +1267,8 @@ static struct GraphicsData mk_graphics(
 		.flags = 0,
 		.vertexBindingDescriptionCount = 1,
 		.pVertexBindingDescriptions = &binding_desc,
-		.vertexAttributeDescriptionCount = 1,
-		.pVertexAttributeDescriptions = &attr_desc,
+		.vertexAttributeDescriptionCount = 2,
+		.pVertexAttributeDescriptions = attr_desc,
 		.pNext = NULL,
 	};
 #else
