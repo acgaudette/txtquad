@@ -19,6 +19,10 @@
 #define FONT_SIZE (FONT_WIDTH * FONT_WIDTH)
 #define FONT_OFF  (FONT_WIDTH / CHAR_WIDTH)
 
+#ifdef __APPLE__
+#define PLATFORM_COMPAT_VBO
+#endif
+
 static struct Text text;
 static char *root_path;
 static char *filename;
