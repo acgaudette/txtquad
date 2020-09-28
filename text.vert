@@ -10,16 +10,23 @@ struct Char {
 
 layout (set = 1, binding = 0) uniform Share { mat4 vp; } share;
 layout (set = 2, binding = 0) readonly buffer Data { Char chars[MAX_CHAR]; } data;
+
+#ifdef PLATFORM_COMPAT_VBO
+layout (location = 0) in vec2 pos;
+#endif
+
 layout (location = 0) out vec2 uv;
 layout (location = 1) out vec2 st;
 layout (location = 2) out vec4 col;
 
+#ifndef PLATFORM_COMPAT_VBO
 const vec4 vert[4] = {
 	  vec4(0, 1, 0, 1)
 	, vec4(1, 1, 0, 1)
 	, vec4(0, 0, 0, 1)
 	, vec4(1, 0, 0, 1)
 };
+#endif
 
 const vec2 sq[4] = {
 	  vec2(0, 0)
@@ -34,5 +41,9 @@ void main()
 	st = sq[gl_VertexIndex];
 	uv = SCALE * (st + c.off);
 	col = c.col;
+#ifdef PLATFORM_COMPAT_VBO
+	gl_Position = share.vp * c.model * vec4(pos, 0, 1);
+#else
 	gl_Position = share.vp * c.model * vert[gl_VertexIndex];
+#endif
 }

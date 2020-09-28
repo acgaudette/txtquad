@@ -165,6 +165,9 @@ static struct App {
 	struct GraphicsData {
 		struct ak_shader vert;
 		struct ak_shader frag;
+#ifdef PLATFORM_COMPAT_VBO
+		struct ak_buf quad;
+#endif
 		VkRenderPass pass;
 		VkImageView *views;
 		VkFramebuffer *fbuffers;
@@ -1178,7 +1181,7 @@ static void mk_bindings(
 }
 
 static struct GraphicsData mk_graphics(
-	VkDevice dev,
+	struct DevData dev,
 	struct SwapData swap,
 	struct DescData desc
 ) {
@@ -1187,10 +1190,10 @@ static struct GraphicsData mk_graphics(
 	/* Shader modules */
 
 	strncpy(filename, "vert.spv", 8 + 1);
-	struct ak_shader vert = ak_shader_mk(dev, root_path);
+	struct ak_shader vert = ak_shader_mk(dev.log, root_path);
 
 	strncpy(filename, "frag.spv", 8 + 1);
-	struct ak_shader frag = ak_shader_mk(dev, root_path);
+	struct ak_shader frag = ak_shader_mk(dev.log, root_path);
 
 	printf("Created shader modules (2)\n");
 
@@ -1221,6 +1224,47 @@ static struct GraphicsData mk_graphics(
 		frag_stage_create_info,
 	};
 
+#ifdef PLATFORM_COMPAT_VBO
+	struct ak_buf quad;
+	{
+		float *verts;
+		AK_BUF_MK_AND_MAP(
+			dev.log,
+			dev.mem_props,
+			"compat vertex",
+			4 * sizeof(float) * 2,
+			VERTEX_BUFFER,
+			&quad,
+			(void**)&verts
+		);
+
+		float raw[] = { 0, 1, 1, 1, 0, 0, 1, 0 };
+		memcpy(verts, raw, 4 * sizeof(float) * 2);
+	}
+
+	VkVertexInputBindingDescription binding_desc = {
+		.binding = 0,
+		.stride = sizeof(float) * 2,
+		.inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+	};
+
+	VkVertexInputAttributeDescription attr_desc = {
+		.binding = 0,
+		.location = 0,
+		.format = VK_FORMAT_R32G32_SFLOAT,
+		.offset = 0,
+	};
+
+	VkPipelineVertexInputStateCreateInfo compat_vert_state_create_info = {
+	STYPE(PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
+		.flags = 0,
+		.vertexBindingDescriptionCount = 1,
+		.pVertexBindingDescriptions = &binding_desc,
+		.vertexAttributeDescriptionCount = 1,
+		.pVertexAttributeDescriptions = &attr_desc,
+		.pNext = NULL,
+	};
+#else
 	VkPipelineVertexInputStateCreateInfo null_vert_state_create_info = {
 	STYPE(PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
 		.flags = 0,
@@ -1230,6 +1274,7 @@ static struct GraphicsData mk_graphics(
 		.pVertexAttributeDescriptions = NULL,
 		.pNext = NULL,
 	};
+#endif
 
 	VkPipelineInputAssemblyStateCreateInfo asm_state_create_info = {
 	STYPE(PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO)
@@ -1343,7 +1388,7 @@ static struct GraphicsData mk_graphics(
 
 	VkPipelineLayout null_pipe_layout;
 	err = vkCreatePipelineLayout(
-		dev,
+		dev.log,
 		&pipe_layout_create_info,
 		NULL,
 		&null_pipe_layout
@@ -1415,7 +1460,7 @@ static struct GraphicsData mk_graphics(
 	};
 
 	VkRenderPass pass;
-	err = vkCreateRenderPass(dev, &pass_create_info, NULL, &pass);
+	err = vkCreateRenderPass(dev.log, &pass_create_info, NULL, &pass);
 	if (err != VK_SUCCESS) {
 		panic_msg("unable to create post-processing render pass");
 	}
@@ -1427,7 +1472,11 @@ static struct GraphicsData mk_graphics(
 		.flags = 0,
 		.stageCount = 2,
 		.pStages = shader_create_infos,
+#ifdef PLATFORM_COMPAT_VBO
+		.pVertexInputState = &compat_vert_state_create_info,
+#else
 		.pVertexInputState = &null_vert_state_create_info,
+#endif
 		.pInputAssemblyState = &asm_state_create_info,
 		.pTessellationState = NULL,
 		.pViewportState = &viewport_state_create_info,
@@ -1446,7 +1495,7 @@ static struct GraphicsData mk_graphics(
 
 	VkPipeline pipeline;
 	err = vkCreateGraphicsPipelines(
-		dev,
+		dev.log,
 		VK_NULL_HANDLE,
 		1,
 		&pipe_create_info,
@@ -1490,7 +1539,7 @@ static struct GraphicsData mk_graphics(
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		view_create_info.image = swap.img[i];
 		err = vkCreateImageView(
-			dev,
+			dev.log,
 			&view_create_info,
 			NULL,
 			&views[2 * i]
@@ -1525,7 +1574,7 @@ static struct GraphicsData mk_graphics(
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		fbuffer_create_info.pAttachments = views + 2 * i;
 		err = vkCreateFramebuffer(
-			dev,
+			dev.log,
 			&fbuffer_create_info,
 			NULL,
 			&fbuffers[i]
@@ -1540,6 +1589,9 @@ static struct GraphicsData mk_graphics(
 	return (struct GraphicsData) {
 		vert,
 		frag,
+#ifdef PLATFORM_COMPAT_VBO
+		quad,
+#endif
 		pass,
 		views,
 		fbuffers,
@@ -1618,6 +1670,11 @@ static VkCommandBuffer *record_graphics(
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			graphics.pipeline
 		);
+
+#ifdef PLATFORM_COMPAT_VBO
+		VkDeviceSize off = 0;
+		vkCmdBindVertexBuffers(cmd[i], 0, 1, &graphics.quad.buf, &off);
+#endif
 
 		VkDescriptorSet frame_sets[3] = {
 			sets[0],
@@ -1873,6 +1930,9 @@ static void app_free()
 
 	ak_shader_free(app.dev.log, app.graphics.vert);
 	ak_shader_free(app.dev.log, app.graphics.frag);
+#ifdef PLATFORM_COMPAT_VBO
+	ak_buf_free(app.dev.log, app.graphics.quad);
+#endif
 	vkDestroyRenderPass(app.dev.log, app.graphics.pass, NULL);
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
@@ -1972,7 +2032,7 @@ void txtquad_init(struct Settings settings)
 		app.rchar
 	);
 
-	app.graphics = mk_graphics(app.dev.log, app.swap, app.desc);
+	app.graphics = mk_graphics(app.dev, app.swap, app.desc);
 	app.cmd = record_graphics(
 		app.dev.log,
 		app.swap,
