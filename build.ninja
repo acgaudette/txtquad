@@ -48,14 +48,18 @@ build lib: phony bin/txtquad.lib
 ### EXAMPLES ###
 
 demo = 1
+sflags =
 
 rule shc
-    command = glslc $in -o $out
+    command = glslc $sflags $in -o $out
 rule lde
     command = clang $in $libs -o $out
 
 build assets/vert.spv: shc text.vert $
     | config.h
+build assets/vert_compat.spv: shc text.vert $
+    | config.h
+    sflags = -DPLATFORM_COMPAT_VBO
 build assets/frag.spv: shc text.frag
 
 build $builddir/demos.o: cc examples/demos.c
@@ -72,7 +76,7 @@ build demos: phony bin/demos
 
 build bin/demos.macos: $
     lde $builddir/demos.o $
-    | bin/libtxtquad.dylib assets/vert.spv assets/frag.spv
+    | bin/libtxtquad.dylib assets/vert_compat.spv assets/frag.spv
     libs = -L bin -ltxtquad -rpath bin
 build demos.macos: phony bin/demos.macos
 
