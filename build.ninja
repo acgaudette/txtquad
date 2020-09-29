@@ -47,7 +47,7 @@ build lib: phony bin/txtquad.lib
 
 ### EXAMPLES ###
 
-demo = 2
+demo = 1
 
 rule shc
     command = glslc $in -o $out

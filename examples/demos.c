@@ -136,8 +136,8 @@ int main()
 #endif
 	struct Settings settings = {
 		.app_name = "txtquad-demo",
-		.win_size = { 800, 800 },
 		.asset_path = "./assets/",
+		.fullscreen = 1,
 	};
 
 	txtquad_init(settings);

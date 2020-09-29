@@ -15,6 +15,7 @@ struct Extent {
 struct Settings {
 	const char *app_name;
 	const char *asset_path; // .spv and .pbm files are loaded from here
+	int fullscreen; // Note: if fullscreen, win_size is ignored
 	struct Extent win_size;
 };
 
@@ -37,7 +38,7 @@ struct Share {
 struct Char {
 	v3 pos;
 	v4 rot;
-	float scale; // Meters
+	float scale; // ... of one char, regardless of CHAR_WIDTH
 	u8 v;
 	v4 col;
 };
