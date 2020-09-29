@@ -15,8 +15,12 @@ struct Extent {
 struct Settings {
 	const char *app_name;
 	const char *asset_path; // .spv and .pbm files are loaded from here
-	int fullscreen; // Note: if fullscreen, win_size is ignored
-	struct Extent win_size;
+	enum {
+		  MODE_WINDOWED
+		, MODE_FULLSCREEN // Note: unsupported aspect ratios will panic
+		, MODE_BORDERLESS
+	} mode;
+	struct Extent win_size; // Ignored for MODE_BORDERLESS
 };
 
 struct Frame {
