@@ -137,7 +137,8 @@ int main()
 	struct Settings settings = {
 		.app_name = "txtquad-demo",
 		.asset_path = "./assets/",
-		.fullscreen = 1,
+		.win_size = { 800, 600 }, // Ignored
+		.mode = MODE_BORDERLESS,
 	};
 
 	txtquad_init(settings);
