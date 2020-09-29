@@ -235,7 +235,7 @@ static GLFWwindow *mk_win(const char *name, struct Extent *extent)
 	GLFWmonitor *mon = *(mons + mon_ind);
 	const GLFWvidmode *mode = glfwGetVideoMode(mon);
 	const char *mon_name = glfwGetMonitorName(mon);
-	printf("\tUsing \"%s\"\n", mon_name);
+	printf("\tUsing \"%s\" @%dHz\n", mon_name, mode->refreshRate);
 
 	// Render at monitor resolution if fullscreen
 	if (0 == *(u32*)extent) {
