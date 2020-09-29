@@ -211,7 +211,7 @@ static void glfw_mouse_callback(GLFWwindow *win, double x, double y)
 }
 #endif
 
-static GLFWwindow *mk_win(const char *name, struct Extent *extent)
+static GLFWwindow *mk_win(const char *name, int type, struct Extent *extent)
 {
 	if (!glfwInit()) {
 		panic_msg("unable to initialize GLFW");
@@ -235,13 +235,16 @@ static GLFWwindow *mk_win(const char *name, struct Extent *extent)
 	GLFWmonitor *mon = *(mons + mon_ind);
 	const GLFWvidmode *mode = glfwGetVideoMode(mon);
 	const char *mon_name = glfwGetMonitorName(mon);
-	printf("\tUsing \"%s\"\n", mon_name);
+	printf("\tUsing \"%s\" @%dHz\n", mon_name, mode->refreshRate);
 
-	// Render at monitor resolution if fullscreen
+	// Render at monitor resolution if requested
 	if (0 == *(u32*)extent) {
 		extent->w = mode->width;
 		extent->h = mode->height;
-		printf("Creating fullscreen window at current resolution\n");
+		printf("Creating borderless window at monitor resolution\n");
+	} else if (type == MODE_FULLSCREEN) {
+		// Unsupported aspect ratios will panic
+		printf("Creating fullscreen window at requested resolution\n");
 	} else {
 		mon = NULL;
 	}
@@ -1936,15 +1939,20 @@ static void app_free()
 
 void txtquad_init(struct Settings settings)
 {
-	assert(NULL != settings.app_name);
-
-	if (settings.fullscreen) {
-		memset(&settings.win_size, 0, sizeof(struct Extent));
-	} else {
+	switch (settings.mode) {
+	case MODE_WINDOWED:
+	case MODE_FULLSCREEN:
 		assert(settings.win_size.w > 0);
 		assert(settings.win_size.h > 0);
+		break;
+	case MODE_BORDERLESS:
+		memset(&settings.win_size, 0, sizeof(struct Extent));
+		break;
+	default:
+		assert(0);
 	}
 
+	assert(NULL != settings.app_name);
 	size_t len = strlen(settings.asset_path);
 	root_path = malloc(len + 32);
 	assert(root_path);
@@ -1952,7 +1960,7 @@ void txtquad_init(struct Settings settings)
 	strncpy(root_path, settings.asset_path, len + 1);
 	filename = root_path + len;
 
-	app.win = mk_win(settings.app_name, &settings.win_size);
+	app.win = mk_win(settings.app_name, settings.mode, &settings.win_size);
 	app.inst = mk_inst(app.win, settings.app_name);
 	app.surf = mk_surf(app.win, app.inst);
 	app.dev = mk_dev(app.inst, app.surf);
