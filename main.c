@@ -1193,7 +1193,11 @@ static struct GraphicsData mk_graphics(
 
 	/* Shader modules */
 
+#ifdef PLATFORM_COMPAT_VBO
+	strncpy(filename, "vert_compat.spv", 15 + 1);
+#else
 	strncpy(filename, "vert.spv", 8 + 1);
+#endif
 	struct ak_shader vert = ak_shader_mk(dev.log, root_path);
 
 	strncpy(filename, "frag.spv", 8 + 1);
