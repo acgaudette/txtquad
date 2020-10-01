@@ -36,7 +36,8 @@ build so: phony bin/libtxtquad.so
 build bin/libtxtquad.dylib: $
     ld $builddir/main.o $builddir/inp.o
     corelibs = -framework Cocoa -framework IOKit
-    lflags = -undefined dynamic_lookup -shared
+    lflags = -undefined dynamic_lookup -shared $
+             -Wl,-install_name,@rpath/libtxtquad.dylib
 build dylib: phony bin/libtxtquad.dylib
 
 build bin/txtquad.lib: $
