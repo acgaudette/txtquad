@@ -1250,7 +1250,13 @@ static struct GraphicsData mk_graphics(
 			(void**)&verts
 		);
 
-		float raw[] = { 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1 };
+		float raw[] = {
+			0, 1, MIN_BIAS, MIN_BIAS,
+			1, 1, MAX_BIAS, MIN_BIAS,
+			0, 0, MIN_BIAS, MAX_BIAS,
+			1, 0, MAX_BIAS, MAX_BIAS,
+		};
+
 		memcpy(verts, raw, 4 * sizeof(float) * 4);
 	}
 

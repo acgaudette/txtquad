@@ -23,10 +23,10 @@ const vec4 vert[4] = {
 };
 
 const vec2 sq[4] = {
-	  vec2(0, 0)
-	, vec2(1, 0)
-	, vec2(0, 1)
-	, vec2(1, 1)
+	  vec2(MIN_BIAS, MIN_BIAS)
+	, vec2(MAX_BIAS, MIN_BIAS)
+	, vec2(MIN_BIAS, MAX_BIAS)
+	, vec2(MAX_BIAS, MAX_BIAS)
 };
 #endif
 
