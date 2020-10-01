@@ -59,3 +59,6 @@ For now, libtxtquad is built as a static library (.lib) on windows.
 2. ninja lib
 3. ninja demos.exe
 4. bin/demos.exe
+
+Remember to build in a clean shell,
+as microsoft's default settings might clobber the build configuration.
