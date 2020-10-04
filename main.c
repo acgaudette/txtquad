@@ -250,8 +250,7 @@ static GLFWwindow *mk_win(const char *name, int type, struct Extent *extent)
 	printf("Initialized GLFW\n");
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // GLFW Vulkan support
-	glfwWindowHint(GLFW_RESIZABLE,    GLFW_FALSE);
-	glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 	int mon_count;
 	GLFWmonitor **mons = glfwGetMonitors(&mon_count);
