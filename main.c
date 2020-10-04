@@ -499,18 +499,25 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 static struct SwapData mk_swap(
 	struct Extent extent,
 	struct DevData dev,
+	GLFWwindow *win,
 	VkSurfaceKHR surf
 ) {
+	u32 win_w, win_h;
 	VkSurfaceCapabilitiesKHR cap;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev.hard, surf, &cap);
-	printf(
-		"Current extent: %ux%u\n",
-		cap.currentExtent.width,
-		cap.currentExtent.height
-	);
+	{
+		if (cap.currentExtent.width == UINT32_MAX) {
+			int w, h;
+			glfwGetFramebufferSize(win, &w, &h);
+			win_w = w;
+			win_h = h;
+		} else {
+			win_w = cap.currentExtent.width;
+			win_h = cap.currentExtent.height;
+		}
 
-	u32 win_w = cap.currentExtent.width;
-	u32 win_h = cap.currentExtent.height;
+		printf("Current extent: %ux%u\n", win_w, win_h);
+	}
 
 	if (win_w != extent.w || win_h != extent.h) {
 		printf(
@@ -2054,7 +2061,7 @@ void txtquad_init(struct Settings settings)
 	app.inst = mk_inst(settings.app_name);
 	app.surf = mk_surf(app.win, app.inst);
 	app.dev = mk_dev(app.inst, app.surf);
-	app.swap = mk_swap(settings.win_size, app.dev, app.surf);
+	app.swap = mk_swap(settings.win_size, app.dev, app.win, app.surf);
 	app.pool = mk_pool(app.dev);
 	app.font = load_font(app.dev, app.pool);
 
