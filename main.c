@@ -173,11 +173,13 @@ static struct App {
 		struct ak_buf quad;
 #endif
 		VkRenderPass pass;
-		VkImageView *views;
-		VkFramebuffer *fbuffers;
 		VkPipelineLayout layout;
 		VkPipeline pipeline;
 	} graphics;
+	struct FrameData {
+		VkImageView *views;
+		VkFramebuffer *buffers;
+	} frame;
 	struct SyncData {
 		VkFence acquire;
 		VkFence *submit;
@@ -1545,6 +1547,24 @@ static struct GraphicsData mk_graphics(
 	}
 
 	printf("Created graphics pipeline\n");
+	return (struct GraphicsData) {
+		vert,
+		frag,
+#ifdef PLATFORM_COMPAT_VBO
+		quad,
+#endif
+		pass,
+		null_pipe_layout,
+		pipeline,
+	};
+}
+
+static struct FrameData mk_fbuffers(
+	VkDevice dev,
+	struct SwapData swap,
+	VkRenderPass pass
+) {
+	VkResult err;
 
 	VkImageViewCreateInfo view_create_info = {
 	STYPE(IMAGE_VIEW_CREATE_INFO)
@@ -1573,7 +1593,7 @@ static struct GraphicsData mk_graphics(
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		view_create_info.image = swap.img[i];
 		err = vkCreateImageView(
-			dev.log,
+			dev,
 			&view_create_info,
 			NULL,
 			&views[2 * i]
@@ -1608,7 +1628,7 @@ static struct GraphicsData mk_graphics(
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		fbuffer_create_info.pAttachments = views + 2 * i;
 		err = vkCreateFramebuffer(
-			dev.log,
+			dev,
 			&fbuffer_create_info,
 			NULL,
 			&fbuffers[i]
@@ -1620,17 +1640,9 @@ static struct GraphicsData mk_graphics(
 	}
 
 	printf("Created %u framebuffers\n", SWAP_IMG_COUNT);
-	return (struct GraphicsData) {
-		vert,
-		frag,
-#ifdef PLATFORM_COMPAT_VBO
-		quad,
-#endif
-		pass,
+	return (struct FrameData) {
 		views,
 		fbuffers,
-		null_pipe_layout,
-		pipeline,
 	};
 }
 
@@ -1639,6 +1651,7 @@ static VkCommandBuffer *record_graphics(
 	struct SwapData swap,
 	VkDescriptorSet *sets,
 	struct GraphicsData graphics,
+	struct FrameData frame,
 	VkCommandPool pool
 ) {
 	VkCommandBufferAllocateInfo cmd_alloc_info = {
@@ -1683,7 +1696,7 @@ static VkCommandBuffer *record_graphics(
 		VkRenderPassBeginInfo pass_beg_info = {
 		STYPE(RENDER_PASS_BEGIN_INFO)
 			.renderPass = graphics.pass,
-			.framebuffer = graphics.fbuffers[i],
+			.framebuffer = frame.buffers[i],
 			.renderArea = {
 				.offset = { 0, 0 },
 				.extent = { swap.extent.w, swap.extent.h },
@@ -1836,7 +1849,7 @@ static struct SyncData mk_sync(VkDevice dev)
 static void swap_free(
 	VkDevice dev,
 	struct SwapData swap,
-	struct Frame frame,
+	struct FrameData frame,
 	VkCommandPool pool,
 	VkCommandBuffer *cmd
 ) {
@@ -2081,11 +2094,14 @@ void txtquad_init(struct Settings settings)
 	);
 
 	app.graphics = mk_graphics(app.dev, app.swap, app.desc);
+	app.frame = mk_fbuffers(app.dev.log, app.swap, app.graphics.pass);
+
 	app.cmd = record_graphics(
 		app.dev.log,
 		app.swap,
 		app.desc.sets,
 		app.graphics,
+		app.frame,
 		app.pool
 	);
 
