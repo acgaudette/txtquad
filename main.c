@@ -558,15 +558,23 @@ static struct SwapData mk_swap(
 	GLFWwindow *win,
 	VkSurfaceKHR surf
 ) {
+	int fbw, fbh;
+	glfwGetFramebufferSize(win, &fbw, &fbh);
+
+	// Block while iconified
+	while (0 == fbw * fbh) {
+		printf("Minimized...\n");
+		glfwWaitEvents();
+		glfwGetFramebufferSize(win, &fbw, &fbh);
+	}
+
 	u32 win_w, win_h;
 	VkSurfaceCapabilitiesKHR cap;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev.hard, surf, &cap);
 	{
 		if (cap.currentExtent.width == UINT32_MAX) {
-			int w, h;
-			glfwGetFramebufferSize(win, &w, &h);
-			win_w = w;
-			win_h = h;
+			win_w = fbw;
+			win_h = fbh;
 		} else {
 			win_w = cap.currentExtent.width;
 			win_h = cap.currentExtent.height;
@@ -1965,8 +1973,6 @@ static void reswap(
 	VkCommandPool pool,
 	struct ReswapData in
 ) {
-	// TODO: iconify //
-
 	printf("Recreating swapchain\n");
 
 	swap_free(
