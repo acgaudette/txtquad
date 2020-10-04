@@ -1938,7 +1938,13 @@ static void run(
 
 		err = vkQueuePresentKHR(dev.q, &present_info);
 		if (err != VK_SUCCESS) {
-			panic_msg("unable to present");
+			fprintf(
+				stderr,
+				"Error: Unable to present (%d)\n",
+				err
+			);
+
+			panic();
 		}
 	}
 
