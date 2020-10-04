@@ -1833,6 +1833,29 @@ static struct SyncData mk_sync(VkDevice dev)
 	};
 }
 
+static void swap_free(
+	VkDevice dev,
+	struct SwapData swap,
+	struct Frame frame,
+	VkCommandPool pool,
+	VkCommandBuffer *cmd
+) {
+	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
+		vkDestroyImageView(dev, frame.views[2 * i], NULL);
+		vkDestroyFramebuffer(dev, frame.buffers[i], NULL);
+	}
+
+	free(frame.views);
+	free(frame.buffers);
+
+	vkFreeCommandBuffers(dev, pool, SWAP_IMG_COUNT, cmd);
+	free(cmd);
+
+	vkDestroySwapchainKHR(dev, swap.chain, NULL);
+	free(swap.img);
+	ak_img_free(dev, swap.depth);
+}
+
 static int done;
 static void run(
 	GLFWwindow *win,
@@ -1965,6 +1988,7 @@ static void app_free()
 		vkDestroyFence(app.dev.log, app.sync.submit[i], NULL);
 		vkDestroySemaphore(app.dev.log, app.sync.sem[i], NULL);
 	}
+
 	free(app.sync.submit);
 	free(app.sync.sem);
 
@@ -1975,22 +1999,7 @@ static void app_free()
 #endif
 	vkDestroyRenderPass(app.dev.log, app.graphics.pass, NULL);
 
-	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
-		vkDestroyImageView(
-			app.dev.log,
-			app.graphics.views[2 * i],
-			NULL
-		);
-
-		vkDestroyFramebuffer(
-			app.dev.log,
-			app.graphics.fbuffers[i],
-			NULL
-		);
-	}
-	free(app.graphics.views);
-	free(app.graphics.fbuffers);
-
+	swap_free(app.dev.log, app.swap, app.frame, app.pool, app.cmd);
 	vkDestroyPipelineLayout(app.dev.log, app.graphics.layout, NULL);
 	vkDestroyPipeline(app.dev.log, app.graphics.pipeline, NULL);
 
@@ -2001,10 +2010,10 @@ static void app_free()
 			NULL
 		);
 	}
+
 	free(app.desc.layouts);
 	free(app.desc.layouts_exp);
 	free(app.desc.sets);
-
 	vkDestroyDescriptorPool(app.dev.log, app.desc.pool, NULL);
 
 	ak_buf_free(app.dev.log, app.rchar.gpu);
@@ -2014,13 +2023,7 @@ static void app_free()
 	ak_img_free(app.dev.log, app.font.tex);
 	vkDestroySampler(app.dev.log, app.font.sampler, NULL);
 
-	vkFreeCommandBuffers(app.dev.log, app.pool, SWAP_IMG_COUNT, app.cmd);
-	free(app.cmd);
 	vkDestroyCommandPool(app.dev.log, app.pool, NULL);
-
-	vkDestroySwapchainKHR(app.dev.log, app.swap.chain, NULL);
-	free(app.swap.img);
-	ak_img_free(app.dev.log, app.swap.depth);
 
 	vkDestroyDevice(app.dev.log, NULL);
 	free(app.dev.devices);
