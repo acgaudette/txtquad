@@ -281,7 +281,7 @@ static GLFWwindow *mk_win(const char *name, int type, struct Extent *extent)
 	return win;
 }
 
-static VkInstance mk_inst(GLFWwindow *win, const char *name)
+static VkInstance mk_inst(const char *name)
 {
 	VkApplicationInfo app_info = {
 	STYPE(APPLICATION_INFO)
@@ -2045,7 +2045,7 @@ void txtquad_init(struct Settings settings)
 	filename = root_path + len;
 
 	app.win = mk_win(settings.app_name, settings.mode, &settings.win_size);
-	app.inst = mk_inst(app.win, settings.app_name);
+	app.inst = mk_inst(settings.app_name);
 	app.surf = mk_surf(app.win, app.inst);
 	app.dev = mk_dev(app.inst, app.surf);
 	app.swap = mk_swap(settings.win_size, app.dev, app.surf);
