@@ -1869,15 +1869,50 @@ static void swap_free(
 	ak_img_free(dev, swap.depth);
 }
 
+struct ReswapData {
+	struct SwapData *swap;
+	struct FrameData *frame;
+	VkCommandBuffer **cmd;
+};
+
+static void reswap(
+	GLFWwindow *win,
+	VkSurfaceKHR surf,
+	struct DevData dev,
+	struct GraphicsData graphics,
+	VkDescriptorSet *sets,
+	VkCommandPool pool,
+	struct ReswapData in
+) {
+	// TODO: iconify //
+
+	printf("Recreating swapchain\n");
+
+	swap_free(dev.log, *(in.swap), *(in.frame), pool, *(in.cmd));
+	*(in.swap) = mk_swap(in.swap->extent, dev, win, surf);
+	*(in.frame) = mk_fbuffers(dev.log, *(in.swap), graphics.pass);
+	*(in.cmd) = record_graphics(
+		dev.log,
+		*(in.swap),
+		sets,
+		graphics,
+		*(in.frame),
+		pool
+	);
+}
+
 static int done;
 static void run(
 	GLFWwindow *win,
+	VkSurfaceKHR surf,
 	struct DevData dev,
-	struct SwapData swap,
-	VkCommandBuffer *cmd,
+	struct GraphicsData graphics,
+	VkDescriptorSet *sets,
+	VkCommandPool pool,
 	struct SyncData sync,
 	struct BufData share,
-	struct BufData rchar
+	struct BufData rchar,
+	struct ReswapData vol
 ) {
 	printf("Initializing update data...\n");
 	glfwSetTime(0);
@@ -1885,7 +1920,7 @@ static void run(
 	printf("Entering render loop...\n");
 	unsigned int img_i;
 	struct Frame data = {
-		.win_size = swap.extent,
+		.win_size = vol.swap->extent,
 		.i = 0,
 	};
 
@@ -1895,14 +1930,33 @@ static void run(
 	while (!done) {
 		if (glfwWindowShouldClose(win)) break;
 
-		vkAcquireNextImageKHR(
+		err = vkAcquireNextImageKHR(
 			dev.log,
-			swap.chain,
+			vol.swap->chain,
 			UINT64_MAX,
 			NULL,
 			sync.acquire,
 			&img_i
 		);
+
+		switch (err) {
+		case VK_SUCCESS:
+		case VK_SUBOPTIMAL_KHR:
+			break;
+		case VK_ERROR_OUT_OF_DATE_KHR:
+			printf("Swapchain unsuitable for image acquisition\n");
+			vkDeviceWaitIdle(dev.log);
+			reswap(win, surf, dev, graphics, sets, pool, vol);
+			continue;
+		default:
+			fprintf(
+				stderr,
+				"Error: Unable to acquire image (%d)\n",
+				err
+			);
+
+			panic();
+		}
 
 		++data.i;
 		data.t = glfwGetTime();
@@ -1940,13 +1994,14 @@ static void run(
 			.pWaitSemaphores = NULL,
 			.pWaitDstStageMask = NULL,
 			.commandBufferCount = 1,
-			.pCommandBuffers = cmd + img_i,
+			.pCommandBuffers = *vol.cmd + img_i,
 			.signalSemaphoreCount = 1,
 			.pSignalSemaphores = sync.sem + img_i,
 			.pNext = NULL,
 		};
 
 		VkFence fences[2] = { sync.acquire, sync.submit[img_i] };
+
 		vkWaitForFences(dev.log, 2, fences, VK_TRUE, UINT64_MAX);
 		vkResetFences(dev.log, 2, fences);
 
@@ -1973,14 +2028,23 @@ static void run(
 			.waitSemaphoreCount = 1,
 			.pWaitSemaphores = sync.sem + img_i,
 			.swapchainCount = 1,
-			.pSwapchains = &swap.chain,
+			.pSwapchains = &vol.swap->chain,
 			.pImageIndices = &img_i,
 			.pResults = NULL,
 			.pNext = NULL,
 		};
 
 		err = vkQueuePresentKHR(dev.q, &present_info);
-		if (err != VK_SUCCESS) {
+		switch (err) {
+		case VK_SUCCESS:
+			continue;
+		case VK_ERROR_OUT_OF_DATE_KHR:
+		case VK_SUBOPTIMAL_KHR:
+			printf("Swapchain unsuitable for presentation\n");
+			vkDeviceWaitIdle(dev.log);
+			reswap(win, surf, dev, graphics, sets, pool, vol);
+			continue;
+		default:
 			fprintf(
 				stderr,
 				"Error: Unable to present (%d)\n",
@@ -2114,7 +2178,23 @@ void txtquad_start()
 #ifdef DEBUG
 	printf("Text memory usage: %.2f MB\n", (float)sizeof(struct Text) / (1000 * 1000));
 #endif
-	run(app.win, app.dev, app.swap, app.cmd, app.sync, app.share, app.rchar);
+	run(
+		app.win,
+		app.surf,
+		app.dev,
+		app.graphics,
+		app.desc.sets,
+		app.pool,
+		app.sync,
+		app.share,
+		app.rchar,
+		(struct ReswapData) {
+			.swap = &app.swap,
+			.frame = &app.frame,
+			.cmd = &app.cmd,
+		}
+	);
+
 	free(root_path);
 	app_free();
 	printf("Exit success\n");
