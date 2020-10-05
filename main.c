@@ -273,9 +273,19 @@ static GLFWwindow *mk_win(const char *name, int type, struct Extent *extent)
 
 	// Render at monitor resolution if requested
 	if (0 == *(u32*)extent) {
-		extent->w = mode->width;
-		extent->h = mode->height;
-		printf("Creating borderless window at monitor resolution\n");
+		if (exists) {
+			extent->w = mode->width;
+			extent->h = mode->height;
+			printf("Creating borderless window at active resolution\n");
+		} else {
+			// A GLFW bug on high dpi displays.
+			// Will force a swapchain recreation immediately
+			// on attempting to present for the first time.
+			extent->w = native.width;
+			extent->h = native.height;
+			printf("Warning: no valid display mode in use\n");
+			printf("Creating borderless window at native resolution\n");
+		}
 	} else if (type == MODE_FULLSCREEN) {
 		// Unsupported aspect ratios will panic
 		printf("Creating fullscreen window at requested resolution\n");
