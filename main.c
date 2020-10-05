@@ -245,7 +245,31 @@ static GLFWwindow *mk_win(const char *name, int type, struct Extent *extent)
 	GLFWmonitor *mon = *(mons + mon_ind);
 	const GLFWvidmode *mode = glfwGetVideoMode(mon);
 	const char *mon_name = glfwGetMonitorName(mon);
-	printf("\tUsing \"%s\" @%dHz\n", mon_name, mode->refreshRate);
+	printf("\tUsing \"%s\"\n", mon_name);
+
+	int modes_len;
+	const GLFWvidmode *modes = glfwGetVideoModes(mon, &modes_len);
+	assert(modes_len);
+
+	GLFWvidmode native = modes[modes_len - 1];
+	printf("Found %d display modes:\n", modes_len);
+
+	int exists = 0;
+	for (int i = 0; i < modes_len; ++i) {
+		GLFWvidmode m = modes[i];
+		int active = m.width == mode->width
+			&& m.height == mode->height
+			&& m.refreshRate == mode->refreshRate;
+		exists |= active;
+		printf(
+			"\t%s%5d x %5d (%.2f) @%4dHz\n",
+			active ?  "* " : "  ",
+			m.width,
+			m.height,
+			m.width / (float)m.height,
+			m.refreshRate
+		);
+	}
 
 	// Render at monitor resolution if requested
 	if (0 == *(u32*)extent) {
