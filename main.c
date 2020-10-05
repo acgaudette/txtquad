@@ -128,6 +128,24 @@ static void text_update(struct RawChar *buf, struct Frame data)
 	memset(buf + end, 0, clear_size);
 }
 
+struct PipelineTemplate {
+	VkPipelineShaderStageCreateInfo shader_create_infos[2];
+#ifdef PLATFORM_COMPAT_VBO
+	VkVertexInputBindingDescription binding_desc;
+	VkVertexInputAttributeDescription attr_desc[2];
+	VkPipelineVertexInputStateCreateInfo compat_vert_state_create_info;
+#else
+	VkPipelineVertexInputStateCreateInfo null_vert_state_create_info;
+#endif
+	VkPipelineInputAssemblyStateCreateInfo asm_state_create_info;
+	VkPipelineRasterizationStateCreateInfo raster_state_create_info;
+	VkPipelineMultisampleStateCreateInfo null_multi_state_create_info;
+	VkPipelineDepthStencilStateCreateInfo depth_stencil_state_create_info;
+	VkPipelineColorBlendAttachmentState blend_attach;
+	VkPipelineColorBlendStateCreateInfo blend_state_create_info;
+	VkGraphicsPipelineCreateInfo data;
+};
+
 static struct App {
 	GLFWwindow *win;
 	VkInstance inst;
@@ -173,9 +191,12 @@ static struct App {
 		struct ak_buf quad;
 #endif
 		VkRenderPass pass;
-		VkPipelineLayout layout;
-		VkPipeline pipeline;
+		struct PipelineTemplate *template;
 	} graphics;
+	struct PipelineData {
+		VkPipelineLayout layout;
+		VkPipeline line;
+	} pipe;
 	struct FrameData {
 		VkImageView *views;
 		VkFramebuffer *buffers;
@@ -1235,10 +1256,15 @@ static void mk_bindings(
 
 static struct GraphicsData mk_graphics(
 	struct DevData dev,
-	struct SwapData swap,
-	struct DescData desc
+	struct SwapData swap
 ) {
 	VkResult err;
+
+	struct PipelineTemplate *template = malloc(
+		sizeof(struct PipelineTemplate)
+	);
+
+	assert(template);
 
 	/* Shader modules */
 
@@ -1254,9 +1280,7 @@ static struct GraphicsData mk_graphics(
 
 	printf("Created shader modules (2)\n");
 
-	/* Pipeline layout */
-
-	VkPipelineShaderStageCreateInfo vert_stage_create_info = {
+	template->shader_create_infos[0] = (VkPipelineShaderStageCreateInfo) {
 	STYPE(PIPELINE_SHADER_STAGE_CREATE_INFO)
 		.flags = 0,
 		.stage = VK_SHADER_STAGE_VERTEX_BIT,
@@ -1266,7 +1290,7 @@ static struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkPipelineShaderStageCreateInfo frag_stage_create_info = {
+	template->shader_create_infos[1] = (VkPipelineShaderStageCreateInfo) {
 	STYPE(PIPELINE_SHADER_STAGE_CREATE_INFO)
 		.flags = 0,
 		.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -1274,11 +1298,6 @@ static struct GraphicsData mk_graphics(
 		.pName = "main",
 		.pSpecializationInfo = NULL,
 		.pNext = NULL,
-	};
-
-	VkPipelineShaderStageCreateInfo shader_create_infos[2] = {
-		vert_stage_create_info,
-		frag_stage_create_info,
 	};
 
 #ifdef PLATFORM_COMPAT_VBO
@@ -1305,13 +1324,13 @@ static struct GraphicsData mk_graphics(
 		memcpy(verts, raw, 4 * sizeof(float) * 4);
 	}
 
-	VkVertexInputBindingDescription binding_desc = {
+	template->binding_desc = (VkVertexInputBindingDescription) {
 		.binding = 0,
 		.stride = sizeof(float) * 4,
 		.inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
 	};
 
-	VkVertexInputAttributeDescription attr_desc[2] = {
+	template->attr_desc = (VkVertexInputAttributeDescription[2]) {
 		{
 			.binding = 0,
 			.location = 0,
@@ -1325,17 +1344,19 @@ static struct GraphicsData mk_graphics(
 		},
 	};
 
-	VkPipelineVertexInputStateCreateInfo compat_vert_state_create_info = {
+	template->compat_vert_state_create_info
+	= (VkPipelineVertexInputStateCreateInfo) {
 	STYPE(PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
 		.flags = 0,
 		.vertexBindingDescriptionCount = 1,
-		.pVertexBindingDescriptions = &binding_desc,
+		.pVertexBindingDescriptions = &template->binding_desc,
 		.vertexAttributeDescriptionCount = 2,
-		.pVertexAttributeDescriptions = attr_desc,
+		.pVertexAttributeDescriptions = template->attr_desc,
 		.pNext = NULL,
 	};
 #else
-	VkPipelineVertexInputStateCreateInfo null_vert_state_create_info = {
+	template->null_vert_state_create_info
+	= (VkPipelineVertexInputStateCreateInfo) {
 	STYPE(PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
 		.flags = 0,
 		.vertexBindingDescriptionCount = 0,
@@ -1346,7 +1367,8 @@ static struct GraphicsData mk_graphics(
 	};
 #endif
 
-	VkPipelineInputAssemblyStateCreateInfo asm_state_create_info = {
+	template->asm_state_create_info
+	= (VkPipelineInputAssemblyStateCreateInfo) {
 	STYPE(PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO)
 		.flags = 0,
 		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, // Quads
@@ -1354,31 +1376,8 @@ static struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkViewport viewport = {
-		.x = 0.f,
-		.y = 0.f,
-		.width = swap.extent.w,
-		.height = swap.extent.h,
-		.minDepth = 0.f,
-		.maxDepth = 1.f,
-	};
-
-	VkRect2D scissor = {
-		.offset = { 0, 0 },
-		.extent = { swap.extent.w, swap.extent.h },
-	};
-
-	VkPipelineViewportStateCreateInfo viewport_state_create_info = {
-	STYPE(PIPELINE_VIEWPORT_STATE_CREATE_INFO)
-		.flags = 0,
-		.viewportCount = 1,
-		.pViewports = &viewport,
-		.scissorCount = 1,
-		.pScissors = &scissor,
-		.pNext = NULL,
-	};
-
-	VkPipelineRasterizationStateCreateInfo raster_state_create_info = {
+	template->raster_state_create_info
+	= (VkPipelineRasterizationStateCreateInfo) {
 	STYPE(PIPELINE_RASTERIZATION_STATE_CREATE_INFO)
 		.flags = 0,
 		.depthClampEnable = VK_FALSE,
@@ -1394,7 +1393,8 @@ static struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkPipelineMultisampleStateCreateInfo null_multi_state_create_info = {
+	template->null_multi_state_create_info
+	= (VkPipelineMultisampleStateCreateInfo) {
 	STYPE(PIPELINE_MULTISAMPLE_STATE_CREATE_INFO)
 		.flags = 0,
 		.rasterizationSamples = 1,
@@ -1406,7 +1406,8 @@ static struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkPipelineDepthStencilStateCreateInfo depth_stencil_state_create_info = {
+	template->depth_stencil_state_create_info
+	= (VkPipelineDepthStencilStateCreateInfo) {
 	STYPE(PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
 		.flags = 0,
 		.depthTestEnable = VK_TRUE,
@@ -1421,7 +1422,7 @@ static struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkPipelineColorBlendAttachmentState blend_attach = {
+	template->blend_attach = (VkPipelineColorBlendAttachmentState) {
 		.blendEnable = VK_FALSE,
 		.srcColorBlendFactor = 0,
 		.dstColorBlendFactor = 0,
@@ -1435,40 +1436,17 @@ static struct GraphicsData mk_graphics(
 		                | VK_COLOR_COMPONENT_A_BIT,
 	};
 
-	VkPipelineColorBlendStateCreateInfo blend_state_create_info = {
+	template->blend_state_create_info
+	= (VkPipelineColorBlendStateCreateInfo) {
 	STYPE(PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
 		.flags = 0,
 		.logicOpEnable = VK_FALSE,
 		.logicOp = 0,
 		.attachmentCount = 1,
-		.pAttachments = &blend_attach,
+		.pAttachments = &template->blend_attach,
 		.blendConstants = { 0.f, 0.f, 0.f, 0.f },
 		.pNext = NULL,
 	};
-
-	VkPipelineLayoutCreateInfo pipe_layout_create_info = {
-	STYPE(PIPELINE_LAYOUT_CREATE_INFO)
-		.flags = 0,
-		.setLayoutCount = desc.lay_count,
-		.pSetLayouts = desc.layouts,
-		.pushConstantRangeCount = 0,
-		.pPushConstantRanges = NULL,
-		.pNext = NULL,
-	};
-
-	VkPipelineLayout null_pipe_layout;
-	err = vkCreatePipelineLayout(
-		dev.log,
-		&pipe_layout_create_info,
-		NULL,
-		&null_pipe_layout
-	);
-
-	if (err != VK_SUCCESS) {
-		panic_msg("unable to create pipeline layout");
-	}
-
-	printf("Created pipeline layout\n");
 
 	VkAttachmentDescription col_attach = {
 		.format = swap.format,
@@ -1537,25 +1515,25 @@ static struct GraphicsData mk_graphics(
 
 	printf("Created render pass\n");
 
-	VkGraphicsPipelineCreateInfo pipe_create_info = {
+	template->data = (VkGraphicsPipelineCreateInfo) {
 	STYPE(GRAPHICS_PIPELINE_CREATE_INFO)
 		.flags = 0,
 		.stageCount = 2,
-		.pStages = shader_create_infos,
+		.pStages = template->shader_create_infos,
 #ifdef PLATFORM_COMPAT_VBO
-		.pVertexInputState = &compat_vert_state_create_info,
+		.pVertexInputState = &template->compat_vert_state_create_info,
 #else
-		.pVertexInputState = &null_vert_state_create_info,
+		.pVertexInputState = &template->null_vert_state_create_info,
 #endif
-		.pInputAssemblyState = &asm_state_create_info,
+		.pInputAssemblyState = &template->asm_state_create_info,
 		.pTessellationState = NULL,
-		.pViewportState = &viewport_state_create_info,
-		.pRasterizationState = &raster_state_create_info,
-		.pMultisampleState = &null_multi_state_create_info,
-		.pDepthStencilState = &depth_stencil_state_create_info,
-		.pColorBlendState = &blend_state_create_info,
+		/* .pViewportState */
+		.pRasterizationState = &template->raster_state_create_info,
+		.pMultisampleState = &template->null_multi_state_create_info,
+		.pDepthStencilState = &template->depth_stencil_state_create_info,
+		.pColorBlendState = &template->blend_state_create_info,
 		.pDynamicState = NULL,
-		.layout = null_pipe_layout,
+		/* .layout */
 		.renderPass = pass,
 		.subpass = 0,
 		.basePipelineHandle = VK_NULL_HANDLE,
@@ -1563,24 +1541,8 @@ static struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkPipeline pipeline;
-	err = vkCreateGraphicsPipelines(
-		dev.log,
-		VK_NULL_HANDLE,
-		1,
-		&pipe_create_info,
-		NULL,
-		&pipeline
-	);
+	printf("Created pipeline template\n");
 
-	if (err != VK_SUCCESS) {
-		panic_msg(
-			"unable to create "
-			"graphics pipeline"
-		);
-	}
-
-	printf("Created graphics pipeline\n");
 	return (struct GraphicsData) {
 		vert,
 		frag,
@@ -1588,6 +1550,86 @@ static struct GraphicsData mk_graphics(
 		quad,
 #endif
 		pass,
+		template,
+	};
+}
+
+static struct PipelineData mk_pipe(
+	VkDevice dev,
+	struct Extent extent,
+	struct DescData desc,
+	struct PipelineTemplate *template
+) {
+	VkResult err;
+
+	VkViewport viewport = {
+		.x = 0.f,
+		.y = 0.f,
+		.width = extent.w,
+		.height = extent.h,
+		.minDepth = 0.f,
+		.maxDepth = 1.f,
+	};
+
+	VkRect2D scissor = {
+		.offset = { 0, 0 },
+		.extent = { extent.w, extent.h },
+	};
+
+	VkPipelineViewportStateCreateInfo viewport_state_create_info = {
+	STYPE(PIPELINE_VIEWPORT_STATE_CREATE_INFO)
+		.flags = 0,
+		.viewportCount = 1,
+		.pViewports = &viewport,
+		.scissorCount = 1,
+		.pScissors = &scissor,
+		.pNext = NULL,
+	};
+
+	VkPipelineLayoutCreateInfo pipe_layout_create_info = {
+	STYPE(PIPELINE_LAYOUT_CREATE_INFO)
+		.flags = 0,
+		.setLayoutCount = desc.lay_count,
+		.pSetLayouts = desc.layouts,
+		.pushConstantRangeCount = 0,
+		.pPushConstantRanges = NULL,
+		.pNext = NULL,
+	};
+
+	VkPipelineLayout null_pipe_layout;
+	err = vkCreatePipelineLayout(
+		dev,
+		&pipe_layout_create_info,
+		NULL,
+		&null_pipe_layout
+	);
+
+	if (err != VK_SUCCESS) {
+		panic_msg("unable to create pipeline layout");
+	}
+
+	printf("Created pipeline layout\n");
+
+	// Fill template
+	template->data.pViewportState = &viewport_state_create_info;
+	template->data.layout = null_pipe_layout;
+
+	VkPipeline pipeline;
+	err = vkCreateGraphicsPipelines(
+		dev,
+		VK_NULL_HANDLE,
+		1,
+		&template->data,
+		NULL,
+		&pipeline
+	);
+
+	if (err != VK_SUCCESS) {
+		panic_msg("unable to create graphics pipeline");
+	}
+
+	printf("Created graphics pipeline\n");
+	return (struct PipelineData) {
 		null_pipe_layout,
 		pipeline,
 	};
@@ -1685,6 +1727,7 @@ static VkCommandBuffer *record_graphics(
 	struct SwapData swap,
 	VkDescriptorSet *sets,
 	struct GraphicsData graphics,
+	struct PipelineData pipe,
 	struct FrameData frame,
 	VkCommandPool pool
 ) {
@@ -1749,7 +1792,7 @@ static VkCommandBuffer *record_graphics(
 		vkCmdBindPipeline(
 			cmd[i],
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			graphics.pipeline
+			pipe.line
 		);
 
 #ifdef PLATFORM_COMPAT_VBO
@@ -1766,7 +1809,7 @@ static VkCommandBuffer *record_graphics(
 		vkCmdBindDescriptorSets(
 			cmd[i],
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			graphics.layout,
+			pipe.layout,
 			0,
 			3,
 			frame_sets,
@@ -1883,10 +1926,14 @@ static struct SyncData mk_sync(VkDevice dev)
 static void swap_free(
 	VkDevice dev,
 	struct SwapData swap,
+	struct PipelineData pipe,
 	struct FrameData frame,
 	VkCommandPool pool,
 	VkCommandBuffer *cmd
 ) {
+	vkFreeCommandBuffers(dev, pool, SWAP_IMG_COUNT, cmd);
+	free(cmd);
+
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		vkDestroyImageView(dev, frame.views[2 * i], NULL);
 		vkDestroyFramebuffer(dev, frame.buffers[i], NULL);
@@ -1895,8 +1942,8 @@ static void swap_free(
 	free(frame.views);
 	free(frame.buffers);
 
-	vkFreeCommandBuffers(dev, pool, SWAP_IMG_COUNT, cmd);
-	free(cmd);
+	vkDestroyPipelineLayout(dev, pipe.layout, NULL);
+	vkDestroyPipeline(dev, pipe.line, NULL);
 
 	vkDestroySwapchainKHR(dev, swap.chain, NULL);
 	free(swap.img);
@@ -1905,6 +1952,7 @@ static void swap_free(
 
 struct ReswapData {
 	struct SwapData *swap;
+	struct PipelineData *pipe;
 	struct FrameData *frame;
 	VkCommandBuffer **cmd;
 };
@@ -1914,7 +1962,7 @@ static void reswap(
 	VkSurfaceKHR surf,
 	struct DevData dev,
 	struct GraphicsData graphics,
-	VkDescriptorSet *sets,
+	struct DescData desc,
 	VkCommandPool pool,
 	struct ReswapData in
 ) {
@@ -1922,14 +1970,24 @@ static void reswap(
 
 	printf("Recreating swapchain\n");
 
-	swap_free(dev.log, *(in.swap), *(in.frame), pool, *(in.cmd));
+	swap_free(
+		dev.log,
+		*(in.swap),
+		*(in.pipe),
+		*(in.frame),
+		pool,
+		*(in.cmd)
+	);
+
 	*(in.swap) = mk_swap(in.swap->extent, dev, win, surf);
+	*(in.pipe) = mk_pipe(dev.log, in.swap->extent, desc, graphics.template);
 	*(in.frame) = mk_fbuffers(dev.log, *(in.swap), graphics.pass);
 	*(in.cmd) = record_graphics(
 		dev.log,
 		*(in.swap),
-		sets,
+		desc.sets,
 		graphics,
+		*(in.pipe),
 		*(in.frame),
 		pool
 	);
@@ -1941,7 +1999,7 @@ static void run(
 	VkSurfaceKHR surf,
 	struct DevData dev,
 	struct GraphicsData graphics,
-	VkDescriptorSet *sets,
+	struct DescData desc,
 	VkCommandPool pool,
 	struct SyncData sync,
 	struct BufData share,
@@ -1980,7 +2038,7 @@ static void run(
 		case VK_ERROR_OUT_OF_DATE_KHR:
 			printf("Swapchain unsuitable for image acquisition\n");
 			vkDeviceWaitIdle(dev.log);
-			reswap(win, surf, dev, graphics, sets, pool, vol);
+			reswap(win, surf, dev, graphics, desc, pool, vol);
 			continue;
 		default:
 			fprintf(
@@ -2076,7 +2134,7 @@ static void run(
 		case VK_SUBOPTIMAL_KHR:
 			printf("Swapchain unsuitable for presentation\n");
 			vkDeviceWaitIdle(dev.log);
-			reswap(win, surf, dev, graphics, sets, pool, vol);
+			reswap(win, surf, dev, graphics, desc, pool, vol);
 			continue;
 		default:
 			fprintf(
@@ -2103,16 +2161,16 @@ static void app_free()
 	free(app.sync.submit);
 	free(app.sync.sem);
 
+	swap_free(app.dev.log, app.swap, app.pipe, app.frame, app.pool, app.cmd);
+	vkDestroyCommandPool(app.dev.log, app.pool, NULL);
+
+	vkDestroyRenderPass(app.dev.log, app.graphics.pass, NULL);
 	ak_shader_free(app.dev.log, app.graphics.vert);
 	ak_shader_free(app.dev.log, app.graphics.frag);
 #ifdef PLATFORM_COMPAT_VBO
 	ak_buf_free(app.dev.log, app.graphics.quad);
 #endif
-	vkDestroyRenderPass(app.dev.log, app.graphics.pass, NULL);
-
-	swap_free(app.dev.log, app.swap, app.frame, app.pool, app.cmd);
-	vkDestroyPipelineLayout(app.dev.log, app.graphics.layout, NULL);
-	vkDestroyPipeline(app.dev.log, app.graphics.pipeline, NULL);
+	free(app.graphics.template);
 
 	for (size_t i = 0; i < app.desc.lay_count; ++i) {
 		vkDestroyDescriptorSetLayout(
@@ -2133,8 +2191,6 @@ static void app_free()
 	// Font
 	ak_img_free(app.dev.log, app.font.tex);
 	vkDestroySampler(app.dev.log, app.font.sampler, NULL);
-
-	vkDestroyCommandPool(app.dev.log, app.pool, NULL);
 
 	vkDestroyDevice(app.dev.log, NULL);
 	free(app.dev.devices);
@@ -2191,14 +2247,21 @@ void txtquad_init(struct Settings settings)
 		app.rchar
 	);
 
-	app.graphics = mk_graphics(app.dev, app.swap, app.desc);
-	app.frame = mk_fbuffers(app.dev.log, app.swap, app.graphics.pass);
+	app.graphics = mk_graphics(app.dev, app.swap);
+	app.pipe = mk_pipe(
+		app.dev.log,
+		app.swap.extent,
+		app.desc,
+		app.graphics.template
+	);
 
+	app.frame = mk_fbuffers(app.dev.log, app.swap, app.graphics.pass);
 	app.cmd = record_graphics(
 		app.dev.log,
 		app.swap,
 		app.desc.sets,
 		app.graphics,
+		app.pipe,
 		app.frame,
 		app.pool
 	);
@@ -2217,13 +2280,14 @@ void txtquad_start()
 		app.surf,
 		app.dev,
 		app.graphics,
-		app.desc.sets,
+		app.desc,
 		app.pool,
 		app.sync,
 		app.share,
 		app.rchar,
 		(struct ReswapData) {
 			.swap = &app.swap,
+			.pipe = &app.pipe,
 			.frame = &app.frame,
 			.cmd = &app.cmd,
 		}
