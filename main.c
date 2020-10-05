@@ -128,6 +128,24 @@ static void text_update(struct RawChar *buf, struct Frame data)
 	memset(buf + end, 0, clear_size);
 }
 
+struct PipelineTemplate {
+	VkPipelineShaderStageCreateInfo shader_create_infos[2];
+#ifdef PLATFORM_COMPAT_VBO
+	VkVertexInputBindingDescription binding_desc;
+	VkVertexInputAttributeDescription attr_desc[2];
+	VkPipelineVertexInputStateCreateInfo compat_vert_state_create_info;
+#else
+	VkPipelineVertexInputStateCreateInfo null_vert_state_create_info;
+#endif
+	VkPipelineInputAssemblyStateCreateInfo asm_state_create_info;
+	VkPipelineRasterizationStateCreateInfo raster_state_create_info;
+	VkPipelineMultisampleStateCreateInfo null_multi_state_create_info;
+	VkPipelineDepthStencilStateCreateInfo depth_stencil_state_create_info;
+	VkPipelineColorBlendAttachmentState blend_attach;
+	VkPipelineColorBlendStateCreateInfo blend_state_create_info;
+	VkGraphicsPipelineCreateInfo data;
+};
+
 static struct App {
 	GLFWwindow *win;
 	VkInstance inst;
@@ -173,11 +191,16 @@ static struct App {
 		struct ak_buf quad;
 #endif
 		VkRenderPass pass;
-		VkImageView *views;
-		VkFramebuffer *fbuffers;
-		VkPipelineLayout layout;
-		VkPipeline pipeline;
+		struct PipelineTemplate *template;
 	} graphics;
+	struct PipelineData {
+		VkPipelineLayout layout;
+		VkPipeline line;
+	} pipe;
+	struct FrameData {
+		VkImageView *views;
+		VkFramebuffer *buffers;
+	} frame;
 	struct SyncData {
 		VkFence acquire;
 		VkFence *submit;
@@ -243,13 +266,47 @@ static GLFWwindow *mk_win(const char *name, int type, struct Extent *extent)
 	GLFWmonitor *mon = *(mons + mon_ind);
 	const GLFWvidmode *mode = glfwGetVideoMode(mon);
 	const char *mon_name = glfwGetMonitorName(mon);
-	printf("\tUsing \"%s\" @%dHz\n", mon_name, mode->refreshRate);
+	printf("\tUsing \"%s\"\n", mon_name);
+
+	int modes_len;
+	const GLFWvidmode *modes = glfwGetVideoModes(mon, &modes_len);
+	assert(modes_len);
+
+	GLFWvidmode native = modes[modes_len - 1];
+	printf("Found %d display modes:\n", modes_len);
+
+	int exists = 0;
+	for (int i = 0; i < modes_len; ++i) {
+		GLFWvidmode m = modes[i];
+		int active = m.width == mode->width
+			&& m.height == mode->height
+			&& m.refreshRate == mode->refreshRate;
+		exists |= active;
+		printf(
+			"\t%s%5d x %5d (%.2f) @%4dHz\n",
+			active ?  "* " : "  ",
+			m.width,
+			m.height,
+			m.width / (float)m.height,
+			m.refreshRate
+		);
+	}
 
 	// Render at monitor resolution if requested
 	if (0 == *(u32*)extent) {
-		extent->w = mode->width;
-		extent->h = mode->height;
-		printf("Creating borderless window at monitor resolution\n");
+		if (exists) {
+			extent->w = mode->width;
+			extent->h = mode->height;
+			printf("Creating borderless window at active resolution\n");
+		} else {
+			// A GLFW bug on high dpi displays.
+			// Will force a swapchain recreation immediately
+			// on attempting to present for the first time.
+			extent->w = native.width;
+			extent->h = native.height;
+			printf("Warning: no valid display mode in use\n");
+			printf("Creating borderless window at native resolution\n");
+		}
 	} else if (type == MODE_FULLSCREEN) {
 		// Unsupported aspect ratios will panic
 		printf("Creating fullscreen window at requested resolution\n");
@@ -281,7 +338,7 @@ static GLFWwindow *mk_win(const char *name, int type, struct Extent *extent)
 	return win;
 }
 
-static VkInstance mk_inst(GLFWwindow *win, const char *name)
+static VkInstance mk_inst(const char *name)
 {
 	VkApplicationInfo app_info = {
 	STYPE(APPLICATION_INFO)
@@ -499,18 +556,25 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 static struct SwapData mk_swap(
 	struct Extent extent,
 	struct DevData dev,
+	GLFWwindow *win,
 	VkSurfaceKHR surf
 ) {
+	u32 win_w, win_h;
 	VkSurfaceCapabilitiesKHR cap;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev.hard, surf, &cap);
-	printf(
-		"Current extent: %ux%u\n",
-		cap.currentExtent.width,
-		cap.currentExtent.height
-	);
+	{
+		if (cap.currentExtent.width == UINT32_MAX) {
+			int w, h;
+			glfwGetFramebufferSize(win, &w, &h);
+			win_w = w;
+			win_h = h;
+		} else {
+			win_w = cap.currentExtent.width;
+			win_h = cap.currentExtent.height;
+		}
 
-	u32 win_w = cap.currentExtent.width;
-	u32 win_h = cap.currentExtent.height;
+		printf("Current extent: %ux%u\n", win_w, win_h);
+	}
 
 	if (win_w != extent.w || win_h != extent.h) {
 		printf(
@@ -1192,10 +1256,15 @@ static void mk_bindings(
 
 static struct GraphicsData mk_graphics(
 	struct DevData dev,
-	struct SwapData swap,
-	struct DescData desc
+	struct SwapData swap
 ) {
 	VkResult err;
+
+	struct PipelineTemplate *template = malloc(
+		sizeof(struct PipelineTemplate)
+	);
+
+	assert(template);
 
 	/* Shader modules */
 
@@ -1211,9 +1280,7 @@ static struct GraphicsData mk_graphics(
 
 	printf("Created shader modules (2)\n");
 
-	/* Pipeline layout */
-
-	VkPipelineShaderStageCreateInfo vert_stage_create_info = {
+	template->shader_create_infos[0] = (VkPipelineShaderStageCreateInfo) {
 	STYPE(PIPELINE_SHADER_STAGE_CREATE_INFO)
 		.flags = 0,
 		.stage = VK_SHADER_STAGE_VERTEX_BIT,
@@ -1223,7 +1290,7 @@ static struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkPipelineShaderStageCreateInfo frag_stage_create_info = {
+	template->shader_create_infos[1] = (VkPipelineShaderStageCreateInfo) {
 	STYPE(PIPELINE_SHADER_STAGE_CREATE_INFO)
 		.flags = 0,
 		.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -1231,11 +1298,6 @@ static struct GraphicsData mk_graphics(
 		.pName = "main",
 		.pSpecializationInfo = NULL,
 		.pNext = NULL,
-	};
-
-	VkPipelineShaderStageCreateInfo shader_create_infos[2] = {
-		vert_stage_create_info,
-		frag_stage_create_info,
 	};
 
 #ifdef PLATFORM_COMPAT_VBO
@@ -1262,37 +1324,39 @@ static struct GraphicsData mk_graphics(
 		memcpy(verts, raw, 4 * sizeof(float) * 4);
 	}
 
-	VkVertexInputBindingDescription binding_desc = {
+	template->binding_desc = (VkVertexInputBindingDescription) {
 		.binding = 0,
 		.stride = sizeof(float) * 4,
 		.inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
 	};
 
-	VkVertexInputAttributeDescription attr_desc[2] = {
-		{
-			.binding = 0,
-			.location = 0,
-			.format = VK_FORMAT_R32G32_SFLOAT,
-			.offset = 0,
-		}, {
-			.binding = 0,
-			.location = 1,
-			.format = VK_FORMAT_R32G32_SFLOAT,
-			.offset = sizeof(float) * 2,
-		},
+	template->attr_desc[0] = (VkVertexInputAttributeDescription) {
+		.binding = 0,
+		.location = 0,
+		.format = VK_FORMAT_R32G32_SFLOAT,
+		.offset = 0,
 	};
 
-	VkPipelineVertexInputStateCreateInfo compat_vert_state_create_info = {
+	template->attr_desc[1] = (VkVertexInputAttributeDescription) {
+		.binding = 0,
+		.location = 1,
+		.format = VK_FORMAT_R32G32_SFLOAT,
+		.offset = sizeof(float) * 2,
+	};
+
+	template->compat_vert_state_create_info
+	= (VkPipelineVertexInputStateCreateInfo) {
 	STYPE(PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
 		.flags = 0,
 		.vertexBindingDescriptionCount = 1,
-		.pVertexBindingDescriptions = &binding_desc,
+		.pVertexBindingDescriptions = &template->binding_desc,
 		.vertexAttributeDescriptionCount = 2,
-		.pVertexAttributeDescriptions = attr_desc,
+		.pVertexAttributeDescriptions = template->attr_desc,
 		.pNext = NULL,
 	};
 #else
-	VkPipelineVertexInputStateCreateInfo null_vert_state_create_info = {
+	template->null_vert_state_create_info
+	= (VkPipelineVertexInputStateCreateInfo) {
 	STYPE(PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
 		.flags = 0,
 		.vertexBindingDescriptionCount = 0,
@@ -1303,7 +1367,8 @@ static struct GraphicsData mk_graphics(
 	};
 #endif
 
-	VkPipelineInputAssemblyStateCreateInfo asm_state_create_info = {
+	template->asm_state_create_info
+	= (VkPipelineInputAssemblyStateCreateInfo) {
 	STYPE(PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO)
 		.flags = 0,
 		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, // Quads
@@ -1311,31 +1376,8 @@ static struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkViewport viewport = {
-		.x = 0.f,
-		.y = 0.f,
-		.width = swap.extent.w,
-		.height = swap.extent.h,
-		.minDepth = 0.f,
-		.maxDepth = 1.f,
-	};
-
-	VkRect2D scissor = {
-		.offset = { 0, 0 },
-		.extent = { swap.extent.w, swap.extent.h },
-	};
-
-	VkPipelineViewportStateCreateInfo viewport_state_create_info = {
-	STYPE(PIPELINE_VIEWPORT_STATE_CREATE_INFO)
-		.flags = 0,
-		.viewportCount = 1,
-		.pViewports = &viewport,
-		.scissorCount = 1,
-		.pScissors = &scissor,
-		.pNext = NULL,
-	};
-
-	VkPipelineRasterizationStateCreateInfo raster_state_create_info = {
+	template->raster_state_create_info
+	= (VkPipelineRasterizationStateCreateInfo) {
 	STYPE(PIPELINE_RASTERIZATION_STATE_CREATE_INFO)
 		.flags = 0,
 		.depthClampEnable = VK_FALSE,
@@ -1351,7 +1393,8 @@ static struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkPipelineMultisampleStateCreateInfo null_multi_state_create_info = {
+	template->null_multi_state_create_info
+	= (VkPipelineMultisampleStateCreateInfo) {
 	STYPE(PIPELINE_MULTISAMPLE_STATE_CREATE_INFO)
 		.flags = 0,
 		.rasterizationSamples = 1,
@@ -1363,7 +1406,8 @@ static struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkPipelineDepthStencilStateCreateInfo depth_stencil_state_create_info = {
+	template->depth_stencil_state_create_info
+	= (VkPipelineDepthStencilStateCreateInfo) {
 	STYPE(PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
 		.flags = 0,
 		.depthTestEnable = VK_TRUE,
@@ -1378,7 +1422,7 @@ static struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkPipelineColorBlendAttachmentState blend_attach = {
+	template->blend_attach = (VkPipelineColorBlendAttachmentState) {
 		.blendEnable = VK_FALSE,
 		.srcColorBlendFactor = 0,
 		.dstColorBlendFactor = 0,
@@ -1392,40 +1436,17 @@ static struct GraphicsData mk_graphics(
 		                | VK_COLOR_COMPONENT_A_BIT,
 	};
 
-	VkPipelineColorBlendStateCreateInfo blend_state_create_info = {
+	template->blend_state_create_info
+	= (VkPipelineColorBlendStateCreateInfo) {
 	STYPE(PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
 		.flags = 0,
 		.logicOpEnable = VK_FALSE,
 		.logicOp = 0,
 		.attachmentCount = 1,
-		.pAttachments = &blend_attach,
+		.pAttachments = &template->blend_attach,
 		.blendConstants = { 0.f, 0.f, 0.f, 0.f },
 		.pNext = NULL,
 	};
-
-	VkPipelineLayoutCreateInfo pipe_layout_create_info = {
-	STYPE(PIPELINE_LAYOUT_CREATE_INFO)
-		.flags = 0,
-		.setLayoutCount = desc.lay_count,
-		.pSetLayouts = desc.layouts,
-		.pushConstantRangeCount = 0,
-		.pPushConstantRanges = NULL,
-		.pNext = NULL,
-	};
-
-	VkPipelineLayout null_pipe_layout;
-	err = vkCreatePipelineLayout(
-		dev.log,
-		&pipe_layout_create_info,
-		NULL,
-		&null_pipe_layout
-	);
-
-	if (err != VK_SUCCESS) {
-		panic_msg("unable to create pipeline layout");
-	}
-
-	printf("Created pipeline layout\n");
 
 	VkAttachmentDescription col_attach = {
 		.format = swap.format,
@@ -1494,25 +1515,25 @@ static struct GraphicsData mk_graphics(
 
 	printf("Created render pass\n");
 
-	VkGraphicsPipelineCreateInfo pipe_create_info = {
+	template->data = (VkGraphicsPipelineCreateInfo) {
 	STYPE(GRAPHICS_PIPELINE_CREATE_INFO)
 		.flags = 0,
 		.stageCount = 2,
-		.pStages = shader_create_infos,
+		.pStages = template->shader_create_infos,
 #ifdef PLATFORM_COMPAT_VBO
-		.pVertexInputState = &compat_vert_state_create_info,
+		.pVertexInputState = &template->compat_vert_state_create_info,
 #else
-		.pVertexInputState = &null_vert_state_create_info,
+		.pVertexInputState = &template->null_vert_state_create_info,
 #endif
-		.pInputAssemblyState = &asm_state_create_info,
+		.pInputAssemblyState = &template->asm_state_create_info,
 		.pTessellationState = NULL,
-		.pViewportState = &viewport_state_create_info,
-		.pRasterizationState = &raster_state_create_info,
-		.pMultisampleState = &null_multi_state_create_info,
-		.pDepthStencilState = &depth_stencil_state_create_info,
-		.pColorBlendState = &blend_state_create_info,
+		/* .pViewportState */
+		.pRasterizationState = &template->raster_state_create_info,
+		.pMultisampleState = &template->null_multi_state_create_info,
+		.pDepthStencilState = &template->depth_stencil_state_create_info,
+		.pColorBlendState = &template->blend_state_create_info,
 		.pDynamicState = NULL,
-		.layout = null_pipe_layout,
+		/* .layout */
 		.renderPass = pass,
 		.subpass = 0,
 		.basePipelineHandle = VK_NULL_HANDLE,
@@ -1520,24 +1541,106 @@ static struct GraphicsData mk_graphics(
 		.pNext = NULL,
 	};
 
+	printf("Created pipeline template\n");
+
+	return (struct GraphicsData) {
+		vert,
+		frag,
+#ifdef PLATFORM_COMPAT_VBO
+		quad,
+#endif
+		pass,
+		template,
+	};
+}
+
+static struct PipelineData mk_pipe(
+	VkDevice dev,
+	struct Extent extent,
+	struct DescData desc,
+	struct PipelineTemplate *template
+) {
+	VkResult err;
+
+	VkViewport viewport = {
+		.x = 0.f,
+		.y = 0.f,
+		.width = extent.w,
+		.height = extent.h,
+		.minDepth = 0.f,
+		.maxDepth = 1.f,
+	};
+
+	VkRect2D scissor = {
+		.offset = { 0, 0 },
+		.extent = { extent.w, extent.h },
+	};
+
+	VkPipelineViewportStateCreateInfo viewport_state_create_info = {
+	STYPE(PIPELINE_VIEWPORT_STATE_CREATE_INFO)
+		.flags = 0,
+		.viewportCount = 1,
+		.pViewports = &viewport,
+		.scissorCount = 1,
+		.pScissors = &scissor,
+		.pNext = NULL,
+	};
+
+	VkPipelineLayoutCreateInfo pipe_layout_create_info = {
+	STYPE(PIPELINE_LAYOUT_CREATE_INFO)
+		.flags = 0,
+		.setLayoutCount = desc.lay_count,
+		.pSetLayouts = desc.layouts,
+		.pushConstantRangeCount = 0,
+		.pPushConstantRanges = NULL,
+		.pNext = NULL,
+	};
+
+	VkPipelineLayout null_pipe_layout;
+	err = vkCreatePipelineLayout(
+		dev,
+		&pipe_layout_create_info,
+		NULL,
+		&null_pipe_layout
+	);
+
+	if (err != VK_SUCCESS) {
+		panic_msg("unable to create pipeline layout");
+	}
+
+	printf("Created pipeline layout\n");
+
+	// Fill template
+	template->data.pViewportState = &viewport_state_create_info;
+	template->data.layout = null_pipe_layout;
+
 	VkPipeline pipeline;
 	err = vkCreateGraphicsPipelines(
-		dev.log,
+		dev,
 		VK_NULL_HANDLE,
 		1,
-		&pipe_create_info,
+		&template->data,
 		NULL,
 		&pipeline
 	);
 
 	if (err != VK_SUCCESS) {
-		panic_msg(
-			"unable to create "
-			"graphics pipeline"
-		);
+		panic_msg("unable to create graphics pipeline");
 	}
 
 	printf("Created graphics pipeline\n");
+	return (struct PipelineData) {
+		null_pipe_layout,
+		pipeline,
+	};
+}
+
+static struct FrameData mk_fbuffers(
+	VkDevice dev,
+	struct SwapData swap,
+	VkRenderPass pass
+) {
+	VkResult err;
 
 	VkImageViewCreateInfo view_create_info = {
 	STYPE(IMAGE_VIEW_CREATE_INFO)
@@ -1566,7 +1669,7 @@ static struct GraphicsData mk_graphics(
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		view_create_info.image = swap.img[i];
 		err = vkCreateImageView(
-			dev.log,
+			dev,
 			&view_create_info,
 			NULL,
 			&views[2 * i]
@@ -1601,7 +1704,7 @@ static struct GraphicsData mk_graphics(
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
 		fbuffer_create_info.pAttachments = views + 2 * i;
 		err = vkCreateFramebuffer(
-			dev.log,
+			dev,
 			&fbuffer_create_info,
 			NULL,
 			&fbuffers[i]
@@ -1613,17 +1716,9 @@ static struct GraphicsData mk_graphics(
 	}
 
 	printf("Created %u framebuffers\n", SWAP_IMG_COUNT);
-	return (struct GraphicsData) {
-		vert,
-		frag,
-#ifdef PLATFORM_COMPAT_VBO
-		quad,
-#endif
-		pass,
+	return (struct FrameData) {
 		views,
 		fbuffers,
-		null_pipe_layout,
-		pipeline,
 	};
 }
 
@@ -1632,6 +1727,8 @@ static VkCommandBuffer *record_graphics(
 	struct SwapData swap,
 	VkDescriptorSet *sets,
 	struct GraphicsData graphics,
+	struct PipelineData pipe,
+	struct FrameData frame,
 	VkCommandPool pool
 ) {
 	VkCommandBufferAllocateInfo cmd_alloc_info = {
@@ -1676,7 +1773,7 @@ static VkCommandBuffer *record_graphics(
 		VkRenderPassBeginInfo pass_beg_info = {
 		STYPE(RENDER_PASS_BEGIN_INFO)
 			.renderPass = graphics.pass,
-			.framebuffer = graphics.fbuffers[i],
+			.framebuffer = frame.buffers[i],
 			.renderArea = {
 				.offset = { 0, 0 },
 				.extent = { swap.extent.w, swap.extent.h },
@@ -1695,7 +1792,7 @@ static VkCommandBuffer *record_graphics(
 		vkCmdBindPipeline(
 			cmd[i],
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			graphics.pipeline
+			pipe.line
 		);
 
 #ifdef PLATFORM_COMPAT_VBO
@@ -1712,7 +1809,7 @@ static VkCommandBuffer *record_graphics(
 		vkCmdBindDescriptorSets(
 			cmd[i],
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			graphics.layout,
+			pipe.layout,
 			0,
 			3,
 			frame_sets,
@@ -1826,15 +1923,88 @@ static struct SyncData mk_sync(VkDevice dev)
 	};
 }
 
+static void swap_free(
+	VkDevice dev,
+	struct SwapData swap,
+	struct PipelineData pipe,
+	struct FrameData frame,
+	VkCommandPool pool,
+	VkCommandBuffer *cmd
+) {
+	vkFreeCommandBuffers(dev, pool, SWAP_IMG_COUNT, cmd);
+	free(cmd);
+
+	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
+		vkDestroyImageView(dev, frame.views[2 * i], NULL);
+		vkDestroyFramebuffer(dev, frame.buffers[i], NULL);
+	}
+
+	free(frame.views);
+	free(frame.buffers);
+
+	vkDestroyPipelineLayout(dev, pipe.layout, NULL);
+	vkDestroyPipeline(dev, pipe.line, NULL);
+
+	vkDestroySwapchainKHR(dev, swap.chain, NULL);
+	free(swap.img);
+	ak_img_free(dev, swap.depth);
+}
+
+struct ReswapData {
+	struct SwapData *swap;
+	struct PipelineData *pipe;
+	struct FrameData *frame;
+	VkCommandBuffer **cmd;
+};
+
+static void reswap(
+	GLFWwindow *win,
+	VkSurfaceKHR surf,
+	struct DevData dev,
+	struct GraphicsData graphics,
+	struct DescData desc,
+	VkCommandPool pool,
+	struct ReswapData in
+) {
+	// TODO: iconify //
+
+	printf("Recreating swapchain\n");
+
+	swap_free(
+		dev.log,
+		*(in.swap),
+		*(in.pipe),
+		*(in.frame),
+		pool,
+		*(in.cmd)
+	);
+
+	*(in.swap) = mk_swap(in.swap->extent, dev, win, surf);
+	*(in.pipe) = mk_pipe(dev.log, in.swap->extent, desc, graphics.template);
+	*(in.frame) = mk_fbuffers(dev.log, *(in.swap), graphics.pass);
+	*(in.cmd) = record_graphics(
+		dev.log,
+		*(in.swap),
+		desc.sets,
+		graphics,
+		*(in.pipe),
+		*(in.frame),
+		pool
+	);
+}
+
 static int done;
 static void run(
 	GLFWwindow *win,
+	VkSurfaceKHR surf,
 	struct DevData dev,
-	struct SwapData swap,
-	VkCommandBuffer *cmd,
+	struct GraphicsData graphics,
+	struct DescData desc,
+	VkCommandPool pool,
 	struct SyncData sync,
 	struct BufData share,
-	struct BufData rchar
+	struct BufData rchar,
+	struct ReswapData vol
 ) {
 	printf("Initializing update data...\n");
 	glfwSetTime(0);
@@ -1842,7 +2012,7 @@ static void run(
 	printf("Entering render loop...\n");
 	unsigned int img_i;
 	struct Frame data = {
-		.win_size = swap.extent,
+		.win_size = vol.swap->extent,
 		.i = 0,
 	};
 
@@ -1852,14 +2022,33 @@ static void run(
 	while (!done) {
 		if (glfwWindowShouldClose(win)) break;
 
-		vkAcquireNextImageKHR(
+		err = vkAcquireNextImageKHR(
 			dev.log,
-			swap.chain,
+			vol.swap->chain,
 			UINT64_MAX,
 			NULL,
 			sync.acquire,
 			&img_i
 		);
+
+		switch (err) {
+		case VK_SUCCESS:
+		case VK_SUBOPTIMAL_KHR:
+			break;
+		case VK_ERROR_OUT_OF_DATE_KHR:
+			printf("Swapchain unsuitable for image acquisition\n");
+			vkDeviceWaitIdle(dev.log);
+			reswap(win, surf, dev, graphics, desc, pool, vol);
+			continue;
+		default:
+			fprintf(
+				stderr,
+				"Error: Unable to acquire image (%d)\n",
+				err
+			);
+
+			panic();
+		}
 
 		++data.i;
 		data.t = glfwGetTime();
@@ -1897,13 +2086,14 @@ static void run(
 			.pWaitSemaphores = NULL,
 			.pWaitDstStageMask = NULL,
 			.commandBufferCount = 1,
-			.pCommandBuffers = cmd + img_i,
+			.pCommandBuffers = *vol.cmd + img_i,
 			.signalSemaphoreCount = 1,
 			.pSignalSemaphores = sync.sem + img_i,
 			.pNext = NULL,
 		};
 
 		VkFence fences[2] = { sync.acquire, sync.submit[img_i] };
+
 		vkWaitForFences(dev.log, 2, fences, VK_TRUE, UINT64_MAX);
 		vkResetFences(dev.log, 2, fences);
 
@@ -1930,15 +2120,30 @@ static void run(
 			.waitSemaphoreCount = 1,
 			.pWaitSemaphores = sync.sem + img_i,
 			.swapchainCount = 1,
-			.pSwapchains = &swap.chain,
+			.pSwapchains = &vol.swap->chain,
 			.pImageIndices = &img_i,
 			.pResults = NULL,
 			.pNext = NULL,
 		};
 
 		err = vkQueuePresentKHR(dev.q, &present_info);
-		if (err != VK_SUCCESS) {
-			panic_msg("unable to present");
+		switch (err) {
+		case VK_SUCCESS:
+			continue;
+		case VK_ERROR_OUT_OF_DATE_KHR:
+		case VK_SUBOPTIMAL_KHR:
+			printf("Swapchain unsuitable for presentation\n");
+			vkDeviceWaitIdle(dev.log);
+			reswap(win, surf, dev, graphics, desc, pool, vol);
+			continue;
+		default:
+			fprintf(
+				stderr,
+				"Error: Unable to present (%d)\n",
+				err
+			);
+
+			panic();
 		}
 	}
 
@@ -1952,34 +2157,20 @@ static void app_free()
 		vkDestroyFence(app.dev.log, app.sync.submit[i], NULL);
 		vkDestroySemaphore(app.dev.log, app.sync.sem[i], NULL);
 	}
+
 	free(app.sync.submit);
 	free(app.sync.sem);
 
+	swap_free(app.dev.log, app.swap, app.pipe, app.frame, app.pool, app.cmd);
+	vkDestroyCommandPool(app.dev.log, app.pool, NULL);
+
+	vkDestroyRenderPass(app.dev.log, app.graphics.pass, NULL);
 	ak_shader_free(app.dev.log, app.graphics.vert);
 	ak_shader_free(app.dev.log, app.graphics.frag);
 #ifdef PLATFORM_COMPAT_VBO
 	ak_buf_free(app.dev.log, app.graphics.quad);
 #endif
-	vkDestroyRenderPass(app.dev.log, app.graphics.pass, NULL);
-
-	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
-		vkDestroyImageView(
-			app.dev.log,
-			app.graphics.views[2 * i],
-			NULL
-		);
-
-		vkDestroyFramebuffer(
-			app.dev.log,
-			app.graphics.fbuffers[i],
-			NULL
-		);
-	}
-	free(app.graphics.views);
-	free(app.graphics.fbuffers);
-
-	vkDestroyPipelineLayout(app.dev.log, app.graphics.layout, NULL);
-	vkDestroyPipeline(app.dev.log, app.graphics.pipeline, NULL);
+	free(app.graphics.template);
 
 	for (size_t i = 0; i < app.desc.lay_count; ++i) {
 		vkDestroyDescriptorSetLayout(
@@ -1988,10 +2179,10 @@ static void app_free()
 			NULL
 		);
 	}
+
 	free(app.desc.layouts);
 	free(app.desc.layouts_exp);
 	free(app.desc.sets);
-
 	vkDestroyDescriptorPool(app.dev.log, app.desc.pool, NULL);
 
 	ak_buf_free(app.dev.log, app.rchar.gpu);
@@ -2000,14 +2191,6 @@ static void app_free()
 	// Font
 	ak_img_free(app.dev.log, app.font.tex);
 	vkDestroySampler(app.dev.log, app.font.sampler, NULL);
-
-	vkFreeCommandBuffers(app.dev.log, app.pool, SWAP_IMG_COUNT, app.cmd);
-	free(app.cmd);
-	vkDestroyCommandPool(app.dev.log, app.pool, NULL);
-
-	vkDestroySwapchainKHR(app.dev.log, app.swap.chain, NULL);
-	free(app.swap.img);
-	ak_img_free(app.dev.log, app.swap.depth);
 
 	vkDestroyDevice(app.dev.log, NULL);
 	free(app.dev.devices);
@@ -2045,10 +2228,10 @@ void txtquad_init(struct Settings settings)
 	filename = root_path + len;
 
 	app.win = mk_win(settings.app_name, settings.mode, &settings.win_size);
-	app.inst = mk_inst(app.win, settings.app_name);
+	app.inst = mk_inst(settings.app_name);
 	app.surf = mk_surf(app.win, app.inst);
 	app.dev = mk_dev(app.inst, app.surf);
-	app.swap = mk_swap(settings.win_size, app.dev, app.surf);
+	app.swap = mk_swap(settings.win_size, app.dev, app.win, app.surf);
 	app.pool = mk_pool(app.dev);
 	app.font = load_font(app.dev, app.pool);
 
@@ -2064,12 +2247,22 @@ void txtquad_init(struct Settings settings)
 		app.rchar
 	);
 
-	app.graphics = mk_graphics(app.dev, app.swap, app.desc);
+	app.graphics = mk_graphics(app.dev, app.swap);
+	app.pipe = mk_pipe(
+		app.dev.log,
+		app.swap.extent,
+		app.desc,
+		app.graphics.template
+	);
+
+	app.frame = mk_fbuffers(app.dev.log, app.swap, app.graphics.pass);
 	app.cmd = record_graphics(
 		app.dev.log,
 		app.swap,
 		app.desc.sets,
 		app.graphics,
+		app.pipe,
+		app.frame,
 		app.pool
 	);
 
@@ -2082,7 +2275,24 @@ void txtquad_start()
 #ifdef DEBUG
 	printf("Text memory usage: %.2f MB\n", (float)sizeof(struct Text) / (1000 * 1000));
 #endif
-	run(app.win, app.dev, app.swap, app.cmd, app.sync, app.share, app.rchar);
+	run(
+		app.win,
+		app.surf,
+		app.dev,
+		app.graphics,
+		app.desc,
+		app.pool,
+		app.sync,
+		app.share,
+		app.rchar,
+		(struct ReswapData) {
+			.swap = &app.swap,
+			.pipe = &app.pipe,
+			.frame = &app.frame,
+			.cmd = &app.cmd,
+		}
+	);
+
 	free(root_path);
 	app_free();
 	printf("Exit success\n");
