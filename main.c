@@ -1330,18 +1330,18 @@ static struct GraphicsData mk_graphics(
 		.inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
 	};
 
-	template->attr_desc = (VkVertexInputAttributeDescription[2]) {
-		{
-			.binding = 0,
-			.location = 0,
-			.format = VK_FORMAT_R32G32_SFLOAT,
-			.offset = 0,
-		}, {
-			.binding = 0,
-			.location = 1,
-			.format = VK_FORMAT_R32G32_SFLOAT,
-			.offset = sizeof(float) * 2,
-		},
+	template->attr_desc[0] = (VkVertexInputAttributeDescription) {
+		.binding = 0,
+		.location = 0,
+		.format = VK_FORMAT_R32G32_SFLOAT,
+		.offset = 0,
+	};
+
+	template->attr_desc[1] = (VkVertexInputAttributeDescription) {
+		.binding = 0,
+		.location = 1,
+		.format = VK_FORMAT_R32G32_SFLOAT,
+		.offset = sizeof(float) * 2,
 	};
 
 	template->compat_vert_state_create_info
