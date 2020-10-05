@@ -2100,7 +2100,6 @@ static void run(
 		};
 
 		VkFence fences[2] = { sync.acquire, sync.submit[img_i] };
-
 		vkWaitForFences(dev.log, 2, fences, VK_TRUE, UINT64_MAX);
 		vkResetFences(dev.log, 2, fences);
 
