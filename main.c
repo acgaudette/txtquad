@@ -2019,6 +2019,7 @@ static void run(
 	struct Frame data = {
 		.win_size = vol.swap->extent,
 		.i = 0,
+		.t = 0.f,
 	};
 
 	// TODO: review loop ordering
@@ -2056,9 +2057,10 @@ static void run(
 		}
 
 		++data.i;
-		data.t = glfwGetTime();
-		data.dt = data.t - data.last_t;
-		data.last_t = data.t;
+		float t = glfwGetTime();
+		data.dt = minf(t - data.last_t, MAX_DT);
+		data.last_t = t;
+		data.t += data.dt;
 #ifdef DEBUG
 		data.acc += data.dt;
 		if (data.acc > 1) {
