@@ -250,8 +250,7 @@ static GLFWwindow *mk_win(const char *name, int type, struct Extent *extent)
 	printf("Initialized GLFW\n");
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // GLFW Vulkan support
-	glfwWindowHint(GLFW_RESIZABLE,    GLFW_FALSE);
-	glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 	int mon_count;
 	GLFWmonitor **mons = glfwGetMonitors(&mon_count);
@@ -559,15 +558,23 @@ static struct SwapData mk_swap(
 	GLFWwindow *win,
 	VkSurfaceKHR surf
 ) {
+	int fbw, fbh;
+	glfwGetFramebufferSize(win, &fbw, &fbh);
+
+	// Block while iconified
+	while (0 == fbw * fbh) {
+		printf("Minimized...\n");
+		glfwWaitEvents();
+		glfwGetFramebufferSize(win, &fbw, &fbh);
+	}
+
 	u32 win_w, win_h;
 	VkSurfaceCapabilitiesKHR cap;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev.hard, surf, &cap);
 	{
 		if (cap.currentExtent.width == UINT32_MAX) {
-			int w, h;
-			glfwGetFramebufferSize(win, &w, &h);
-			win_w = w;
-			win_h = h;
+			win_w = fbw;
+			win_h = fbh;
 		} else {
 			win_w = cap.currentExtent.width;
 			win_h = cap.currentExtent.height;
@@ -1966,8 +1973,6 @@ static void reswap(
 	VkCommandPool pool,
 	struct ReswapData in
 ) {
-	// TODO: iconify //
-
 	printf("Recreating swapchain\n");
 
 	swap_free(
@@ -2014,6 +2019,7 @@ static void run(
 	struct Frame data = {
 		.win_size = vol.swap->extent,
 		.i = 0,
+		.t = 0.f,
 	};
 
 	// TODO: review loop ordering
@@ -2051,9 +2057,10 @@ static void run(
 		}
 
 		++data.i;
-		data.t = glfwGetTime();
-		data.dt = data.t - data.last_t;
-		data.last_t = data.t;
+		float t = glfwGetTime();
+		data.dt = minf(t - data.last_t, MAX_DT);
+		data.last_t = t;
+		data.t += data.dt;
 #ifdef DEBUG
 		data.acc += data.dt;
 		if (data.acc > 1) {
@@ -2093,7 +2100,6 @@ static void run(
 		};
 
 		VkFence fences[2] = { sync.acquire, sync.submit[img_i] };
-
 		vkWaitForFences(dev.log, 2, fences, VK_TRUE, UINT64_MAX);
 		vkResetFences(dev.log, 2, fences);
 
