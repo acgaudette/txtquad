@@ -1964,7 +1964,7 @@ struct ReswapData {
 	VkCommandBuffer **cmd;
 };
 
-static void reswap(
+static int reswap(
 	GLFWwindow *win,
 	VkSurfaceKHR surf,
 	struct DevData dev,
@@ -1996,6 +1996,8 @@ static void reswap(
 		*(in.frame),
 		pool
 	);
+
+	return 0;
 }
 
 static int done;
@@ -2044,7 +2046,7 @@ static void run(
 		case VK_ERROR_OUT_OF_DATE_KHR:
 			printf("Swapchain unsuitable for image acquisition\n");
 			vkDeviceWaitIdle(dev.log);
-			reswap(win, surf, dev, graphics, desc, pool, vol);
+			done = reswap(win, surf, dev, graphics, desc, pool, vol);
 			continue;
 		default:
 			fprintf(
@@ -2140,7 +2142,7 @@ static void run(
 		case VK_SUBOPTIMAL_KHR:
 			printf("Swapchain unsuitable for presentation\n");
 			vkDeviceWaitIdle(dev.log);
-			reswap(win, surf, dev, graphics, desc, pool, vol);
+			done = reswap(win, surf, dev, graphics, desc, pool, vol);
 			continue;
 		default:
 			fprintf(
