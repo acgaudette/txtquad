@@ -553,44 +553,36 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 }
 
 static struct SwapData mk_swap(
-	struct Extent extent,
+	struct Extent req,
+	struct Extent fbuffer,
 	struct DevData dev,
 	GLFWwindow *win,
 	VkSurfaceKHR surf
 ) {
-	int fbw, fbh;
-	glfwGetFramebufferSize(win, &fbw, &fbh);
-
-	// Block while iconified
-	while (0 == fbw * fbh) {
-		printf("Minimized...\n");
-		glfwWaitEvents();
-		glfwGetFramebufferSize(win, &fbw, &fbh);
-	}
-
 	u32 win_w, win_h;
 	VkSurfaceCapabilitiesKHR cap;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(dev.hard, surf, &cap);
 	{
 		if (cap.currentExtent.width == UINT32_MAX) {
-			win_w = fbw;
-			win_h = fbh;
+			win_w = fbuffer.w;
+			win_h = fbuffer.h;
 		} else {
 			win_w = cap.currentExtent.width;
 			win_h = cap.currentExtent.height;
 		}
 
+		assert(win_w * win_h > 0);
 		printf("Current extent: %ux%u\n", win_w, win_h);
 	}
 
-	if (win_w != extent.w || win_h != extent.h) {
+	if (win_w != req.w || win_h != req.h) {
 		printf(
 			"Warning: "
 			"current extent does not match what was requested\n"
 		);
 
 		float asp_cur = win_w / (float)win_h;
-		float asp_req = extent.w / (float)extent.h;
+		float asp_req = req.w / (float)req.h;
 		assert(asp_cur == asp_req);
 	}
 
@@ -1973,6 +1965,18 @@ static int reswap(
 	VkCommandPool pool,
 	struct ReswapData in
 ) {
+	int fbw, fbh;
+	glfwGetFramebufferSize(win, &fbw, &fbh);
+
+	// Block while iconified
+	while (0 == fbw * fbh) {
+		printf("Minimized...\n");
+		glfwWaitEvents();
+		if (glfwWindowShouldClose(win)) return 1;
+		glfwGetFramebufferSize(win, &fbw, &fbh);
+	}
+
+	struct Extent fbs = { fbw, fbh };
 	printf("Recreating swapchain\n");
 
 	swap_free(
@@ -1984,7 +1988,7 @@ static int reswap(
 		*(in.cmd)
 	);
 
-	*(in.swap) = mk_swap(in.swap->extent, dev, win, surf);
+	*(in.swap) = mk_swap(in.swap->extent, fbs, dev, win, surf);
 	*(in.pipe) = mk_pipe(dev.log, in.swap->extent, desc, graphics.template);
 	*(in.frame) = mk_fbuffers(dev.log, *(in.swap), graphics.pass);
 	*(in.cmd) = record_graphics(
@@ -2214,6 +2218,9 @@ static void app_free()
 
 void txtquad_init(struct Settings settings)
 {
+	struct Extent zero;
+	memset(&zero, 0, sizeof(struct Extent));
+
 	switch (settings.mode) {
 	case MODE_WINDOWED:
 	case MODE_FULLSCREEN:
@@ -2221,7 +2228,7 @@ void txtquad_init(struct Settings settings)
 		assert(settings.win_size.h > 0);
 		break;
 	case MODE_BORDERLESS:
-		memset(&settings.win_size, 0, sizeof(struct Extent));
+		settings.win_size = zero;
 		break;
 	default:
 		assert(0);
@@ -2239,7 +2246,7 @@ void txtquad_init(struct Settings settings)
 	app.inst = mk_inst(settings.app_name);
 	app.surf = mk_surf(app.win, app.inst);
 	app.dev = mk_dev(app.inst, app.surf);
-	app.swap = mk_swap(settings.win_size, app.dev, app.win, app.surf);
+	app.swap = mk_swap(settings.win_size, zero, app.dev, app.win, app.surf);
 	app.pool = mk_pool(app.dev);
 	app.font = load_font(app.dev, app.pool);
 
