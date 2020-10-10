@@ -3,6 +3,7 @@
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#include "alg.h"
 
 #define INP_DATA_STRUCT(T)                             \
 struct {                                               \
@@ -14,6 +15,10 @@ struct {                                               \
 extern struct Input {
 	INP_DATA_STRUCT(KEY) key;
 	INP_DATA_STRUCT(MOUSE_BUTTON) but;
+	struct {
+		v2 pos;
+		v2 delta;
+	} mouse;
 } inp_data;
 #undef INP_DATA_STRUCT
 
@@ -49,5 +54,8 @@ void inp_update(GLFWwindow *win);
 #define BUT_DOWN(B) (inp_data.but.states[BUT(B)] == 1)
 #define BUT_UP(B)   (inp_data.but.states[BUT(B)] == 2)
 #define BUT_HELD(B) (inp_data.but.states[BUT(B)] == 3)
+
+#define MOUSE_POS (inp_data.mouse.pos)
+#define MOUSE_D   (inp_data.mouse.delta)
 
 #endif
