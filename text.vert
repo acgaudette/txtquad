@@ -2,6 +2,11 @@
 #include "config.h"
 #define SCALE (float(CHAR_WIDTH) / FONT_WIDTH)
 
+#define VERT_MIN (0.f - PADDING)
+#define VERT_MAX (1.f + PADDING)
+#define   SQ_MIN (MIN_BIAS - PADDING)
+#define   SQ_MAX (MAX_BIAS + PADDING)
+
 struct Char {
 	mat4 model;
 	vec4 col;
@@ -16,17 +21,17 @@ layout (set = 2, binding = 0) readonly buffer Data { Char chars[MAX_CHAR]; } dat
 	layout (location = 1) in vec2 sq;
 #else
 const vec4 vert[4] = {
-	  vec4(0, 1, 0, 1)
-	, vec4(1, 1, 0, 1)
-	, vec4(0, 0, 0, 1)
-	, vec4(1, 0, 0, 1)
+	  vec4(VERT_MIN, VERT_MAX, 0, 1)
+	, vec4(VERT_MAX, VERT_MAX, 0, 1)
+	, vec4(VERT_MIN, VERT_MIN, 0, 1)
+	, vec4(VERT_MAX, VERT_MIN, 0, 1)
 };
 
 const vec2 sq[4] = {
-	  vec2(MIN_BIAS, MIN_BIAS)
-	, vec2(MAX_BIAS, MIN_BIAS)
-	, vec2(MIN_BIAS, MAX_BIAS)
-	, vec2(MAX_BIAS, MAX_BIAS)
+	  vec2(SQ_MIN, SQ_MIN)
+	, vec2(SQ_MAX, SQ_MIN)
+	, vec2(SQ_MIN, SQ_MAX)
+	, vec2(SQ_MAX, SQ_MAX)
 };
 #endif
 
