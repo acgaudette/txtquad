@@ -11,6 +11,7 @@ struct Char {
 	mat4 model;
 	vec4 col;
 	vec2 off;
+	vec2 fx;
 };
 
 layout (set = 1, binding = 0) uniform Share { mat4 vp; } share;
@@ -38,6 +39,7 @@ const vec2 sq[4] = {
 layout (location = 0) out vec2 uv;
 layout (location = 1) out vec2 st;
 layout (location = 2) out vec4 col;
+layout (location = 3) out vec2 fx;
 
 void main()
 {
@@ -51,6 +53,7 @@ void main()
 
 	uv = SCALE * (st + c.off);
 	col = c.col;
+	fx = c.fx;
 
 #ifdef PLATFORM_COMPAT_VBO
 	gl_Position = share.vp * c.model * vec4(pos, 0, 1);
