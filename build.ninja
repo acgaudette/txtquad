@@ -83,8 +83,8 @@ build demos.macos: phony bin/demos.macos
 
 build bin/demos.exe: $
     lde $builddir/demos_nopic.o $
-    | bin/txtquad.lib assets/vert.spv assets/frag.spv
+    | bin/txtquad.lib assets/vert_compat.spv assets/frag.spv
     libs = -L bin -ltxtquad $
            -lmsvcrt -luser32 -lshell32 -lgdi32 $
-           -Wl,-nodefaultlib:libcmt -Wl,-nodefaultlib:msvcrtd
+           -Wl,-nodefaultlib:libcmt -Wl,-nodefaultlib:msvcrtd -Wl,-machine:x64
 build demos.exe: phony bin/demos.exe

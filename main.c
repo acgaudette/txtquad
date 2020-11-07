@@ -19,7 +19,7 @@
 #define FONT_SIZE (FONT_WIDTH * FONT_WIDTH)
 #define FONT_OFF  (FONT_WIDTH / CHAR_WIDTH)
 
-#ifdef __APPLE__
+#if defined __APPLE__ || defined _WIN32
 #define PLATFORM_COMPAT_VBO
 #endif
 
