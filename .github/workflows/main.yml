@@ -74,7 +74,8 @@ jobs:
               run: |
                 $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\MSVC\14.27.29110\bin\Hostx64\x86"
                 $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin"
-                $env:Path += ";C:\VulkanSDK\1.2.141.0\Bin"
+                $env:Path += ";"
+                $env:Path += echo "C:\VulkanSDK\1.2.*\Bin" | Resolve-Path | Select-Object -ExpandProperty Path
                 ninja demos.exe
             - name: upload
               uses: actions/upload-artifact@v2
