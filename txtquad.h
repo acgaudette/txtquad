@@ -37,6 +37,7 @@ struct Frame {
 
 struct Share {
 	m4 vp;
+	float time;
 };
 
 struct Char {
