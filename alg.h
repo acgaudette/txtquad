@@ -190,6 +190,18 @@ MUL(3)
 MUL(4)
 #undef MUL
 
+#define SCHUR(N) static v ## N v ## N ## _schur(v ## N a, v ## N b) \
+{ \
+	for (size_t i = 0; i < N; ++i) \
+		a.s[i] *= b.s[i]; \
+	return a; \
+}
+
+SCHUR(2)
+SCHUR(3)
+SCHUR(4)
+#undef SCHUR
+
 #define MAG_SQ(N) static float v ## N ## _mag_sq(v ## N v) \
 { \
 	float s = 0; \
