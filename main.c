@@ -1011,6 +1011,7 @@ static void prep_share(struct DevData dev, struct BufData *out)
 
 	out->gpu = buf;
 	((struct Share*)out->mapped)->vp = m4_id();
+	((struct Share*)out->mapped)->time = 0.f;
 	out->align = align;
 	out->frame_size = frame_size;
 }
@@ -1104,7 +1105,8 @@ static struct DescData mk_desc_sets(VkDevice dev)
 			.binding = 0,
 			.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
 			.descriptorCount = 1,
-			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+			            | VK_SHADER_STAGE_FRAGMENT_BIT,
 			.pImmutableSamplers = NULL,
 		},
 

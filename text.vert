@@ -14,7 +14,7 @@ struct Char {
 	vec2 fx;
 };
 
-layout (set = 1, binding = 0) uniform Share { mat4 vp; } share;
+layout (set = 1, binding = 0) uniform Share { mat4 vp; float time; } share;
 layout (set = 2, binding = 0) readonly buffer Data { Char chars[MAX_CHAR]; } data;
 
 #ifdef PLATFORM_COMPAT_VBO
