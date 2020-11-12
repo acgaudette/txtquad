@@ -6,6 +6,7 @@ layout (location = 0) in  vec2 uv;
 layout (location = 1) in  vec2 st;
 layout (location = 2) in  vec4 col;
 layout (location = 3) in  vec2 fx;
+layout (location = 4) in  vec3 pos;
 layout (location = 0) out vec4 final;
 
 layout (set = 0, binding = 0) uniform texture2D img;
