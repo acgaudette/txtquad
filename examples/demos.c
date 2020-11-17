@@ -119,6 +119,7 @@ struct Share txtquad_update(struct Frame data, struct Text *text)
 
 	return (struct Share) {
 		vp,
+		(v2) { data.win_size.w, data.win_size.h },
 		data.t,
 	};
 }
