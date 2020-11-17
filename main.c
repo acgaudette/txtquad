@@ -1011,6 +1011,7 @@ static void prep_share(struct DevData dev, struct BufData *out)
 
 	out->gpu = buf;
 	((struct Share*)out->mapped)->vp = m4_id();
+	((struct Share*)out->mapped)->screen = v2_zero();
 	((struct Share*)out->mapped)->time = 0.f;
 	out->align = align;
 	out->frame_size = frame_size;

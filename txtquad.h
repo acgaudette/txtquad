@@ -37,6 +37,7 @@ struct Frame {
 
 struct Share {
 	m4 vp;
+	v2 screen;
 	float time;
 };
 
