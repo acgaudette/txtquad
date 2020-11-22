@@ -39,6 +39,7 @@ struct Share {
 	m4 vp;
 	v2 screen;
 	float time;
+	float _slop;
 };
 
 struct Char {
