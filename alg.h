@@ -703,11 +703,21 @@ static inline float signf(const float s)
 }
 
 #include <stdio.h>
-#define PRINT(N) static void v ## N ## _print(v ## N v) \
+#define FPRINT(N) static void v ## N ## _fprint(FILE *stream, v ## N v) \
 { \
 	for (size_t i = 0; i < N; ++i) \
-		printf("%8.4f  ", v.s[i]); \
-	printf("\n"); \
+		fprintf(stream, "%8.4f  ", v.s[i]); \
+	fprintf(stream, "\n"); \
+}
+
+FPRINT(2)
+FPRINT(3)
+FPRINT(4)
+#undef FPRINT
+
+#define PRINT(N) static void v ## N ## _print(v ## N v) \
+{ \
+	v ## N ## _fprint(stdout, v); \
 }
 
 PRINT(2)
@@ -715,14 +725,24 @@ PRINT(3)
 PRINT(4)
 #undef PRINT
 
-#define PRINT(N) static void m ## N ## _print(m ## N m) \
+#define FPRINT(N) static void m ## N ## _fprint(FILE *stream, m ## N m) \
 { \
 	for (size_t i = 0; i < N; ++i) { \
 		for (size_t j = 0; j < N; ++j) { \
-			printf("%8.4f  ", m.v[j].s[i]); \
+			fprintf(stream, "%8.4f  ", m.v[j].s[i]); \
 		} \
-		printf("\n"); \
+		fprintf(stream, "\n"); \
 	} \
+}
+
+FPRINT(2)
+FPRINT(3)
+FPRINT(4)
+#undef FPRINT
+
+#define PRINT(N) static void m ## N ## _print(m ## N m) \
+{ \
+	m ## N ## _fprint(stdout, m); \
 }
 
 PRINT(2)
