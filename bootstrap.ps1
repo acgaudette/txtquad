@@ -22,7 +22,7 @@ mkdir -Force ext/lib
 mkdir -Force ext/include
 cd ext
 
-if (-Not (Test-Path "lib/vulkan")) {
+if (-Not (Test-Path "lib/vulkan.lib")) {
 	New-Item -Path "lib/vulkan.lib" -ItemType SymbolicLink -Value "$VK_SDK/Lib/vulkan-1.lib"
 }
 
