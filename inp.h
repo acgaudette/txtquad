@@ -15,12 +15,21 @@ struct {                                               \
 }
 
 extern struct Input {
-	INP_DATA_STRUCT(KEY) key;
-	INP_DATA_STRUCT(MOUSE_BUTTON) but;
 	struct {
 		v2 pos;
 		v2 delta;
 	} mouse;
+
+	struct {
+		   v2 stick_l;
+		   v2 stick_r;
+		float trigg_l;
+		float trigg_r;
+	} joy;
+
+	INP_DATA_STRUCT(KEY) key;
+	INP_DATA_STRUCT(MOUSE_BUTTON) but;
+	INP_DATA_STRUCT(GAMEPAD_BUTTON) pad;
 } inp_data;
 #undef INP_DATA_STRUCT
 
@@ -39,7 +48,9 @@ void inp_init(
 	int *key_handles,
 	size_t key_count,
 	int *but_handles,
-	size_t but_count
+	size_t but_count,
+	int *pad_handles,
+	size_t pad_count
 );
 
 /*
@@ -59,5 +70,10 @@ void inp_update(GLFWwindow *win);
 
 #define MOUSE_POS (inp_data.mouse.pos)
 #define MOUSE_D   (inp_data.mouse.delta)
+
+#define PAD(B) GLFW_GAMEPAD_BUTTON_ ## B
+#define PAD_DOWN(B) (inp_data.pad.states[PAD(B)] == 1)
+#define PAD_UP(B)   (inp_data.pad.states[PAD(B)] == 2)
+#define PAD_HELD(B) (inp_data.pad.states[PAD(B)] == 3)
 
 #endif

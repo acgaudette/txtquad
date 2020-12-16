@@ -35,6 +35,36 @@ void inp_update(GLFWwindow *win)
 
 	inp_data.mouse.delta = v2_sub(pos, mouse_last);
 	mouse_last = pos;
+
+	/* Joy */
+
+	if (!glfwJoystickIsGamepad(GLFW_JOYSTICK_1)) return;
+
+	GLFWgamepadstate pad;
+	if (!glfwGetGamepadState(GLFW_JOYSTICK_1, &pad)) return;
+
+	for (size_t i = 0; i < inp_data.pad.count; ++i) {
+		int handle = inp_data.pad.handles[i];
+		char s = inp_data.pad.states[handle];
+		s = (s << 1) & 2;
+		s |= pad.buttons[handle] == GLFW_PRESS;
+		inp_data.pad.states[handle] = s;
+	}
+
+	inp_data.joy.stick_l = (v2) {
+		 pad.axes[GLFW_GAMEPAD_AXIS_LEFT_X],
+		-pad.axes[GLFW_GAMEPAD_AXIS_LEFT_Y],
+	};
+
+	inp_data.joy.stick_r = (v2) {
+		 pad.axes[GLFW_GAMEPAD_AXIS_RIGHT_X],
+		-pad.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y],
+	};
+
+	inp_data.joy.trigg_l = .5f + .5f
+		* pad.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER];
+	inp_data.joy.trigg_r = .5f + .5f
+		* pad.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER];
 }
 
 #endif

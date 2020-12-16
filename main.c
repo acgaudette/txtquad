@@ -223,12 +223,16 @@ void inp_init(
 	int *key_handles,
 	size_t key_count,
 	int *but_handles,
-	size_t but_count
+	size_t but_count,
+	int *pad_handles,
+	size_t pad_count
 ) {
 	inp_data.key.handles = key_handles;
 	inp_data.key.count = key_count;
 	inp_data.but.handles = but_handles;
 	inp_data.but.count = but_count;
+	inp_data.pad.handles = pad_handles;
+	inp_data.pad.count = pad_count;
 }
 #endif
 
