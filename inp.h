@@ -4,6 +4,8 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
+#include "txtquad.h"
+
 #define INP_DATA_STRUCT(T)                             \
 struct {                                               \
 	int *handles;                                  \

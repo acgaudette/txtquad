@@ -1,3 +1,7 @@
+#ifdef _WIN32
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include <string.h>
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -485,7 +489,7 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 
 	/* TODO: a more robust queue infrastructure */
 
-	printf("Found queue [%lu]\n", q_ind);
+	printf("Found queue [%zu]\n", q_ind);
 
 	float pri = 1.f;
 	VkDeviceQueueCreateInfo q_create_info = {
@@ -523,7 +527,7 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 
 	VkQueue q;
 	vkGetDeviceQueue(dev, q_ind, 0, &q);
-	printf("Acquired queue [%lu]\n", q_ind);
+	printf("Acquired queue [%zu]\n", q_ind);
 
 	VkPhysicalDeviceMemoryProperties mem_props;
 	vkGetPhysicalDeviceMemoryProperties(hard_dev, &mem_props);
@@ -1250,7 +1254,7 @@ static void mk_bindings(
 	}
 
 	vkUpdateDescriptorSets(dev, write_count, writes, 0, NULL);
-	printf("Updated descriptor sets (%lu writes)\n", write_count);
+	printf("Updated descriptor sets (%zu writes)\n", write_count);
 }
 
 static struct GraphicsData mk_graphics(
@@ -1855,7 +1859,7 @@ static VkCommandBuffer *record_graphics(
 			panic_msg("unable to end command buffer recording");
 		}
 
-		printf("Recorded command buffer [%lu]\n", i);
+		printf("Recorded command buffer [%zu]\n", i);
 	}
 
 	return cmd;

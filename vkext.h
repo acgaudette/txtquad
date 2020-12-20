@@ -224,7 +224,7 @@ struct ak_buf {
 };
 
 #define AK_BUF_HEAD(HANDLE, SZ) \
-	printf("Making " HANDLE " buffer with size %lu\n", (size_t)SZ)
+	printf("Making " HANDLE " buffer with size %zu\n", (size_t)SZ)
 #define AK_BUF_USAGE(STR) VK_BUFFER_USAGE_ ## STR ## _BIT
 
 #define AK_BUF_MK(DEV, MEM, HANDLE, SZ, USAGE, PROPS, OUT) \
