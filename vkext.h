@@ -1,6 +1,7 @@
 #ifndef VKEXT_H
 #define VKEXT_H
 
+#include <inttypes.h>
 #include <vulkan/vulkan.h>
 #include "sys.h"
 #include "types.h"
@@ -266,7 +267,7 @@ static void ak_buf_mk(
 
 	if (size != req.size) {
 		assert(req.size > size);
-		printf("\t| aligned up to %llu\n", (unsigned long long)req.size);
+		printf("\t| aligned up to %" PRIu64 "\n", req.size);
 	}
 
 	VkMemoryAllocateInfo alloc_info = {

@@ -54,7 +54,7 @@ enum Justify {
 };
 
 struct Block {
-	char *str;
+	const char *str;
 	size_t str_len;
 	v3 pos;
 	v4 rot;
