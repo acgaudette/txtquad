@@ -266,7 +266,7 @@ static void ak_buf_mk(
 
 	if (size != req.size) {
 		assert(req.size > size);
-		printf("\t| aligned up to %lu\n", req.size);
+		printf("\t| aligned up to %llu\n", (unsigned long long)req.size);
 	}
 
 	VkMemoryAllocateInfo alloc_info = {

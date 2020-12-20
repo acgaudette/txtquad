@@ -2075,7 +2075,7 @@ static void run(
 		data.acc += data.dt;
 		if (data.acc > 1) {
 			printf(
-				"FPS=%lu\tdt=%.3fms\n",
+				"FPS=%zu\tdt=%.3fms\n",
 				data.i - data.last_i,
 				data.dt * 1000
 			);
