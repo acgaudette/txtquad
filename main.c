@@ -876,8 +876,8 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 
 	VkImageMemoryBarrier tex_prep_barrier = {
 	STYPE(IMAGE_MEMORY_BARRIER)
-		.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-		.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT,
+		.srcAccessMask = 0,
+		.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
 		.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 		.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -895,9 +895,9 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 
 	vkCmdPipelineBarrier(
 		cmd,
+		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
 		VK_PIPELINE_STAGE_TRANSFER_BIT,
-		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-		0, // TODO: specify
+		0,
 		0, NULL,
 		0, NULL,
 		1, &tex_prep_barrier
@@ -949,7 +949,7 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 		cmd,
 		VK_PIPELINE_STAGE_TRANSFER_BIT,
 		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-		0, // TODO: specify
+		0,
 		0, NULL,
 		0, NULL,
 		1, &tex_swap_barrier
