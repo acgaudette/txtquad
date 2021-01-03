@@ -1802,7 +1802,6 @@ static VkCommandBuffer *record_graphics(
 		VkDeviceSize off = 0;
 		vkCmdBindVertexBuffers(cmd[i], 0, 1, &graphics.quad.buf, &off);
 #endif
-
 		VkDescriptorSet frame_sets[3] = {
 			sets[0],
 			sets[1 + i],
@@ -1822,37 +1821,6 @@ static VkCommandBuffer *record_graphics(
 
 		vkCmdDraw(cmd[i], 4, MAX_CHAR, 0, 0); // Quad
 		vkCmdEndRenderPass(cmd[i]);
-
-		/* Transition swapchain image for rendering */
-
-		VkImageMemoryBarrier img_barrier = {
-		STYPE(IMAGE_MEMORY_BARRIER)
-			.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-			.dstAccessMask = VK_ACCESS_HOST_READ_BIT,
-			.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-			.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-			.image = swap.img[i],
-			.subresourceRange = {
-				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-				.baseMipLevel = 0,
-				.levelCount = 1,
-				.baseArrayLayer = 0,
-				.layerCount = 1,
-			},
-			.pNext = NULL,
-		};
-
-		vkCmdPipelineBarrier(
-			cmd[i],
-			VK_PIPELINE_STAGE_TRANSFER_BIT,
-			VK_PIPELINE_STAGE_HOST_BIT,
-			0, // TODO: specify
-			0, NULL,
-			0, NULL,
-			1, &img_barrier
-		);
 
 		err = vkEndCommandBuffer(cmd[i]);
 		if (err != VK_SUCCESS) {
