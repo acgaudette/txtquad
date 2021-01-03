@@ -61,7 +61,7 @@ jobs:
         runs-on: windows-2019
         steps:
             - uses: actions/checkout@v2
-            - uses: microsoft/setup-msbuild@v1.0.1
+            - uses: microsoft/setup-msbuild@v1.0.2
             - name: package-setup
               run: |
                 choco install ninja
@@ -72,7 +72,8 @@ jobs:
               run: ./bootstrap.ps1
             - name: build-all
               run: |
-                $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\MSVC\14.27.29110\bin\Hostx64\x86"
+                ls "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\MSVC"
+                $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\MSVC\14.28.29333\bin\Hostx64\x86"
                 $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin"
                 $env:Path += ";"
                 $env:Path += echo "C:\VulkanSDK\1.2.*\Bin" | Resolve-Path | Select-Object -ExpandProperty Path
