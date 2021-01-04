@@ -45,6 +45,7 @@ struct Char {
 	float scale; // ... of one char, regardless of CHAR_WIDTH
 	u8 v;
 	v4 col;
+	v2 fx;
 };
 
 enum Justify {

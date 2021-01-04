@@ -2,10 +2,16 @@
 #include "config.h"
 #define SCALE (float(CHAR_WIDTH) / FONT_WIDTH)
 
+#define VERT_MIN (0.f - PADDING)
+#define VERT_MAX (1.f + PADDING)
+#define   SQ_MIN (MIN_BIAS - PADDING)
+#define   SQ_MAX (MAX_BIAS + PADDING)
+
 struct Char {
 	mat4 model;
 	vec4 col;
 	vec2 off;
+	vec2 fx;
 };
 
 layout (set = 1, binding = 0) uniform Share { mat4 vp; } share;
@@ -16,23 +22,24 @@ layout (set = 2, binding = 0) readonly buffer Data { Char chars[MAX_CHAR]; } dat
 	layout (location = 1) in vec2 sq;
 #else
 const vec4 vert[4] = {
-	  vec4(0, 1, 0, 1)
-	, vec4(1, 1, 0, 1)
-	, vec4(0, 0, 0, 1)
-	, vec4(1, 0, 0, 1)
+	  vec4(VERT_MIN, VERT_MAX, 0, 1)
+	, vec4(VERT_MAX, VERT_MAX, 0, 1)
+	, vec4(VERT_MIN, VERT_MIN, 0, 1)
+	, vec4(VERT_MAX, VERT_MIN, 0, 1)
 };
 
 const vec2 sq[4] = {
-	  vec2(MIN_BIAS, MIN_BIAS)
-	, vec2(MAX_BIAS, MIN_BIAS)
-	, vec2(MIN_BIAS, MAX_BIAS)
-	, vec2(MAX_BIAS, MAX_BIAS)
+	  vec2(SQ_MIN, SQ_MIN)
+	, vec2(SQ_MAX, SQ_MIN)
+	, vec2(SQ_MIN, SQ_MAX)
+	, vec2(SQ_MAX, SQ_MAX)
 };
 #endif
 
 layout (location = 0) out vec2 uv;
 layout (location = 1) out vec2 st;
 layout (location = 2) out vec4 col;
+layout (location = 3) out vec2 fx;
 
 void main()
 {
@@ -46,6 +53,7 @@ void main()
 
 	uv = SCALE * (st + c.off);
 	col = c.col;
+	fx = c.fx;
 
 #ifdef PLATFORM_COMPAT_VBO
 	gl_Position = share.vp * c.model * vec4(pos, 0, 1);
