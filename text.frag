@@ -6,7 +6,14 @@ layout (location = 0) in  vec2 uv;
 layout (location = 1) in  vec2 st;
 layout (location = 2) in  vec4 col;
 layout (location = 3) in  vec2 fx;
+layout (location = 4) in  vec3 pos;
 layout (location = 0) out vec4 final;
+
+layout (set = 1, binding = 0) uniform Share {
+	mat4 vp;
+	vec2 screen;
+	float time;
+} share;
 
 layout (set = 0, binding = 0) uniform texture2D img;
 layout (set = 0, binding = 1) uniform sampler unf;

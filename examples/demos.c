@@ -118,7 +118,9 @@ struct Share txtquad_update(struct Frame data, struct Text *text)
 	m4 vp = m4_mul(proj, view);
 
 	return (struct Share) {
-		vp
+		vp,
+		(v2) { data.win_size.w, data.win_size.h },
+		data.t,
 	};
 }
 

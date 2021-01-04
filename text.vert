@@ -14,7 +14,12 @@ struct Char {
 	vec2 fx;
 };
 
-layout (set = 1, binding = 0) uniform Share { mat4 vp; } share;
+layout (set = 1, binding = 0) uniform Share {
+	mat4 vp;
+	vec2 screen;
+	float time;
+} share;
+
 layout (set = 2, binding = 0) readonly buffer Data { Char chars[MAX_CHAR]; } data;
 
 #ifdef PLATFORM_COMPAT_VBO
@@ -40,6 +45,7 @@ layout (location = 0) out vec2 uv;
 layout (location = 1) out vec2 st;
 layout (location = 2) out vec4 col;
 layout (location = 3) out vec2 fx;
+layout (location = 4) out vec3 pos;
 
 void main()
 {
@@ -56,8 +62,10 @@ void main()
 	fx = c.fx;
 
 #ifdef PLATFORM_COMPAT_VBO
-	gl_Position = share.vp * c.model * vec4(pos, 0, 1);
+	vec4 world = c.model * vec4(pos, 0, 1);
 #else
-	gl_Position = share.vp * c.model * vert[gl_VertexIndex];
+	vec4 world = c.model * vert[gl_VertexIndex];
 #endif
+	gl_Position = share.vp * world;
+	pos = world.xyz;
 }
