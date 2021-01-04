@@ -37,8 +37,8 @@ struct Frame {
 
 struct Share {
 	m4 vp;
-	v2 screen;
-	float time;
+	v2 screen;  // Optional: must assign in user code, otherwise ignored
+	float time; // Optional: "
 	float _slop;
 };
 
