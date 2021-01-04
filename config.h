@@ -8,6 +8,7 @@
 #define FONT_WIDTH 128
 #define CHAR_WIDTH 8
 
+#define PADDING (1.f / CHAR_WIDTH)
 #define BIAS 0.001f
 #define MIN_BIAS (BIAS)
 #define MAX_BIAS (1.f - MIN_BIAS)

@@ -54,6 +54,7 @@ static void text_update(struct RawChar *buf, struct Frame data)
 			.model = m4_model(c.pos, c.rot, c.scale),
 			.col = c.col,
 			.off = char_off(c.v),
+			._slop = c.fx,
 		};
 	}
 
@@ -111,6 +112,7 @@ static void text_update(struct RawChar *buf, struct Frame data)
 				.model = m4_model(pos, block.rot, block.scale),
 				.col = block.col,
 				.off = char_off(c),
+				._slop = v2_zero(),
 			};
 
 			pos = v3_add(pos, v3_mul(right, block.scale));
@@ -124,6 +126,7 @@ static void text_update(struct RawChar *buf, struct Frame data)
 			.model = m4_model(pos, block.rot, block.scale),
 			.col = block.col,
 			.off = char_off(block.cursor),
+			._slop = v2_zero(),
 		};
 		++end;
 	}
