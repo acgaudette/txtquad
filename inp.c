@@ -1,9 +1,6 @@
 #ifdef INP_KEYS
 #include "inp.h"
 
-static v2 mouse_last;
-static float dirty;
-
 void inp_update(GLFWwindow *win)
 {
 	for (size_t i = 0; i < inp_data.key.count; ++i) {
@@ -22,23 +19,22 @@ void inp_update(GLFWwindow *win)
 		inp_data.but.states[handle] = s;
 	}
 
+	/* Mouse delta */
+
 	double mx, my;
 	glfwGetCursorPos(win, &mx, &my);
 
-	float x = mx;
-	float y = my * -1.f;
+	v2 pos = { mx, my * -1.f };
+	inp_data.mouse.pos = pos;
 
-	inp_data.mouse.pos.x = x;
-	inp_data.mouse.pos.y = y;
+	static v2 mouse_last;
+	static float dirty;
 
 	mouse_last = v2_lerp(inp_data.mouse.pos, mouse_last, dirty);
 	dirty = 1.f;
 
-	inp_data.mouse.delta.x = x - mouse_last.x;
-	inp_data.mouse.delta.y = y - mouse_last.y;
-
-	mouse_last.x = x;
-	mouse_last.y = y;
+	inp_data.mouse.delta = v2_sub(pos, mouse_last);
+	mouse_last = pos;
 }
 
 #endif
