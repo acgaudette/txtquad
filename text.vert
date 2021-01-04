@@ -23,7 +23,7 @@ layout (set = 1, binding = 0) uniform Share {
 layout (set = 2, binding = 0) readonly buffer Data { Char chars[MAX_CHAR]; } data;
 
 #ifdef PLATFORM_COMPAT_VBO
-	layout (location = 0) in vec2 pos;
+	layout (location = 0) in vec2 vert;
 	layout (location = 1) in vec2 sq;
 #else
 const vec4 vert[4] = {
@@ -62,7 +62,7 @@ void main()
 	fx = c.fx;
 
 #ifdef PLATFORM_COMPAT_VBO
-	vec4 world = c.model * vec4(pos, 0, 1);
+	vec4 world = c.model * vec4(vert, 0, 1);
 #else
 	vec4 world = c.model * vert[gl_VertexIndex];
 #endif
