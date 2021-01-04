@@ -18,6 +18,23 @@ void inp_update(GLFWwindow *win)
 		s |= glfwGetMouseButton(win, handle) == GLFW_PRESS;
 		inp_data.but.states[handle] = s;
 	}
+
+	/* Mouse delta */
+
+	double mx, my;
+	glfwGetCursorPos(win, &mx, &my);
+
+	v2 pos = { mx, my * -1.f };
+	inp_data.mouse.pos = pos;
+
+	static v2 mouse_last;
+	static float dirty;
+
+	mouse_last = v2_lerp(inp_data.mouse.pos, mouse_last, dirty);
+	dirty = 1.f;
+
+	inp_data.mouse.delta = v2_sub(pos, mouse_last);
+	mouse_last = pos;
 }
 
 #endif
