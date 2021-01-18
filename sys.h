@@ -7,12 +7,14 @@
 static void panic()
 {
 	printf("Exit failure\n");
-	exit(1);
+	fflush(stdout);
+	abort();
 }
 
 static void panic_msg(const char *msg)
 {
-	fprintf(stderr, "Error: %s\n", msg);
+	fflush(stdout);
+	fprintf(stderr, "panic(): %s\n", msg);
 	panic();
 }
 
