@@ -1319,10 +1319,10 @@ static struct GraphicsData mk_graphics(
 		);
 
 		float raw[] = {
-			0, 1, MIN_BIAS, MIN_BIAS,
-			1, 1, MAX_BIAS, MIN_BIAS,
-			0, 0, MIN_BIAS, MAX_BIAS,
-			1, 0, MAX_BIAS, MAX_BIAS,
+			0.f - PADDING, 1.f + PADDING, MIN_BIAS - PADDING, MIN_BIAS - PADDING,
+			1.f + PADDING, 1.f + PADDING, MAX_BIAS + PADDING, MIN_BIAS - PADDING,
+			0.f - PADDING, 0.f - PADDING, MIN_BIAS - PADDING, MAX_BIAS + PADDING,
+			1.f + PADDING, 0.f - PADDING, MAX_BIAS + PADDING, MAX_BIAS + PADDING,
 		};
 
 		memcpy(verts, raw, 4 * sizeof(float) * 4);
