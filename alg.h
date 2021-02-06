@@ -727,6 +727,13 @@ static m4 m4_view(v3 pos, v4 rot)
 
 /* Debug */
 
+#ifdef ALG_DEBUG
+static void assert01f(const float s)
+{
+	assert(s == clamp01f(s));
+}
+#endif
+
 #include <stdio.h>
 #define FPRINT(N) static void v ## N ## _fprint(FILE *stream, v ## N v) \
 { \
