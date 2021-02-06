@@ -66,6 +66,11 @@ static inline float lerpf(const float a, const float b, const float t)
 	return (1.f - t) * a + t * b;
 }
 
+static inline float lerpf_clamp(const float a, const float b, const float t)
+{
+	return lerpf(a, b, clamp01f(t));
+}
+
 static inline float signf(const float s)
 {
 	u32 u = *((u32*)&s);
@@ -327,6 +332,16 @@ LERP(2)
 LERP(3)
 LERP(4)
 #undef LERP
+
+#define LERP_CLAMP(N) static v ## N v ## N ## _lerp_clamp(v ## N a, v ## N b, float s) \
+{ \
+	return v ## N ## _lerp(a, b, clamp01f(s)); \
+}
+
+LERP_CLAMP(2)
+LERP_CLAMP(3)
+LERP_CLAMP(4)
+#undef LERP_CLAMP
 
 #define DIST(N) static float v ## N ## _dist(v ## N a, v ## N b) \
 { \
