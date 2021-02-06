@@ -23,6 +23,57 @@ VEC(3, COMP_3);
 VEC(4, COMP_4);
 #undef VEC
 
+#define MAT(N, ...) typedef union m ## N { \
+        float s[N * N];                    \
+        v ## N v[N];                       \
+        struct { __VA_ARGS__ };            \
+} m ## N
+
+#define VEC_2(N) v ## N c0; \
+                 v ## N c1;
+#define VEC_3(N) VEC_2(N) v ## N c2;
+#define VEC_4 VEC_3(4) v4 c3;
+
+MAT(2, VEC_2(2));
+MAT(3, VEC_3(3));
+MAT(4, VEC_4);
+#undef MAT
+
+/* Floating point functions */
+
+static inline float minf(const float a, const float b)
+{
+	return a < b ? a : b;
+}
+
+static inline float maxf(const float a, const float b)
+{
+	return a < b ? b : a;
+}
+
+static inline float clampf(const float s, const float min, const float max)
+{
+	return minf(max, maxf(min, s));
+}
+
+static inline float clamp01f(const float s)
+{
+	return clampf(s, 0.f, 1.f);
+}
+
+static inline float lerpf(const float a, const float b, const float t)
+{
+	return (1.f - t) * a + t * b;
+}
+
+static inline float signf(const float s)
+{
+	u32 u = *((u32*)&s);
+	return (float)(u >> 31) * -2.f + 1.f;
+}
+
+/* Vectors */
+
 #define FILL(N) static v ## N v ## N ## _fill(float s) \
 { \
 	v ## N v; \
@@ -296,21 +347,7 @@ static v3 v3_cross(v3 a, v3 b)
 	};
 }
 
-#define MAT(N, ...) typedef union m ## N { \
-        float s[N * N];                    \
-        v ## N v[N];                       \
-        struct { __VA_ARGS__ };            \
-} m ## N
-
-#define VEC_2(N) v ## N c0; \
-                 v ## N c1;
-#define VEC_3(N) VEC_2(N) v ## N c2;
-#define VEC_4 VEC_3(4) v4 c3;
-
-MAT(2, VEC_2(2));
-MAT(3, VEC_3(3));
-MAT(4, VEC_4);
-#undef MAT
+/* Matrices */
 
 #define ZERO(N) static m ## N m ## N ## _zero() \
 { \
@@ -455,6 +492,58 @@ static v4 m3_to_qt(m3 m)
 		};
 	}
 }
+
+static m4 m4_trans(v3 v)
+{
+	m4 m = m4_id();
+	m.c3.x = v.x;
+	m.c3.y = v.y;
+	m.c3.z = v.z;
+	return m;
+}
+
+static m4 m4_scale(float s)
+{
+	return m4_diag((v4) { s, s, s, 1.f });
+}
+
+// Expects VFOV (width / height) in degrees
+static m4 m4_persp(float fov, float asp, float near, float far)
+{
+	float range = far - near;
+	float z_scale = 1.f / range;
+	float z_off = -near / range;
+
+	float y_scale = 1.f / tanf(.5f * fov * M_PI / 180.f);
+	float x_scale = y_scale / asp;
+	y_scale *= -1.f;
+
+	m4 m = m4_zero();
+	m.c0.x = x_scale;
+	m.c1.y = y_scale;
+	m.c2.z = z_scale;
+	m.c2.w = 1.f;
+	m.c3.z = z_off;
+	return m;
+}
+
+// Scale -> number of units that can fit in vertical height
+static m4 m4_ortho(float scale, float asp, float near, float far)
+{
+	const float range = far - near;
+	const float z_scale = 1.f / range;
+	const float z_off = -near / range;
+
+	m4 m = m4_zero();
+	m.c0.x = 2.f / (asp * scale);
+	m.c1.y = -2.f / scale;
+	m.c2.z = z_scale;
+	m.c3.w = 1.f;
+	m.c3.z = z_off;
+	return m;
+}
+
+/* Quaternions */
 
 static inline v4 qt_id()
 {
@@ -609,19 +698,7 @@ static m4 qt_to_m4(v4 q)
 	return m;
 }
 
-static m4 m4_trans(v3 v)
-{
-	m4 m = m4_id();
-	m.c3.x = v.x;
-	m.c3.y = v.y;
-	m.c3.z = v.z;
-	return m;
-}
-
-static m4 m4_scale(float s)
-{
-	return m4_diag((v4) { s, s, s, 1.f });
-}
+/* Runoff */
 
 static m4 m4_model(v3 pos, v4 rot, float scale)
 {
@@ -633,74 +710,7 @@ static m4 m4_view(v3 pos, v4 rot)
 	return m4_mul(qt_to_m4(qt_conj(rot)), m4_trans(v3_neg(pos)));
 }
 
-// Expects VFOV (width / height) in degrees
-static m4 m4_persp(float fov, float asp, float near, float far)
-{
-	float range = far - near;
-	float z_scale = 1.f / range;
-	float z_off = -near / range;
-
-	float y_scale = 1.f / tanf(.5f * fov * M_PI / 180.f);
-	float x_scale = y_scale / asp;
-	y_scale *= -1.f;
-
-	m4 m = m4_zero();
-	m.c0.x = x_scale;
-	m.c1.y = y_scale;
-	m.c2.z = z_scale;
-	m.c2.w = 1.f;
-	m.c3.z = z_off;
-	return m;
-}
-
-// Scale -> number of units that can fit in vertical height
-static m4 m4_ortho(float scale, float asp, float near, float far)
-{
-	const float range = far - near;
-	const float z_scale = 1.f / range;
-	const float z_off = -near / range;
-
-	m4 m = m4_zero();
-	m.c0.x = 2.f / (asp * scale);
-	m.c1.y = -2.f / scale;
-	m.c2.z = z_scale;
-	m.c3.w = 1.f;
-	m.c3.z = z_off;
-	return m;
-}
-
-/* Floating point functions */
-
-static inline float lerpf(const float a, const float b, const float t)
-{
-	return (1.f - t) * a + t * b;
-}
-
-static inline float minf(const float a, const float b)
-{
-	return a < b ? a : b;
-}
-
-static inline float maxf(const float a, const float b)
-{
-	return a < b ? b : a;
-}
-
-static inline float clampf(const float s, const float min, const float max)
-{
-	return minf(max, maxf(min, s));
-}
-
-static inline float clamp01f(const float s)
-{
-	return clampf(s, 0.f, 1.f);
-}
-
-static inline float signf(const float s)
-{
-	u32 u = *((u32*)&s);
-	return (float)(u >> 31) * -2.f + 1.f;
-}
+/* Debug */
 
 #include <stdio.h>
 #define FPRINT(N) static void v ## N ## _fprint(FILE *stream, v ## N v) \
