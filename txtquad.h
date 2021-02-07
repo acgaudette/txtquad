@@ -40,6 +40,7 @@ struct Share {
 	v2 screen;
 	float time;
 	float _slop;
+	v4 _extra;
 };
 
 struct Char {
