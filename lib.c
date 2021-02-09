@@ -183,7 +183,7 @@ static GLFWwindow *mk_win(const char *name, int type, struct extent *extent)
 	printf("Initialized GLFW\n");
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // GLFW Vulkan support
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
 	int mon_count;
 	GLFWmonitor **mons = glfwGetMonitors(&mon_count);
@@ -511,9 +511,11 @@ static struct swap mk_swap(
 			"current extent does not match what was requested\n"
 		);
 
+		/*
 		float asp_cur = win_w / (float)win_h;
 		float asp_req = req.w / (float)req.h;
 		assert(asp_cur == asp_req);
+		*/
 	}
 
 	printf("Image count range: %u-", cap.minImageCount);
@@ -1949,6 +1951,7 @@ static void run(
 			printf("Swapchain unsuitable for image acquisition\n");
 			vkDeviceWaitIdle(dev.log);
 			done = reswap(win, surf, dev, graphics, desc, pool, vol);
+			data.win_size = vol.swap->extent;
 			continue;
 		default:
 			fprintf(
@@ -2044,6 +2047,7 @@ static void run(
 			printf("Swapchain unsuitable for presentation\n");
 			vkDeviceWaitIdle(dev.log);
 			done = reswap(win, surf, dev, graphics, desc, pool, vol);
+			data.win_size = vol.swap->extent;
 			continue;
 		default:
 			fprintf(
