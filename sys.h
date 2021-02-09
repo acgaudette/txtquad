@@ -6,13 +6,15 @@
 
 static void panic()
 {
-	printf("Exit failure\n");
+	fflush(stdout);
+	fprintf(stderr, "Exit failure\n");
 	exit(1);
 }
 
 static void panic_msg(const char *msg)
 {
-	fprintf(stderr, "Error: %s\n", msg);
+	fflush(stdout);
+	fprintf(stderr, "panic(): %s\n", msg);
 	panic();
 }
 
