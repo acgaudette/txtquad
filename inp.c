@@ -11,15 +11,15 @@ void inp_update(GLFWwindow *win)
 		inp_data.key.states[handle] = s;
 	}
 
-	for (size_t i = 0; i < inp_data.but.count; ++i) {
-		int handle = inp_data.but.handles[i];
-		char s = inp_data.but.states[handle];
+	for (size_t i = 0; i < inp_data.btn.count; ++i) {
+		int handle = inp_data.btn.handles[i];
+		char s = inp_data.btn.states[handle];
 		s = (s << 1) & 2;
 		s |= glfwGetMouseButton(win, handle) == GLFW_PRESS;
-		inp_data.but.states[handle] = s;
+		inp_data.btn.states[handle] = s;
 	}
 
-	/* Mouse delta */
+	/* Mouse */
 
 	double mx, my;
 	glfwGetCursorPos(win, &mx, &my);

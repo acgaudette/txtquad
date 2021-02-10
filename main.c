@@ -219,18 +219,21 @@ static struct App {
 
 #ifdef INP_KEYS
 struct Input inp_data;
-void inp_init(
-	int *key_handles,
-	size_t key_count,
-	int *but_handles,
-	size_t but_count,
-	int *pad_handles,
-	size_t pad_count
-) {
+
+void inp_key_init(const int *key_handles, size_t key_count)
+{
 	inp_data.key.handles = key_handles;
 	inp_data.key.count = key_count;
-	inp_data.but.handles = but_handles;
-	inp_data.but.count = but_count;
+}
+
+void inp_btn_init(const int *btn_handles, size_t btn_count)
+{
+	inp_data.btn.handles = btn_handles;
+	inp_data.btn.count = btn_count;
+}
+
+void inp_pad_init(const int *pad_handles, size_t pad_count)
+{
 	inp_data.pad.handles = pad_handles;
 	inp_data.pad.count = pad_count;
 }

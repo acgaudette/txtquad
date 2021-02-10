@@ -32,6 +32,10 @@
 #define JOY_TRIGG_L (inp_data.joy.trigg_l)
 #define JOY_TRIGG_R (inp_data.joy.trigg_r)
 
+void inp_key_init(const int *key_handles, size_t key_count);
+void inp_btn_init(const int *btn_handles, size_t btn_count);
+void inp_pad_init(const int *pad_handles, size_t pad_count);
+
 #define INP_DATA_STRUCT(T)                             \
 struct {                                               \
 	int *handles;                                  \
@@ -53,7 +57,7 @@ extern struct Input {
 	} joy;
 
 	INP_DATA_STRUCT(KEY) key;
-	INP_DATA_STRUCT(MOUSE_BUTTON) but;
+	INP_DATA_STRUCT(MOUSE_BUTTON) btn;
 	INP_DATA_STRUCT(GAMEPAD_BUTTON) pad;
 } inp_data;
 #undef INP_DATA_STRUCT
@@ -63,18 +67,6 @@ extern struct Input {
  */
 __attribute__((weak))
 void inp_ev_text(unsigned int unicode);
-
-/*
- * Implemented by engine, called by consumer
- */
-void inp_init(
-	int *key_handles,
-	size_t key_count,
-	int *but_handles,
-	size_t but_count,
-	int *pad_handles,
-	size_t pad_count
-);
 
 /*
  * Implemented by library
