@@ -106,8 +106,8 @@ struct Share txtquad_update(struct Frame data, struct Text *text)
 		.pos = { -.5f + PIX_WIDTH * .5f, -.5f, .5f },
 		.rot = qt_id(),
 		.scale = 1.f,
-		.v = 'A',
-		.col = (v4) { 1.f, 1.f, 1.f, a },
+		.v = cosf(data.t) > 0.f ? 'Q' : 'S',
+		.col = (v4) { 1.f, 1.f, 1.f, 1.1f * a * a },
 	};
 #endif
 

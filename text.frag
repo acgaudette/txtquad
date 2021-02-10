@@ -24,6 +24,6 @@ void main()
 	float b = texture(sampler2D(img, unf), uv).r;
 	if (0 == b) discard;
 
-	if (col.a < st.y) discard; // e.g. basic wipe effect
+	if (col.a < 2 * abs(st.y - .5)) discard; // e.g. basic wipe effect
 	final = vec4(b * col.rgb, 1);
 }
