@@ -77,6 +77,11 @@ static inline float signf(const float s)
 	return (float)(u >> 31) * -2.f + 1.f;
 }
 
+static inline int is01f(const float s)
+{
+	return s == clamp01f(s);
+}
+
 /* Vectors */
 
 #define FILL(N) static v ## N v ## N ## _fill(float s) \
