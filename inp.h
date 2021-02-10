@@ -36,11 +36,22 @@ void inp_key_init(const int *key_handles, size_t key_count);
 void inp_btn_init(const int *btn_handles, size_t btn_count);
 void inp_pad_init(const int *pad_handles, size_t pad_count);
 
+/*
+ * User callback; must be implemented by consumer (you)
+ * if txtquad was compiled with INP_TEXT
+ */
+__attribute__((weak))
+void inp_ev_text(unsigned int unicode);
+
+/*
+ * Internal
+ */
+
 #define INP_DATA_STRUCT(T)                             \
 struct {                                               \
-	int *handles;                                  \
-	size_t count;                                  \
-	unsigned char states[GLFW_ ## T ## _LAST + 1]; \
+        const int *handles;                            \
+        size_t count;                                  \
+        unsigned char states[GLFW_ ## T ## _LAST + 1]; \
 }
 
 extern struct Input {
@@ -62,15 +73,6 @@ extern struct Input {
 } inp_data;
 #undef INP_DATA_STRUCT
 
-/*
- * Implemented by consumer, called by engine
- */
-__attribute__((weak))
-void inp_ev_text(unsigned int unicode);
-
-/*
- * Implemented by library
- */
 void inp_update(GLFWwindow *win);
 
 #endif

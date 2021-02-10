@@ -79,9 +79,15 @@ struct Text {
 	size_t char_count;
 };
 
+/*
+ * User callback; must be implemented by consumer (you)
+ */
 __attribute__((weak))
 struct Share txtquad_update(struct Frame data, struct Text *text);
 
+/*
+ * Public API
+ */
 void txtquad_init(const struct Settings);
 void txtquad_start();
 
