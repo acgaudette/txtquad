@@ -93,15 +93,14 @@ You will additionally require the vulkan headers + libs, and glslc.
 
 - Include inp.h in your application's source
 - When compiling txtquad,
-  define INP_KEYS for keyboard + mouse press/hold/release polling macros,
-  INP_TEXT for a text entry callback,
-  and/or INP_MOUSE for a mouse position callback
-  - Input support is compiled into the binary by default
-    (see ./build.ninja) using these defines
-- You will also need the glfw header as a dev dependency
+  define INP_KEYS for keyboard, mouse, and gamepad
+  press/hold/release polling support,
+  and/or INP_TEXT for a text entry callback
+  - These defines are compiled into the binary by default
+    (see ./build.ninja)
 - See ./inp.h and ./examples for API usage
   - You _must_ implement inp_ev_text()
     if libtxtquad is compiled with INP_TEXT,
-    and/or inp_ev_mouse()
-    if libtxtquad is compiled with INP_MOUSE,
     otherwise the lib will panic.
+- You will also need the glfw header as a dev dependency
+  in order to use the key/button macros
