@@ -15,7 +15,6 @@ void inp_ev_text(unsigned int unicode)
 #else
 void inp_ev_text(unsigned int _) { }
 #endif
-void inp_ev_mouse(float _a, float _b, struct Extent _e) { }
 
 struct Share txtquad_update(struct Frame data, struct Text *text)
 {
@@ -127,19 +126,20 @@ struct Share txtquad_update(struct Frame data, struct Text *text)
 int main()
 {
 #ifndef DEMO_2
-	inp_init(NULL, 0, NULL, 0);
+	inp_key_init(NULL, 0);
 #else
-	int inp_handles[3] = {
+	int inp_handles[] = {
 		  KEY(ENTER)
 		, KEY(BACKSPACE)
 		, KEY(ESCAPE)
 	};
-	inp_init(inp_handles, 3, NULL, 0);
+
+	inp_key_init(inp_handles, sizeof(inp_handles) / sizeof(int));
 #endif
 	struct Settings settings = {
 		.app_name = "txtquad-demo",
 		.asset_path = "./assets/",
-		.win_size = { 800, 600 }, // Ignored
+		.win_size = { 800, 800 }, // Ignored
 		.mode = MODE_BORDERLESS,
 	};
 

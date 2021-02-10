@@ -15,7 +15,7 @@
 #include "txtquad.h"
 #include "vkext.h"
 
-#if defined(INP_KEYS) || defined(INP_TEXT) || defined(INP_MOUSE)
+#if defined(INP_KEYS) || defined(INP_TEXT)
 #include "inp.h"
 #endif
 
@@ -219,16 +219,23 @@ static struct App {
 
 #ifdef INP_KEYS
 struct Input inp_data;
-void inp_init(
-	int *key_handles,
-	size_t key_count,
-	int *but_handles,
-	size_t but_count
-) {
+
+void inp_key_init(const int *key_handles, size_t key_count)
+{
 	inp_data.key.handles = key_handles;
 	inp_data.key.count = key_count;
-	inp_data.but.handles = but_handles;
-	inp_data.but.count = but_count;
+}
+
+void inp_btn_init(const int *btn_handles, size_t btn_count)
+{
+	inp_data.btn.handles = btn_handles;
+	inp_data.btn.count = btn_count;
+}
+
+void inp_pad_init(const int *pad_handles, size_t pad_count)
+{
+	inp_data.pad.handles = pad_handles;
+	inp_data.pad.count = pad_count;
 }
 #endif
 
@@ -236,15 +243,6 @@ void inp_init(
 static void glfw_char_callback(GLFWwindow *win, unsigned int unicode)
 {
 	inp_ev_text(unicode);
-}
-#endif
-
-#ifdef INP_MOUSE
-static void glfw_mouse_callback(GLFWwindow *win, double x, double y)
-{
-	int win_w, win_h;
-	glfwGetWindowSize(win, &win_w, &win_h);
-	inp_ev_mouse(x, y, (struct Extent) { win_w, win_h });
 }
 #endif
 
@@ -335,9 +333,6 @@ static GLFWwindow *mk_win(const char *name, int type, struct Extent *extent)
 
 #ifdef INP_TEXT
 	glfwSetCharCallback(win, glfw_char_callback);
-#endif
-#ifdef INP_MOUSE
-	glfwSetCursorPosCallback(win, glfw_mouse_callback);
 #endif
 	glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 
