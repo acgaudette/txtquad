@@ -15,7 +15,7 @@
 #include "txtquad.h"
 #include "vkext.h"
 
-#if defined(INP_KEYS) || defined(INP_TEXT) || defined(INP_MOUSE)
+#if defined(INP_KEYS) || defined(INP_TEXT)
 #include "inp.h"
 #endif
 
@@ -243,15 +243,6 @@ static void glfw_char_callback(GLFWwindow *win, unsigned int unicode)
 }
 #endif
 
-#ifdef INP_MOUSE
-static void glfw_mouse_callback(GLFWwindow *win, double x, double y)
-{
-	int win_w, win_h;
-	glfwGetWindowSize(win, &win_w, &win_h);
-	inp_ev_mouse(x, y, (struct Extent) { win_w, win_h });
-}
-#endif
-
 static GLFWwindow *mk_win(const char *name, int type, struct Extent *extent)
 {
 	if (!glfwInit()) {
@@ -339,9 +330,6 @@ static GLFWwindow *mk_win(const char *name, int type, struct Extent *extent)
 
 #ifdef INP_TEXT
 	glfwSetCharCallback(win, glfw_char_callback);
-#endif
-#ifdef INP_MOUSE
-	glfwSetCursorPosCallback(win, glfw_mouse_callback);
 #endif
 	glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 

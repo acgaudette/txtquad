@@ -5,7 +5,6 @@
 #include <GLFW/glfw3.h>
 #include "alg.h"
 
-#include "txtquad.h"
 /*
  * Public API
  */
@@ -64,8 +63,6 @@ extern struct Input {
  */
 __attribute__((weak))
 void inp_ev_text(unsigned int unicode);
-__attribute__((weak))
-void inp_ev_mouse(float x, float y, struct Extent win_size);
 
 /*
  * Implemented by engine, called by consumer
