@@ -303,7 +303,7 @@ NORM(4)
 #define IS_NORM(N) static int v ## N ## _is_norm(v ## N v) \
 { \
 	float mag_sq = v ## N ## _mag_sq(v); \
-	return fabsf(1.f - mag_sq) < 0.000001f; \
+	return fabsf(1.f - mag_sq) < 1e-6; \
 }
 
 IS_NORM(2)

@@ -41,7 +41,7 @@ void inp_pad_init(const int *pad_handles, size_t pad_count);
  * if txtquad was compiled with INP_TEXT
  */
 __attribute__((weak))
-void inp_ev_text(unsigned int unicode);
+void inp_ev_text(unsigned unicode);
 
 /*
  * Internal
