@@ -527,6 +527,11 @@ static m4 m4_scale(float s)
 	return m4_diag((v4) { s, s, s, 1.f });
 }
 
+static m4 m4_scale_aniso(float x, float y, float z)
+{
+	return m4_diag((v4) { x, y, z, 1.f });
+}
+
 // Expects VFOV (width / height) in degrees
 static m4 m4_persp(float fov, float asp, float near, float far)
 {
