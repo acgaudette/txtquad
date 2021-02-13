@@ -2,7 +2,7 @@ builddir = obj
 
 config = $
     -O0 -ggdb $
-    -DDEBUG -DALG_DEBUG $
+    -DTXT_DEBUG -DALG_DEBUG $
     -DINP_KEYS -DINP_TEXT -DINP_MOUSE
 cflags = -fPIC -fdiagnostics-color=always
 lflags = -shared
