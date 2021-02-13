@@ -1,5 +1,4 @@
 #include <assert.h>
-#include "extras/sprite.h"
 
 struct block {
 	const char *str;

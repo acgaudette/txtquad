@@ -3,17 +3,22 @@
 #include "txtquad.h"
 #include "inp.h"
 
-#ifdef DEMO_3
-static char cli[1024];
-static size_t cli_len;
-
-void inp_ev_text(unsigned int unicode)
-{
-	char ascii = unicode > 'Z' && unicode <= 'z' ? unicode - 32 : unicode;
-	cli[cli_len++] = ascii;
-}
+#ifndef DEMO_3
+	void inp_ev_text(unsigned int _) { }
 #else
-void inp_ev_text(unsigned int _) { }
+	#define DEBUG_UI
+	#include "extras/sprite.h"
+	#include "extras/block.h"
+
+	static char cli[1024];
+	static size_t cli_len;
+
+	void inp_ev_text(unsigned int unicode)
+	{
+		char ascii = 'z' >= unicode && unicode >= 'a' ?
+			unicode ^ ' ' : unicode;
+		cli[cli_len++] = ascii;
+	}
 #endif
 
 struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
@@ -107,24 +112,31 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 		cli_len = 0;
 	}
 
+	// Cursor
+	*(cli + cli_len + 0) = fmodf(frame.t, 1.f) > .5f ? '_' : ' ';
+	*(cli + cli_len + 1) = 0;
+
 	txt->count = 0;
-/*
-	txt->block_count = 1;
-	txt->blocks[0] = (struct Block) {
-		.str = cli,
-		.str_len = cli_len,
-		.pos = { -.9f, -.9f, 2 },
-		.rot = qt_axis_angle(v3_right(), M_PI * .15f),
-		.scale = .25f,
-		.piv = { 0.f, 1.f },
-		.off = { 0.f, 0.f },
-		.just = JUST_LEFT,
-		.col = v4_one(),
-		.spacing = LINE_HEIGHT,
-		.col_lim = 8,
-		.cursor = '_',
-	};
-*/
+	struct block_ctx ctx = block_prepare(
+		(struct block) {
+			.str = cli,
+			.pos = { 0.f, -.9f, 2.f },
+			.anch = { 0.f, -1.f },
+			.rot = qt_axis_angle(v3_right(), M_PI * .15f),
+			.scale = .25f,
+			.justify = JUST_LEFT,
+			.spacing = 1.f,
+			.line_height = 1.f,
+		}
+	);
+
+	while (!ctx.finished) {
+		struct sprite sprite = block_draw(&ctx, txt);
+		sprite.col = v3_one();
+		txt->quads[txt->count++] = sprite_conv(sprite);
+	}
+
+	*(cli + cli_len + 1) = 0;
 #endif
 	float asp = (float)frame.size.w / frame.size.h;
 	m4 view = m4_view(cam_pos, cam_rot);
