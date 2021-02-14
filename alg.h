@@ -101,7 +101,11 @@ static inline int is01f(const float s)
 
 /* Vectors */
 
-#define FILL(N) static v ## N v ## N ## _fill(float s) \
+#define GEN(N, ID) \
+	ID(N, v ## N ## _ ## ID) \
+	ID(N, ID ## N)
+
+#define fill(N, ID) static v ## N ID(float s) \
 { \
 	v ## N v; \
 	for (size_t i = 0; i < N; ++i) \
@@ -109,12 +113,12 @@ static inline int is01f(const float s)
 	return v; \
 }
 
-FILL(2)
-FILL(3)
-FILL(4)
-#undef FILL
+GEN(2, fill)
+GEN(3, fill)
+GEN(4, fill)
+#undef fill
 
-#define SHIFT(N) static v ## N v ## N ## _shift(v ## N v, const u8 i) \
+#define shift(N, ID) static v ## N ID(v ## N v, const u8 i) \
 { \
 	v ## N swap = v; \
 	for (u8 j = 0; j < N; ++j) { \
@@ -124,10 +128,10 @@ FILL(4)
 	return v; \
 }
 
-SHIFT(2)
-SHIFT(3)
-SHIFT(4)
-#undef SHIFT
+GEN(2, shift)
+GEN(3, shift)
+GEN(4, shift)
+#undef shift
 
 #define ZERO(N) static v ## N v ## N ## _zero() \
 { \
@@ -210,77 +214,77 @@ FZ_EQ(3)
 FZ_EQ(4)
 #undef FZ_EQ
 
-#define NEG(N) static v ## N v ## N ## _neg(v ## N v) \
+#define neg(N, ID) static v ## N ID(v ## N v) \
 { \
 	for (size_t i = 0; i < N; ++i) \
 		v.s[i] *= -1.f; \
 	return v; \
 }
 
-NEG(2)
-NEG(3)
-NEG(4)
-#undef NEG
+GEN(2, neg)
+GEN(3, neg)
+GEN(4, neg)
+#undef neg
 
-#define ADD(N) static v ## N v ## N ## _add(v ## N a, v ## N b) \
+#define add(N, ID) static v ## N ID(v ## N a, v ## N b) \
 { \
 	for (size_t i = 0; i < N; ++i) \
 		a.s[i] += b.s[i]; \
 	return a; \
 }
 
-ADD(2)
-ADD(3)
-ADD(4)
-#undef ADD
+GEN(2, add)
+GEN(3, add)
+GEN(4, add)
+#undef add
 
-#define ADDEQ(N) static void v ## N ## _addeq(v ## N *a, v ## N b) \
+#define addeq(N, ID) static void ID(v ## N *a, v ## N b) \
 { \
 	*a = v ## N ## _add(*a, b); \
 }
 
-ADDEQ(2)
-ADDEQ(3)
-ADDEQ(4)
-#undef ADD_EQ
+GEN(2, addeq)
+GEN(3, addeq)
+GEN(4, addeq)
+#undef addeq
 
-#define SUB(N) static v ## N v ## N ## _sub(v ## N a, v ## N b) \
+#define sub(N, ID) static v ## N ID(v ## N a, v ## N b) \
 { \
 	for (size_t i = 0; i < N; ++i) \
 		a.s[i] -= b.s[i]; \
 	return a; \
 }
 
-SUB(2)
-SUB(3)
-SUB(4)
-#undef SUB
+GEN(2, sub)
+GEN(3, sub)
+GEN(4, sub)
+#undef sub
 
-#define MUL(N) static v ## N v ## N ## _mul(v ## N v, float s) \
+#define mul(N, ID) static v ## N ID(v ## N v, float s) \
 { \
 	for (size_t i = 0; i < N; ++i) \
 		v.s[i] *= s; \
 	return v; \
 }
 
-MUL(2)
-MUL(3)
-MUL(4)
-#undef MUL
+GEN(2, mul)
+GEN(3, mul)
+GEN(4, mul)
+#undef mul
 
-#define SCHUR(N) static v ## N v ## N ## _schur(v ## N a, v ## N b) \
+#define schur(N, ID) static v ## N ID(v ## N a, v ## N b) \
 { \
 	for (size_t i = 0; i < N; ++i) \
 		a.s[i] *= b.s[i]; \
 	return a; \
 }
 
-SCHUR(2)
-SCHUR(3)
-SCHUR(4)
-#undef SCHUR
+GEN(2, schur)
+GEN(3, schur)
+GEN(4, schur)
+#undef schur
 
-#define MAG_SQ(N) static float v ## N ## _mag_sq(v ## N v) \
+#define magsq(N, ID) static float ID(v ## N v) \
 { \
 	float s = 0; \
 	for (size_t i = 0; i < N; ++i) \
@@ -288,47 +292,47 @@ SCHUR(4)
 	return s; \
 }
 
-MAG_SQ(2)
-MAG_SQ(3)
-MAG_SQ(4)
-#undef MAG_SQ
+GEN(2, magsq)
+GEN(3, magsq)
+GEN(4, magsq)
+#undef magsq
 
-#define MAG(N) static float v ## N ## _mag(v ## N v) \
+#define mag(N, ID) static float ID(v ## N v) \
 { \
-	return sqrt(v ## N ## _mag_sq(v)); \
+	return sqrtf(v ## N ## _magsq(v)); \
 }
 
-MAG(2)
-MAG(3)
-MAG(4)
-#undef MAG
+GEN(2, mag)
+GEN(3, mag)
+GEN(4, mag)
+#undef mag
 
-// TODO: verify nonzero
-#define NORM(N) static v ## N v ## N ## _norm(v ## N v) \
+#define norm(N, ID) static v ## N ID(v ## N v) \
 { \
-	float inv = 1.f / v ## N ## _mag(v); \
+	float mag = v ## N ## _mag(v); \
+	float inv = 1.f / mag; \
 	for (size_t i = 0; i < N; ++i) \
 		v.s[i] *= inv; \
 	return v; \
 }
 
-NORM(2)
-NORM(3)
-NORM(4)
-#undef NORM
+GEN(2, norm)
+GEN(3, norm)
+GEN(4, norm)
+#undef norm
 
-#define IS_NORM(N) static int v ## N ## _is_norm(v ## N v) \
+#define isnorm(N, ID) static int ID(v ## N v) \
 { \
-	float mag_sq = v ## N ## _mag_sq(v); \
-	return fabsf(1.f - mag_sq) < 1e-6; \
+	float magsq = v ## N ## _magsq(v); \
+	return fabsf(1.f - magsq) < 1e-6; \
 }
 
-IS_NORM(2)
-IS_NORM(3)
-IS_NORM(4)
-#undef IS_NORM
+GEN(2, isnorm)
+GEN(3, isnorm)
+GEN(4, isnorm)
+#undef isnorm
 
-#define DOT(N) static float v ## N ## _dot(v ## N a, v ## N b) \
+#define dot(N, ID) static float ID(v ## N a, v ## N b)         \
 {                                                              \
         float s = 0;                                           \
         for (size_t i = 0; i < N; ++i)                         \
@@ -336,10 +340,10 @@ IS_NORM(4)
         return s;                                              \
 }
 
-DOT(2)
-DOT(3)
-DOT(4)
-#undef DOT
+GEN(2, dot)
+GEN(3, dot)
+GEN(4, dot)
+#undef dot
 
 #define LERP(N) static v ## N v ## N ## _lerp(v ## N a, v ## N b, float s) \
 { \
@@ -383,6 +387,10 @@ static v3 v3_cross(v3 a, v3 b)
 		a.x * b.y - a.y * b.x,
 	};
 }
+
+static inline v3 cross3(v3 a, v3 b) { return v3_cross(a, b); }
+
+#undef VFN_GEN
 
 /* Matrices */
 
