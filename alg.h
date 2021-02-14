@@ -133,13 +133,13 @@ GEN(3, shift)
 GEN(4, shift)
 #undef shift
 
-#define V2_ZERO ((v2) { 0.f, 0.f })
+#define V2_ZERO ((v2) {})
 #define ZERO2 V2_ZERO
 
-#define V3_ZERO ((v3) { 0.f, 0.f, 0.f })
+#define V3_ZERO ((v3) {})
 #define ZERO3 V3_ZERO
 
-#define V4_ZERO ((v4) { 0.f, 0.f, 0.f, 0.f })
+#define V4_ZERO ((v4) {})
 #define ZERO4 V4_ZERO
 
 #define zero(N, ID) static inline v ## N ID() { return V ## N ## _ZERO; }
@@ -247,7 +247,7 @@ GEN(4, shift)
 
 #define X(N) static v ## N v ## N ## _x(float s) \
 { \
-	v ## N v = v ## N ## _zero(); \
+	v ## N v = V ## N ## _ZERO; \
 	v.x = s; \
 	return v; \
 }
@@ -259,7 +259,7 @@ X(4)
 
 #define Y(N) static v ## N v ## N ## _y(float s) \
 { \
-	v ## N v = v ## N ## _zero(); \
+	v ## N v = V ## N ## _ZERO; \
 	v.y = s; \
 	return v; \
 }
@@ -271,7 +271,7 @@ Y(4)
 
 #define Z(N) static v ## N v ## N ## _z(float s) \
 { \
-	v ## N v = v ## N ## _zero(); \
+	v ## N v = V ## N ## _ZERO; \
 	v.z = s; \
 	return v; \
 }
@@ -282,7 +282,7 @@ Z(4)
 
 #define W(N) static v ## N v ## N ## _w(float s) \
 { \
-	v ## N v = v ## N ## _zero(); \
+	v ## N v = V ## N ## _ZERO; \
 	v.w = s; \
 	return v; \
 }
