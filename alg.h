@@ -29,6 +29,10 @@ VEC(4, struct { COMP_4 };
        struct { float _3; float yzw; });
 #undef VEC
 
+typedef v2 ff;
+typedef v3 fff;
+typedef v4 ffff;
+
 #define MAT(N, ...) typedef union m ## N { \
         float s[N * N];                    \
         v ## N v[N];                       \
