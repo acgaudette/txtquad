@@ -818,27 +818,38 @@ static m4 m4_view(v3 pos, v4 rot)
 /* Debug */
 
 #include <stdio.h>
-#define FPRINT(N) static void v ## N ## _fprint(FILE *stream, v ## N v) \
+
+static inline void fprintf32(FILE *stream, float s)
+{
+	fprintf(stream, "%8.4f\n", s);
+}
+
+static inline void printf32(float s)
+{
+	fprintf(stdout, "%8.4f\n", s);
+}
+
+#define fprint(N, ID) static void ID(FILE *stream, v ## N v) \
 { \
 	for (size_t i = 0; i < N; ++i) \
 		fprintf(stream, "%8.4f  ", v.s[i]); \
 	fprintf(stream, "\n"); \
 }
 
-FPRINT(2)
-FPRINT(3)
-FPRINT(4)
-#undef FPRINT
+GEN(2, fprint)
+GEN(3, fprint)
+GEN(4, fprint)
+#undef fprint
 
-#define PRINT(N) static void v ## N ## _print(v ## N v) \
+#define print(N, ID) static void ID(v ## N v) \
 { \
 	v ## N ## _fprint(stdout, v); \
 }
 
-PRINT(2)
-PRINT(3)
-PRINT(4)
-#undef PRINT
+GEN(2, print)
+GEN(3, print)
+GEN(4, print)
+#undef print
 
 #define FPRINT(N) static void m ## N ## _fprint(FILE *stream, m ## N m) \
 { \
