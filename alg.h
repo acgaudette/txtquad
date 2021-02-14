@@ -686,9 +686,10 @@ static m4 m4_ortho(float scale, float asp, float near, float far)
 
 /* Quaternions */
 
+#define QT_ID ((v4) { 0.f, 0.f, 0.f, 1.f })
 static inline v4 qt_id()
 {
-	return (v4) { 0.f, 0.f, 0.f, 1.f };
+	return QT_ID;
 }
 
 static inline v4 qt_conj(v4 q)
@@ -696,6 +697,7 @@ static inline v4 qt_conj(v4 q)
 	return (v4) { -q.x, -q.y, -q.z, q.w, };
 }
 
+// Hamilton convention
 static v4 qt_mul(v4 a, v4 b)
 {
 	v4 c, d;
@@ -729,38 +731,53 @@ static v4 qt_mul(v4 a, v4 b)
 	return (v4) { x, y, z, w };
 }
 
-// Assume fwd and up are not orthogonal
-// (o/w should convert from m3 directly)
-static v4 qt_vecs_up(v3 fwd, v3 up)
+static v4 qt_vecs(const v3 fwd, const v3 up)
 {
-	// assert(v3_is_norm(fwd));
-	// assert(v3_is_norm(up));
-
-	v3 right = v3_cross(up, fwd);
-	right = v3_norm(right); // TODO: if not already orthogonal
-	fwd = v3_cross(right, up);
-
-	m3 m;
-	m.c0 = right;
-	m.c1 = up;
-	m.c2 = fwd;
+	m3 m = {
+		.c0 = cross3(up, fwd),
+		.c1 = up,
+		.c2 = fwd,
+	};
 
 	return m3_to_qt(m);
 }
 
-static v4 qt_vecs_fwd(v3 fwd, v3 up)
+// Assumes fwd and up are not orthogonal;
+// will modify input fwd vector.
+static v4 qt_vecs_up(v3 fwd, const v3 up)
 {
-	// assert(v3_is_norm(fwd));
-	// assert(v3_is_norm(up));
-
+#ifdef ALG_DEBUG
+	assert(v3_is_norm(up));
+#endif
 	v3 right = v3_cross(up, fwd);
-	right = v3_norm(right); // TODO: if not already orthogonal
+	right = v3_norm(right);
+	fwd = v3_cross(right, up);
+
+	m3 m = {
+		.c0 = right,
+		.c1 = up,
+		.c2 = fwd,
+	};
+
+	return m3_to_qt(m);
+}
+
+// Assumes fwd and up are not orthogonal;
+// will modify input up vector.
+static v4 qt_vecs_fwd(const v3 fwd, v3 up)
+{
+#ifdef ALG_DEBUG
+	assert(v3_is_norm(fwd));
+#endif
+	v3 right = v3_cross(up, fwd);
+	right = v3_norm(right);
 	up = v3_cross(fwd, right);
 
-	m3 m;
-	m.c0 = right;
-	m.c1 = up;
-	m.c2 = fwd;
+	m3 m = {
+		.c0 = right,
+		.c1 = up,
+		.c2 = fwd,
+	};
 
 	return m3_to_qt(m);
 }
@@ -782,12 +799,14 @@ static v4 qt_axis_angle(v3 axis, float angle)
 	};
 }
 
-// TODO
-// gamedev.stackexchange.com/questions/28395/rotating-vector3-by-a-quaternion
+/* Optimized formulation:
+ * gamedev.stackexchange.com/questions/28395/rotating-vector3-by-a-quaternion
+ */
 static v3 qt_app(v4 q, v3 v)
 {
-	v3 b = (v3) { q.x, q.y, q.z };
+	fff b = q.xyz;
 	float s = q.w;
+
 	return v3_add(
 		v3_mul(b, 2.f * v3_dot(v, b)),
 		v3_add(
@@ -797,7 +816,7 @@ static v3 qt_app(v4 q, v3 v)
 	);
 }
 
-// TODO: hamilton (corpus/edu/math/linear)
+// Hamilton convention
 static m3 qt_to_m3(v4 q)
 {
 	float xx = q.x * q.x;
