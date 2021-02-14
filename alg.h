@@ -816,6 +816,13 @@ static v3 qt_app(v4 q, v3 v)
 	);
 }
 
+static v4 qt_nlerp(v4 a, v4 b, float t)
+{
+	return v4_norm(
+		v4_add(a, v4_mul(v4_sub(b, a), t))
+	);
+}
+
 // Hamilton convention
 static m3 qt_to_m3(v4 q)
 {
