@@ -785,4 +785,555 @@ PRINT(3)
 PRINT(4)
 #undef PRINT
 
+/* Swizzles (2) */
+
+#define XX(N) static v2 v ## N ## _xx(v ## N v) { return (v2) { v.x, v.x }; }
+        XX(2)
+        XX(3)
+        XX(4)
+#undef  XX
+#define XY(N) static v2 v ## N ## _xy(v ## N v) { return (v2) { v.x, v.y }; }
+        XY(2) // (!)
+        XY(3)
+        XY(4)
+#undef  XY
+#define XZ(N) static v2 v ## N ## _xz(v ## N v) { return (v2) { v.x, v.z }; }
+        XZ(3)
+        XZ(4)
+#undef  XZ
+#define XW(N) static v2 v ## N ## _xw(v ## N v) { return (v2) { v.x, v.w }; }
+        XW(4)
+#undef  XW
+
+#define YX(N) static v2 v ## N ## _yx(v ## N v) { return (v2) { v.y, v.x }; }
+        YX(2)
+        YX(3)
+        YX(4)
+#undef  YX
+#define YY(N) static v2 v ## N ## _yy(v ## N v) { return (v2) { v.y, v.y }; }
+        YY(2)
+        YY(3)
+        YY(4)
+#undef  YY
+#define YZ(N) static v2 v ## N ## _yz(v ## N v) { return (v2) { v.y, v.z }; }
+        YZ(3)
+        YZ(4)
+#undef  YZ
+#define YW(N) static v2 v ## N ## _yw(v ## N v) { return (v2) { v.y, v.w }; }
+        YW(4)
+#undef  YW
+
+#define ZX(N) static v2 v ## N ## _zx(v ## N v) { return (v2) { v.z, v.x }; }
+        ZX(3)
+        ZX(4)
+#undef  ZX
+#define ZY(N) static v2 v ## N ## _zy(v ## N v) { return (v2) { v.z, v.y }; }
+        ZY(3)
+        ZY(4)
+#undef  ZY
+#define ZZ(N) static v2 v ## N ## _zz(v ## N v) { return (v2) { v.z, v.z }; }
+        ZZ(3)
+        ZZ(4)
+#undef  ZZ
+#define ZW(N) static v2 v ## N ## _zw(v ## N v) { return (v2) { v.z, v.w }; }
+        ZW(4)
+#undef  ZW
+
+#define WX(N) static v2 v ## N ## _wx(v ## N v) { return (v2) { v.w, v.x }; }
+        WX(4)
+#undef  WX
+#define WY(N) static v2 v ## N ## _wy(v ## N v) { return (v2) { v.w, v.y }; }
+        WY(4)
+#undef  WY
+#define WZ(N) static v2 v ## N ## _wz(v ## N v) { return (v2) { v.w, v.z }; }
+        WZ(4)
+#undef  WZ
+#define WW(N) static v2 v ## N ## _ww(v ## N v) { return (v2) { v.w, v.w }; }
+        WW(4)
+#undef  WW
+
+/* Swizzles (3) */
+
+#define XXX(N) static v3 v ## N ## _xxx(v ## N v) { return (v3) { v.x, v.x, v.x }; }
+        XXX(3)
+        XXX(4)
+#undef  XXX
+#define XXY(N) static v3 v ## N ## _xxy(v ## N v) { return (v3) { v.x, v.x, v.y }; }
+        XXY(3)
+        XXY(4)
+#undef  XXY
+#define XXZ(N) static v3 v ## N ## _xxz(v ## N v) { return (v3) { v.x, v.x, v.z }; }
+        XXZ(3)
+        XXZ(4)
+#undef  XXZ
+#define XXW(N) static v3 v ## N ## _xxw(v ## N v) { return (v3) { v.x, v.x, v.w }; }
+        XXW(4)
+#undef  XXW
+#define XYX(N) static v3 v ## N ## _xyx(v ## N v) { return (v3) { v.x, v.y, v.x }; }
+        XYX(3)
+        XYX(4)
+#undef  XYX
+#define XYY(N) static v3 v ## N ## _xyy(v ## N v) { return (v3) { v.x, v.y, v.y }; }
+        XYY(3)
+        XYY(4)
+#undef  XYY
+#define XYZ(N) static v3 v ## N ## _xyz(v ## N v) { return (v3) { v.x, v.y, v.z }; }
+        XYZ(3) // (!)
+        XYZ(4)
+#undef  XYZ
+#define XYW(N) static v3 v ## N ## _xyw(v ## N v) { return (v3) { v.x, v.y, v.w }; }
+        XYW(4)
+#undef  XYW
+#define XZX(N) static v3 v ## N ## _xzx(v ## N v) { return (v3) { v.x, v.z, v.x }; }
+        XZX(3)
+        XZX(4)
+#undef  XZX
+#define XZY(N) static v3 v ## N ## _xzy(v ## N v) { return (v3) { v.x, v.z, v.y }; }
+        XZY(3)
+        XZY(4)
+#undef  XZY
+#define XZZ(N) static v3 v ## N ## _xzz(v ## N v) { return (v3) { v.x, v.z, v.z }; }
+        XZZ(3)
+        XZZ(4)
+#undef  XZZ
+#define XZW(N) static v3 v ## N ## _xzw(v ## N v) { return (v3) { v.x, v.z, v.w }; }
+        XZW(4)
+#undef  XZW
+#define XWX(N) static v3 v ## N ## _xwx(v ## N v) { return (v3) { v.x, v.w, v.x }; }
+        XWX(4)
+#undef  XWX
+#define XWY(N) static v3 v ## N ## _xwy(v ## N v) { return (v3) { v.x, v.w, v.y }; }
+        XWY(4)
+#undef  XWY
+#define XWZ(N) static v3 v ## N ## _xwz(v ## N v) { return (v3) { v.x, v.w, v.z }; }
+        XWZ(4)
+#undef  XWZ
+#define XWW(N) static v3 v ## N ## _xww(v ## N v) { return (v3) { v.x, v.w, v.w }; }
+        XWW(4)
+#undef  XWW
+
+#define YXX(N) static v3 v ## N ## _yxx(v ## N v) { return (v3) { v.y, v.x, v.x }; }
+        YXX(3)
+        YXX(4)
+#undef  YXX
+#define YXY(N) static v3 v ## N ## _yxy(v ## N v) { return (v3) { v.y, v.x, v.y }; }
+        YXY(3)
+        YXY(4)
+#undef  YXY
+#define YXZ(N) static v3 v ## N ## _yxz(v ## N v) { return (v3) { v.y, v.x, v.z }; }
+        YXZ(3)
+        YXZ(4)
+#undef  YXZ
+#define YXW(N) static v3 v ## N ## _yxw(v ## N v) { return (v3) { v.y, v.x, v.w }; }
+        YXW(4)
+#define YYX(N) static v3 v ## N ## _yyx(v ## N v) { return (v3) { v.y, v.y, v.x }; }
+        YYX(3)
+        YYX(4)
+#undef  YYX
+#define YYY(N) static v3 v ## N ## _yyy(v ## N v) { return (v3) { v.y, v.y, v.y }; }
+        YYY(3)
+        YYY(4)
+#undef  YYY
+#define YYZ(N) static v3 v ## N ## _yyz(v ## N v) { return (v3) { v.y, v.y, v.z }; }
+        YYZ(3)
+        YYZ(4)
+#undef  YYZ
+#define YYW(N) static v3 v ## N ## _yyw(v ## N v) { return (v3) { v.y, v.y, v.w }; }
+        YYW(4)
+#undef  YYW
+#define YZX(N) static v3 v ## N ## _yzx(v ## N v) { return (v3) { v.y, v.z, v.x }; }
+        YZX(3)
+        YZX(4)
+#undef  YZX
+#define YZY(N) static v3 v ## N ## _yzy(v ## N v) { return (v3) { v.y, v.z, v.y }; }
+        YZY(3)
+        YZY(4)
+#undef  YZY
+#define YZZ(N) static v3 v ## N ## _yzz(v ## N v) { return (v3) { v.y, v.z, v.z }; }
+        YZZ(3)
+        YZZ(4)
+#undef  YZZ
+#define YZW(N) static v3 v ## N ## _yzw(v ## N v) { return (v3) { v.y, v.z, v.w }; }
+        YZW(4)
+#undef  YZW
+#define YWX(N) static v3 v ## N ## _ywx(v ## N v) { return (v3) { v.y, v.w, v.x }; }
+        YWX(4)
+#undef  YWX
+#define YWY(N) static v3 v ## N ## _ywy(v ## N v) { return (v3) { v.y, v.w, v.y }; }
+        YWY(4)
+#undef  YWY
+#define YWZ(N) static v3 v ## N ## _ywz(v ## N v) { return (v3) { v.y, v.w, v.z }; }
+        YWZ(4)
+#undef  YWZ
+#define YWW(N) static v3 v ## N ## _yww(v ## N v) { return (v3) { v.y, v.w, v.w }; }
+        YWW(4)
+#undef  YWW
+
+#define ZXX(N) static v3 v ## N ## _zxx(v ## N v) { return (v3) { v.z, v.x, v.x }; }
+        ZXX(3)
+        ZXX(4)
+#undef  ZXX
+#define ZXY(N) static v3 v ## N ## _zxy(v ## N v) { return (v3) { v.z, v.x, v.y }; }
+        ZXY(3)
+        ZXY(4)
+#undef  ZXY
+#define ZXZ(N) static v3 v ## N ## _zxz(v ## N v) { return (v3) { v.z, v.x, v.z }; }
+        ZXZ(3)
+        ZXZ(4)
+#undef  ZXZ
+#define ZXW(N) static v3 v ## N ## _zxw(v ## N v) { return (v3) { v.z, v.x, v.w }; }
+        ZXW(4)
+#define ZYX(N) static v3 v ## N ## _zyx(v ## N v) { return (v3) { v.z, v.y, v.x }; }
+        ZYX(3)
+        ZYX(4)
+#undef  ZYX
+#define ZYY(N) static v3 v ## N ## _zyy(v ## N v) { return (v3) { v.z, v.y, v.y }; }
+        ZYY(3)
+        ZYY(4)
+#undef  ZYY
+#define ZYZ(N) static v3 v ## N ## _zyz(v ## N v) { return (v3) { v.z, v.y, v.z }; }
+        ZYZ(3)
+        ZYZ(4)
+#undef  ZYZ
+#define ZYW(N) static v3 v ## N ## _zyw(v ## N v) { return (v3) { v.z, v.y, v.w }; }
+        ZYW(4)
+#undef  ZYW
+#define ZZX(N) static v3 v ## N ## _zzx(v ## N v) { return (v3) { v.z, v.z, v.x }; }
+        ZZX(3)
+        ZZX(4)
+#undef  ZZX
+#define ZZY(N) static v3 v ## N ## _zzy(v ## N v) { return (v3) { v.z, v.z, v.y }; }
+        ZZY(3)
+        ZZY(4)
+#undef  ZZY
+#define ZZZ(N) static v3 v ## N ## _zzz(v ## N v) { return (v3) { v.z, v.z, v.z }; }
+        ZZZ(3)
+        ZZZ(4)
+#undef  ZZZ
+#define ZZW(N) static v3 v ## N ## _zzw(v ## N v) { return (v3) { v.z, v.z, v.w }; }
+        ZZW(4)
+#undef  ZZW
+#define ZWX(N) static v3 v ## N ## _zwx(v ## N v) { return (v3) { v.z, v.w, v.x }; }
+        ZWX(4)
+#undef  ZWX
+#define ZWY(N) static v3 v ## N ## _zwy(v ## N v) { return (v3) { v.z, v.w, v.y }; }
+        ZWY(4)
+#undef  ZWY
+#define ZWZ(N) static v3 v ## N ## _zwz(v ## N v) { return (v3) { v.z, v.w, v.z }; }
+        ZWZ(4)
+#undef  ZWZ
+#define ZWW(N) static v3 v ## N ## _zww(v ## N v) { return (v3) { v.z, v.w, v.w }; }
+        ZWW(4)
+#undef  ZWW
+
+#define WXX(N) static v3 v ## N ## _wxx(v ## N v) { return (v3) { v.w, v.x, v.x }; }
+        WXX(4)
+#undef  WXX
+#define WXY(N) static v3 v ## N ## _wxy(v ## N v) { return (v3) { v.w, v.x, v.y }; }
+        WXY(4)
+#undef  WXY
+#define WXZ(N) static v3 v ## N ## _wxz(v ## N v) { return (v3) { v.w, v.x, v.z }; }
+        WXZ(4)
+#undef  WXZ
+#define WXW(N) static v3 v ## N ## _wxw(v ## N v) { return (v3) { v.w, v.x, v.w }; }
+        WXW(4)
+#define WYX(N) static v3 v ## N ## _wyx(v ## N v) { return (v3) { v.w, v.y, v.x }; }
+        WYX(4)
+#undef  WYX
+#define WYY(N) static v3 v ## N ## _wyy(v ## N v) { return (v3) { v.w, v.y, v.y }; }
+        WYY(4)
+#undef  WYY
+#define WYZ(N) static v3 v ## N ## _wyz(v ## N v) { return (v3) { v.w, v.y, v.z }; }
+        WYZ(4)
+#undef  WYZ
+#define WYW(N) static v3 v ## N ## _wyw(v ## N v) { return (v3) { v.w, v.y, v.w }; }
+        WYW(4)
+#undef  WYW
+#define WZX(N) static v3 v ## N ## _wzx(v ## N v) { return (v3) { v.w, v.z, v.x }; }
+        WZX(4)
+#undef  WZX
+#define WZY(N) static v3 v ## N ## _wzy(v ## N v) { return (v3) { v.w, v.z, v.y }; }
+        WZY(4)
+#undef  WZY
+#define WZZ(N) static v3 v ## N ## _wzz(v ## N v) { return (v3) { v.w, v.z, v.z }; }
+        WZZ(4)
+#undef  WZZ
+#define WZW(N) static v3 v ## N ## _wzw(v ## N v) { return (v3) { v.w, v.z, v.w }; }
+        WZW(4)
+#undef  WZW
+#define WWX(N) static v3 v ## N ## _wwx(v ## N v) { return (v3) { v.w, v.w, v.x }; }
+        WWX(4)
+#undef  WWX
+#define WWY(N) static v3 v ## N ## _wwy(v ## N v) { return (v3) { v.w, v.w, v.y }; }
+        WWY(4)
+#undef  WWY
+#define WWZ(N) static v3 v ## N ## _wwz(v ## N v) { return (v3) { v.w, v.w, v.z }; }
+        WWZ(4)
+#undef  WWZ
+#define WWW(N) static v3 v ## N ## _www(v ## N v) { return (v3) { v.w, v.w, v.w }; }
+        WWW(4)
+#undef  WWW
+
+/* Swizzles (4) */
+
+static v4 v4_xxxx(v4 v) { return (v4) { v.x, v.x, v.x, v.x }; }
+static v4 v4_xxxy(v4 v) { return (v4) { v.x, v.x, v.x, v.y }; }
+static v4 v4_xxxz(v4 v) { return (v4) { v.x, v.x, v.x, v.z }; }
+static v4 v4_xxxw(v4 v) { return (v4) { v.x, v.x, v.x, v.w }; }
+static v4 v4_xxyx(v4 v) { return (v4) { v.x, v.x, v.y, v.x }; }
+static v4 v4_xxyy(v4 v) { return (v4) { v.x, v.x, v.y, v.y }; }
+static v4 v4_xxyz(v4 v) { return (v4) { v.x, v.x, v.y, v.z }; }
+static v4 v4_xxyw(v4 v) { return (v4) { v.x, v.x, v.y, v.w }; }
+static v4 v4_xxzx(v4 v) { return (v4) { v.x, v.x, v.z, v.x }; }
+static v4 v4_xxzy(v4 v) { return (v4) { v.x, v.x, v.z, v.y }; }
+static v4 v4_xxzz(v4 v) { return (v4) { v.x, v.x, v.z, v.z }; }
+static v4 v4_xxzw(v4 v) { return (v4) { v.x, v.x, v.z, v.w }; }
+static v4 v4_xxwx(v4 v) { return (v4) { v.x, v.x, v.w, v.x }; }
+static v4 v4_xxwy(v4 v) { return (v4) { v.x, v.x, v.w, v.y }; }
+static v4 v4_xxwz(v4 v) { return (v4) { v.x, v.x, v.w, v.z }; }
+static v4 v4_xxww(v4 v) { return (v4) { v.x, v.x, v.w, v.w }; }
+static v4 v4_xyxx(v4 v) { return (v4) { v.x, v.y, v.x, v.x }; }
+static v4 v4_xyxy(v4 v) { return (v4) { v.x, v.y, v.x, v.y }; }
+static v4 v4_xyxz(v4 v) { return (v4) { v.x, v.y, v.x, v.z }; }
+static v4 v4_xyxw(v4 v) { return (v4) { v.x, v.y, v.x, v.w }; }
+static v4 v4_xyyx(v4 v) { return (v4) { v.x, v.y, v.y, v.x }; }
+static v4 v4_xyyy(v4 v) { return (v4) { v.x, v.y, v.y, v.y }; }
+static v4 v4_xyyz(v4 v) { return (v4) { v.x, v.y, v.y, v.z }; }
+static v4 v4_xyyw(v4 v) { return (v4) { v.x, v.y, v.y, v.w }; }
+static v4 v4_xyzx(v4 v) { return (v4) { v.x, v.y, v.z, v.x }; }
+static v4 v4_xyzy(v4 v) { return (v4) { v.x, v.y, v.z, v.y }; }
+static v4 v4_xyzz(v4 v) { return (v4) { v.x, v.y, v.z, v.z }; }
+static v4 v4_xyzw(v4 v) { return (v4) { v.x, v.y, v.z, v.w }; } // (!)
+static v4 v4_xywx(v4 v) { return (v4) { v.x, v.y, v.w, v.x }; }
+static v4 v4_xywy(v4 v) { return (v4) { v.x, v.y, v.w, v.y }; }
+static v4 v4_xywz(v4 v) { return (v4) { v.x, v.y, v.w, v.z }; }
+static v4 v4_xyww(v4 v) { return (v4) { v.x, v.y, v.w, v.w }; }
+static v4 v4_xzxx(v4 v) { return (v4) { v.x, v.z, v.x, v.x }; }
+static v4 v4_xzxy(v4 v) { return (v4) { v.x, v.z, v.x, v.y }; }
+static v4 v4_xzxz(v4 v) { return (v4) { v.x, v.z, v.x, v.z }; }
+static v4 v4_xzxw(v4 v) { return (v4) { v.x, v.z, v.x, v.w }; }
+static v4 v4_xzyx(v4 v) { return (v4) { v.x, v.z, v.y, v.x }; }
+static v4 v4_xzyy(v4 v) { return (v4) { v.x, v.z, v.y, v.y }; }
+static v4 v4_xzyz(v4 v) { return (v4) { v.x, v.z, v.y, v.z }; }
+static v4 v4_xzyw(v4 v) { return (v4) { v.x, v.z, v.y, v.w }; }
+static v4 v4_xzzx(v4 v) { return (v4) { v.x, v.z, v.z, v.x }; }
+static v4 v4_xzzy(v4 v) { return (v4) { v.x, v.z, v.z, v.y }; }
+static v4 v4_xzzz(v4 v) { return (v4) { v.x, v.z, v.z, v.z }; }
+static v4 v4_xzzw(v4 v) { return (v4) { v.x, v.z, v.z, v.w }; }
+static v4 v4_xzwx(v4 v) { return (v4) { v.x, v.z, v.w, v.x }; }
+static v4 v4_xzwy(v4 v) { return (v4) { v.x, v.z, v.w, v.y }; }
+static v4 v4_xzwz(v4 v) { return (v4) { v.x, v.z, v.w, v.z }; }
+static v4 v4_xzww(v4 v) { return (v4) { v.x, v.z, v.w, v.w }; }
+static v4 v4_xwxx(v4 v) { return (v4) { v.x, v.w, v.x, v.x }; }
+static v4 v4_xwxy(v4 v) { return (v4) { v.x, v.w, v.x, v.y }; }
+static v4 v4_xwxz(v4 v) { return (v4) { v.x, v.w, v.x, v.z }; }
+static v4 v4_xwxw(v4 v) { return (v4) { v.x, v.w, v.x, v.w }; }
+static v4 v4_xwyx(v4 v) { return (v4) { v.x, v.w, v.y, v.x }; }
+static v4 v4_xwyy(v4 v) { return (v4) { v.x, v.w, v.y, v.y }; }
+static v4 v4_xwyz(v4 v) { return (v4) { v.x, v.w, v.y, v.z }; }
+static v4 v4_xwyw(v4 v) { return (v4) { v.x, v.w, v.y, v.w }; }
+static v4 v4_xwzx(v4 v) { return (v4) { v.x, v.w, v.z, v.x }; }
+static v4 v4_xwzy(v4 v) { return (v4) { v.x, v.w, v.z, v.y }; }
+static v4 v4_xwzz(v4 v) { return (v4) { v.x, v.w, v.z, v.z }; }
+static v4 v4_xwzw(v4 v) { return (v4) { v.x, v.w, v.z, v.w }; }
+static v4 v4_xwwx(v4 v) { return (v4) { v.x, v.w, v.w, v.x }; }
+static v4 v4_xwwy(v4 v) { return (v4) { v.x, v.w, v.w, v.y }; }
+static v4 v4_xwwz(v4 v) { return (v4) { v.x, v.w, v.w, v.z }; }
+static v4 v4_xwww(v4 v) { return (v4) { v.x, v.w, v.w, v.w }; }
+
+static v4 v4_yxxx(v4 v) { return (v4) { v.y, v.x, v.x, v.x }; }
+static v4 v4_yxxy(v4 v) { return (v4) { v.y, v.x, v.x, v.y }; }
+static v4 v4_yxxz(v4 v) { return (v4) { v.y, v.x, v.x, v.z }; }
+static v4 v4_yxxw(v4 v) { return (v4) { v.y, v.x, v.x, v.w }; }
+static v4 v4_yxyx(v4 v) { return (v4) { v.y, v.x, v.y, v.x }; }
+static v4 v4_yxyy(v4 v) { return (v4) { v.y, v.x, v.y, v.y }; }
+static v4 v4_yxyz(v4 v) { return (v4) { v.y, v.x, v.y, v.z }; }
+static v4 v4_yxyw(v4 v) { return (v4) { v.y, v.x, v.y, v.w }; }
+static v4 v4_yxzx(v4 v) { return (v4) { v.y, v.x, v.z, v.x }; }
+static v4 v4_yxzy(v4 v) { return (v4) { v.y, v.x, v.z, v.y }; }
+static v4 v4_yxzz(v4 v) { return (v4) { v.y, v.x, v.z, v.z }; }
+static v4 v4_yxzw(v4 v) { return (v4) { v.y, v.x, v.z, v.w }; }
+static v4 v4_yxwx(v4 v) { return (v4) { v.y, v.x, v.w, v.x }; }
+static v4 v4_yxwy(v4 v) { return (v4) { v.y, v.x, v.w, v.y }; }
+static v4 v4_yxwz(v4 v) { return (v4) { v.y, v.x, v.w, v.z }; }
+static v4 v4_yxww(v4 v) { return (v4) { v.y, v.x, v.w, v.w }; }
+static v4 v4_yyxx(v4 v) { return (v4) { v.y, v.y, v.x, v.x }; }
+static v4 v4_yyxy(v4 v) { return (v4) { v.y, v.y, v.x, v.y }; }
+static v4 v4_yyxz(v4 v) { return (v4) { v.y, v.y, v.x, v.z }; }
+static v4 v4_yyxw(v4 v) { return (v4) { v.y, v.y, v.x, v.w }; }
+static v4 v4_yyyx(v4 v) { return (v4) { v.y, v.y, v.y, v.x }; }
+static v4 v4_yyyy(v4 v) { return (v4) { v.y, v.y, v.y, v.y }; }
+static v4 v4_yyyz(v4 v) { return (v4) { v.y, v.y, v.y, v.z }; }
+static v4 v4_yyyw(v4 v) { return (v4) { v.y, v.y, v.y, v.w }; }
+static v4 v4_yyzx(v4 v) { return (v4) { v.y, v.y, v.z, v.x }; }
+static v4 v4_yyzy(v4 v) { return (v4) { v.y, v.y, v.z, v.y }; }
+static v4 v4_yyzz(v4 v) { return (v4) { v.y, v.y, v.z, v.z }; }
+static v4 v4_yyzw(v4 v) { return (v4) { v.y, v.y, v.z, v.w }; }
+static v4 v4_yywx(v4 v) { return (v4) { v.y, v.y, v.w, v.x }; }
+static v4 v4_yywy(v4 v) { return (v4) { v.y, v.y, v.w, v.y }; }
+static v4 v4_yywz(v4 v) { return (v4) { v.y, v.y, v.w, v.z }; }
+static v4 v4_yyww(v4 v) { return (v4) { v.y, v.y, v.w, v.w }; }
+static v4 v4_yzxx(v4 v) { return (v4) { v.y, v.z, v.x, v.x }; }
+static v4 v4_yzxy(v4 v) { return (v4) { v.y, v.z, v.x, v.y }; }
+static v4 v4_yzxz(v4 v) { return (v4) { v.y, v.z, v.x, v.z }; }
+static v4 v4_yzxw(v4 v) { return (v4) { v.y, v.z, v.x, v.w }; }
+static v4 v4_yzyx(v4 v) { return (v4) { v.y, v.z, v.y, v.x }; }
+static v4 v4_yzyy(v4 v) { return (v4) { v.y, v.z, v.y, v.y }; }
+static v4 v4_yzyz(v4 v) { return (v4) { v.y, v.z, v.y, v.z }; }
+static v4 v4_yzyw(v4 v) { return (v4) { v.y, v.z, v.y, v.w }; }
+static v4 v4_yzzx(v4 v) { return (v4) { v.y, v.z, v.z, v.x }; }
+static v4 v4_yzzy(v4 v) { return (v4) { v.y, v.z, v.z, v.y }; }
+static v4 v4_yzzz(v4 v) { return (v4) { v.y, v.z, v.z, v.z }; }
+static v4 v4_yzzw(v4 v) { return (v4) { v.y, v.z, v.z, v.w }; }
+static v4 v4_yzwx(v4 v) { return (v4) { v.y, v.z, v.w, v.x }; }
+static v4 v4_yzwy(v4 v) { return (v4) { v.y, v.z, v.w, v.y }; }
+static v4 v4_yzwz(v4 v) { return (v4) { v.y, v.z, v.w, v.z }; }
+static v4 v4_yzww(v4 v) { return (v4) { v.y, v.z, v.w, v.w }; }
+static v4 v4_ywxx(v4 v) { return (v4) { v.y, v.w, v.x, v.x }; }
+static v4 v4_ywxy(v4 v) { return (v4) { v.y, v.w, v.x, v.y }; }
+static v4 v4_ywxz(v4 v) { return (v4) { v.y, v.w, v.x, v.z }; }
+static v4 v4_ywxw(v4 v) { return (v4) { v.y, v.w, v.x, v.w }; }
+static v4 v4_ywyx(v4 v) { return (v4) { v.y, v.w, v.y, v.x }; }
+static v4 v4_ywyy(v4 v) { return (v4) { v.y, v.w, v.y, v.y }; }
+static v4 v4_ywyz(v4 v) { return (v4) { v.y, v.w, v.y, v.z }; }
+static v4 v4_ywyw(v4 v) { return (v4) { v.y, v.w, v.y, v.w }; }
+static v4 v4_ywzx(v4 v) { return (v4) { v.y, v.w, v.z, v.x }; }
+static v4 v4_ywzy(v4 v) { return (v4) { v.y, v.w, v.z, v.y }; }
+static v4 v4_ywzz(v4 v) { return (v4) { v.y, v.w, v.z, v.z }; }
+static v4 v4_ywzw(v4 v) { return (v4) { v.y, v.w, v.z, v.w }; }
+static v4 v4_ywwx(v4 v) { return (v4) { v.y, v.w, v.w, v.x }; }
+static v4 v4_ywwy(v4 v) { return (v4) { v.y, v.w, v.w, v.y }; }
+static v4 v4_ywwz(v4 v) { return (v4) { v.y, v.w, v.w, v.z }; }
+static v4 v4_ywww(v4 v) { return (v4) { v.y, v.w, v.w, v.w }; }
+
+static v4 v4_zxxx(v4 v) { return (v4) { v.z, v.x, v.x, v.x }; }
+static v4 v4_zxxy(v4 v) { return (v4) { v.z, v.x, v.x, v.y }; }
+static v4 v4_zxxz(v4 v) { return (v4) { v.z, v.x, v.x, v.z }; }
+static v4 v4_zxxw(v4 v) { return (v4) { v.z, v.x, v.x, v.w }; }
+static v4 v4_zxyx(v4 v) { return (v4) { v.z, v.x, v.y, v.x }; }
+static v4 v4_zxyy(v4 v) { return (v4) { v.z, v.x, v.y, v.y }; }
+static v4 v4_zxyz(v4 v) { return (v4) { v.z, v.x, v.y, v.z }; }
+static v4 v4_zxyw(v4 v) { return (v4) { v.z, v.x, v.y, v.w }; }
+static v4 v4_zxzx(v4 v) { return (v4) { v.z, v.x, v.z, v.x }; }
+static v4 v4_zxzy(v4 v) { return (v4) { v.z, v.x, v.z, v.y }; }
+static v4 v4_zxzz(v4 v) { return (v4) { v.z, v.x, v.z, v.z }; }
+static v4 v4_zxzw(v4 v) { return (v4) { v.z, v.x, v.z, v.w }; }
+static v4 v4_zxwx(v4 v) { return (v4) { v.z, v.x, v.w, v.x }; }
+static v4 v4_zxwy(v4 v) { return (v4) { v.z, v.x, v.w, v.y }; }
+static v4 v4_zxwz(v4 v) { return (v4) { v.z, v.x, v.w, v.z }; }
+static v4 v4_zxww(v4 v) { return (v4) { v.z, v.x, v.w, v.w }; }
+static v4 v4_zyxx(v4 v) { return (v4) { v.z, v.y, v.x, v.x }; }
+static v4 v4_zyxy(v4 v) { return (v4) { v.z, v.y, v.x, v.y }; }
+static v4 v4_zyxz(v4 v) { return (v4) { v.z, v.y, v.x, v.z }; }
+static v4 v4_zyxw(v4 v) { return (v4) { v.z, v.y, v.x, v.w }; }
+static v4 v4_zyyx(v4 v) { return (v4) { v.z, v.y, v.y, v.x }; }
+static v4 v4_zyyy(v4 v) { return (v4) { v.z, v.y, v.y, v.y }; }
+static v4 v4_zyyz(v4 v) { return (v4) { v.z, v.y, v.y, v.z }; }
+static v4 v4_zyyw(v4 v) { return (v4) { v.z, v.y, v.y, v.w }; }
+static v4 v4_zyzx(v4 v) { return (v4) { v.z, v.y, v.z, v.x }; }
+static v4 v4_zyzy(v4 v) { return (v4) { v.z, v.y, v.z, v.y }; }
+static v4 v4_zyzz(v4 v) { return (v4) { v.z, v.y, v.z, v.z }; }
+static v4 v4_zyzw(v4 v) { return (v4) { v.z, v.y, v.z, v.w }; }
+static v4 v4_zywx(v4 v) { return (v4) { v.z, v.y, v.w, v.x }; }
+static v4 v4_zywy(v4 v) { return (v4) { v.z, v.y, v.w, v.y }; }
+static v4 v4_zywz(v4 v) { return (v4) { v.z, v.y, v.w, v.z }; }
+static v4 v4_zyww(v4 v) { return (v4) { v.z, v.y, v.w, v.w }; }
+static v4 v4_zzxx(v4 v) { return (v4) { v.z, v.z, v.x, v.x }; }
+static v4 v4_zzxy(v4 v) { return (v4) { v.z, v.z, v.x, v.y }; }
+static v4 v4_zzxz(v4 v) { return (v4) { v.z, v.z, v.x, v.z }; }
+static v4 v4_zzxw(v4 v) { return (v4) { v.z, v.z, v.x, v.w }; }
+static v4 v4_zzyx(v4 v) { return (v4) { v.z, v.z, v.y, v.x }; }
+static v4 v4_zzyy(v4 v) { return (v4) { v.z, v.z, v.y, v.y }; }
+static v4 v4_zzyz(v4 v) { return (v4) { v.z, v.z, v.y, v.z }; }
+static v4 v4_zzyw(v4 v) { return (v4) { v.z, v.z, v.y, v.w }; }
+static v4 v4_zzzx(v4 v) { return (v4) { v.z, v.z, v.z, v.x }; }
+static v4 v4_zzzy(v4 v) { return (v4) { v.z, v.z, v.z, v.y }; }
+static v4 v4_zzzz(v4 v) { return (v4) { v.z, v.z, v.z, v.z }; }
+static v4 v4_zzzw(v4 v) { return (v4) { v.z, v.z, v.z, v.w }; }
+static v4 v4_zzwx(v4 v) { return (v4) { v.z, v.z, v.w, v.x }; }
+static v4 v4_zzwy(v4 v) { return (v4) { v.z, v.z, v.w, v.y }; }
+static v4 v4_zzwz(v4 v) { return (v4) { v.z, v.z, v.w, v.z }; }
+static v4 v4_zzww(v4 v) { return (v4) { v.z, v.z, v.w, v.w }; }
+static v4 v4_zwxx(v4 v) { return (v4) { v.z, v.w, v.x, v.x }; }
+static v4 v4_zwxy(v4 v) { return (v4) { v.z, v.w, v.x, v.y }; }
+static v4 v4_zwxz(v4 v) { return (v4) { v.z, v.w, v.x, v.z }; }
+static v4 v4_zwxw(v4 v) { return (v4) { v.z, v.w, v.x, v.w }; }
+static v4 v4_zwyx(v4 v) { return (v4) { v.z, v.w, v.y, v.x }; }
+static v4 v4_zwyy(v4 v) { return (v4) { v.z, v.w, v.y, v.y }; }
+static v4 v4_zwyz(v4 v) { return (v4) { v.z, v.w, v.y, v.z }; }
+static v4 v4_zwyw(v4 v) { return (v4) { v.z, v.w, v.y, v.w }; }
+static v4 v4_zwzx(v4 v) { return (v4) { v.z, v.w, v.z, v.x }; }
+static v4 v4_zwzy(v4 v) { return (v4) { v.z, v.w, v.z, v.y }; }
+static v4 v4_zwzz(v4 v) { return (v4) { v.z, v.w, v.z, v.z }; }
+static v4 v4_zwzw(v4 v) { return (v4) { v.z, v.w, v.z, v.w }; }
+static v4 v4_zwwx(v4 v) { return (v4) { v.z, v.w, v.w, v.x }; }
+static v4 v4_zwwy(v4 v) { return (v4) { v.z, v.w, v.w, v.y }; }
+static v4 v4_zwwz(v4 v) { return (v4) { v.z, v.w, v.w, v.z }; }
+static v4 v4_zwww(v4 v) { return (v4) { v.z, v.w, v.w, v.w }; }
+
+static v4 v4_wxxx(v4 v) { return (v4) { v.w, v.x, v.x, v.x }; }
+static v4 v4_wxxy(v4 v) { return (v4) { v.w, v.x, v.x, v.y }; }
+static v4 v4_wxxz(v4 v) { return (v4) { v.w, v.x, v.x, v.z }; }
+static v4 v4_wxxw(v4 v) { return (v4) { v.w, v.x, v.x, v.w }; }
+static v4 v4_wxyx(v4 v) { return (v4) { v.w, v.x, v.y, v.x }; }
+static v4 v4_wxyy(v4 v) { return (v4) { v.w, v.x, v.y, v.y }; }
+static v4 v4_wxyz(v4 v) { return (v4) { v.w, v.x, v.y, v.z }; }
+static v4 v4_wxyw(v4 v) { return (v4) { v.w, v.x, v.y, v.w }; }
+static v4 v4_wxzx(v4 v) { return (v4) { v.w, v.x, v.z, v.x }; }
+static v4 v4_wxzy(v4 v) { return (v4) { v.w, v.x, v.z, v.y }; }
+static v4 v4_wxzz(v4 v) { return (v4) { v.w, v.x, v.z, v.z }; }
+static v4 v4_wxzw(v4 v) { return (v4) { v.w, v.x, v.z, v.w }; }
+static v4 v4_wxwx(v4 v) { return (v4) { v.w, v.x, v.w, v.x }; }
+static v4 v4_wxwy(v4 v) { return (v4) { v.w, v.x, v.w, v.y }; }
+static v4 v4_wxwz(v4 v) { return (v4) { v.w, v.x, v.w, v.z }; }
+static v4 v4_wxww(v4 v) { return (v4) { v.w, v.x, v.w, v.w }; }
+static v4 v4_wyxx(v4 v) { return (v4) { v.w, v.y, v.x, v.x }; }
+static v4 v4_wyxy(v4 v) { return (v4) { v.w, v.y, v.x, v.y }; }
+static v4 v4_wyxz(v4 v) { return (v4) { v.w, v.y, v.x, v.z }; }
+static v4 v4_wyxw(v4 v) { return (v4) { v.w, v.y, v.x, v.w }; }
+static v4 v4_wyyx(v4 v) { return (v4) { v.w, v.y, v.y, v.x }; }
+static v4 v4_wyyy(v4 v) { return (v4) { v.w, v.y, v.y, v.y }; }
+static v4 v4_wyyz(v4 v) { return (v4) { v.w, v.y, v.y, v.z }; }
+static v4 v4_wyyw(v4 v) { return (v4) { v.w, v.y, v.y, v.w }; }
+static v4 v4_wyzx(v4 v) { return (v4) { v.w, v.y, v.z, v.x }; }
+static v4 v4_wyzy(v4 v) { return (v4) { v.w, v.y, v.z, v.y }; }
+static v4 v4_wyzz(v4 v) { return (v4) { v.w, v.y, v.z, v.z }; }
+static v4 v4_wyzw(v4 v) { return (v4) { v.w, v.y, v.z, v.w }; }
+static v4 v4_wywx(v4 v) { return (v4) { v.w, v.y, v.w, v.x }; }
+static v4 v4_wywy(v4 v) { return (v4) { v.w, v.y, v.w, v.y }; }
+static v4 v4_wywz(v4 v) { return (v4) { v.w, v.y, v.w, v.z }; }
+static v4 v4_wyww(v4 v) { return (v4) { v.w, v.y, v.w, v.w }; }
+static v4 v4_wzxx(v4 v) { return (v4) { v.w, v.z, v.x, v.x }; }
+static v4 v4_wzxy(v4 v) { return (v4) { v.w, v.z, v.x, v.y }; }
+static v4 v4_wzxz(v4 v) { return (v4) { v.w, v.z, v.x, v.z }; }
+static v4 v4_wzxw(v4 v) { return (v4) { v.w, v.z, v.x, v.w }; }
+static v4 v4_wzyx(v4 v) { return (v4) { v.w, v.z, v.y, v.x }; }
+static v4 v4_wzyy(v4 v) { return (v4) { v.w, v.z, v.y, v.y }; }
+static v4 v4_wzyz(v4 v) { return (v4) { v.w, v.z, v.y, v.z }; }
+static v4 v4_wzyw(v4 v) { return (v4) { v.w, v.z, v.y, v.w }; }
+static v4 v4_wzzx(v4 v) { return (v4) { v.w, v.z, v.z, v.x }; }
+static v4 v4_wzzy(v4 v) { return (v4) { v.w, v.z, v.z, v.y }; }
+static v4 v4_wzzz(v4 v) { return (v4) { v.w, v.z, v.z, v.z }; }
+static v4 v4_wzzw(v4 v) { return (v4) { v.w, v.z, v.z, v.w }; }
+static v4 v4_wzwx(v4 v) { return (v4) { v.w, v.z, v.w, v.x }; }
+static v4 v4_wzwy(v4 v) { return (v4) { v.w, v.z, v.w, v.y }; }
+static v4 v4_wzwz(v4 v) { return (v4) { v.w, v.z, v.w, v.z }; }
+static v4 v4_wzww(v4 v) { return (v4) { v.w, v.z, v.w, v.w }; }
+static v4 v4_wwxx(v4 v) { return (v4) { v.w, v.w, v.x, v.x }; }
+static v4 v4_wwxy(v4 v) { return (v4) { v.w, v.w, v.x, v.y }; }
+static v4 v4_wwxz(v4 v) { return (v4) { v.w, v.w, v.x, v.z }; }
+static v4 v4_wwxw(v4 v) { return (v4) { v.w, v.w, v.x, v.w }; }
+static v4 v4_wwyx(v4 v) { return (v4) { v.w, v.w, v.y, v.x }; }
+static v4 v4_wwyy(v4 v) { return (v4) { v.w, v.w, v.y, v.y }; }
+static v4 v4_wwyz(v4 v) { return (v4) { v.w, v.w, v.y, v.z }; }
+static v4 v4_wwyw(v4 v) { return (v4) { v.w, v.w, v.y, v.w }; }
+static v4 v4_wwzx(v4 v) { return (v4) { v.w, v.w, v.z, v.x }; }
+static v4 v4_wwzy(v4 v) { return (v4) { v.w, v.w, v.z, v.y }; }
+static v4 v4_wwzz(v4 v) { return (v4) { v.w, v.w, v.z, v.z }; }
+static v4 v4_wwzw(v4 v) { return (v4) { v.w, v.w, v.z, v.w }; }
+static v4 v4_wwwx(v4 v) { return (v4) { v.w, v.w, v.w, v.x }; }
+static v4 v4_wwwy(v4 v) { return (v4) { v.w, v.w, v.w, v.y }; }
+static v4 v4_wwwz(v4 v) { return (v4) { v.w, v.w, v.w, v.z }; }
+static v4 v4_wwww(v4 v) { return (v4) { v.w, v.w, v.w, v.w }; }
+
 #endif
