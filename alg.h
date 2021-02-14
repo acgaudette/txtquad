@@ -416,6 +416,10 @@ LERP(3)
 LERP(4)
 #undef LERP
 
+static inline v2 mix2(v2 a, v2 b, float t) { return v2_lerp(a, b, t); }
+static inline v3 mix3(v3 a, v3 b, float t) { return v3_lerp(a, b, t); }
+static inline v4 mix4(v4 a, v4 b, float t) { return v4_lerp(a, b, t); }
+
 #define LERP_CLAMP(N) static v ## N v ## N ## _lerp_clamp(v ## N a, v ## N b, float s) \
 { \
 	return v ## N ## _lerp(a, b, clamp01f(s)); \
@@ -435,6 +439,10 @@ DIST(2)
 DIST(3)
 DIST(4)
 #undef DIST
+
+static inline v2 mix2_safe(v2 a, v2 b, float t) { return v2_lerp_clamp(a, b, t); }
+static inline v3 mix3_safe(v3 a, v3 b, float t) { return v3_lerp_clamp(a, b, t); }
+static inline v4 mix4_safe(v4 a, v4 b, float t) { return v4_lerp_clamp(a, b, t); }
 
 static v3 v3_cross(v3 a, v3 b)
 {
