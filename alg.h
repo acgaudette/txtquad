@@ -245,6 +245,51 @@ GEN(4, shift)
  GEN(4, back)
 #undef  back
 
+#define X(N) static v ## N v ## N ## _x(float s) \
+{ \
+	v ## N v = v ## N ## _zero(); \
+	v.x = s; \
+	return v; \
+}
+
+X(2)
+X(3)
+X(4)
+#undef X
+
+#define Y(N) static v ## N v ## N ## _y(float s) \
+{ \
+	v ## N v = v ## N ## _zero(); \
+	v.y = s; \
+	return v; \
+}
+
+Y(2)
+Y(3)
+Y(4)
+#undef Y
+
+#define Z(N) static v ## N v ## N ## _z(float s) \
+{ \
+	v ## N v = v ## N ## _zero(); \
+	v.z = s; \
+	return v; \
+}
+
+Z(3)
+Z(4)
+#undef Z
+
+#define W(N) static v ## N v ## N ## _w(float s) \
+{ \
+	v ## N v = v ## N ## _zero(); \
+	v.w = s; \
+	return v; \
+}
+
+W(4)
+#undef W
+
 #define EQ(N) static int v ## N ## _eq(v ## N a, v ## N b) \
 { \
 	int result = 1; \
