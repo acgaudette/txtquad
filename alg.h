@@ -430,16 +430,6 @@ LERP_CLAMP(3)
 LERP_CLAMP(4)
 #undef LERP_CLAMP
 
-#define DIST(N) static float v ## N ## _dist(v ## N a, v ## N b) \
-{ \
-	return v ## N ## _mag(v ## N ## _sub(a, b)); \
-}
-
-DIST(2)
-DIST(3)
-DIST(4)
-#undef DIST
-
 static inline v2 mix2_safe(v2 a, v2 b, float t) { return v2_lerp_clamp(a, b, t); }
 static inline v3 mix3_safe(v3 a, v3 b, float t) { return v3_lerp_clamp(a, b, t); }
 static inline v4 mix4_safe(v4 a, v4 b, float t) { return v4_lerp_clamp(a, b, t); }
