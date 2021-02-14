@@ -635,10 +635,8 @@ static v4 m3_to_qt(m3 m)
 
 static m4 m4_trans(v3 v)
 {
-	m4 m = m4_id();
-	m.c3.x = v.x;
-	m.c3.y = v.y;
-	m.c3.z = v.z;
+	m4 m = M4_ID;
+	m.c3.xyz = v;
 	return m;
 }
 
