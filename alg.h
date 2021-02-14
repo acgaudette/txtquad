@@ -133,60 +133,117 @@ GEN(3, shift)
 GEN(4, shift)
 #undef shift
 
-#define ZERO(N) static v ## N v ## N ## _zero() \
-{ \
-	return v ## N ## _fill(0.f); \
-}
+#define V2_ZERO ((v2) { 0.f, 0.f })
+#define ZERO2 V2_ZERO
 
-ZERO(2)
-ZERO(3)
-ZERO(4)
-#undef ZERO
+#define V3_ZERO ((v3) { 0.f, 0.f, 0.f })
+#define ZERO3 V3_ZERO
 
-#define ONE(N) static v ## N v ## N ## _one() \
-{ \
-	return v ## N ## _fill(1.f); \
-}
+#define V4_ZERO ((v4) { 0.f, 0.f, 0.f, 0.f })
+#define ZERO4 V4_ZERO
 
-ONE(2)
-ONE(3)
-ONE(4)
-#undef ONE
+#define zero(N, ID) static inline v ## N ID() { return V ## N ## _ZERO; }
+ GEN(2, zero)
+ GEN(3, zero)
+ GEN(4, zero)
+#undef  zero
 
-#define RIGHT(N) static v ## N v ## N ## _right() \
-{ \
-	v ## N v = v ## N ## _zero(); \
-	v.s[0] = 1.f; \
-	return v; \
-}
+#define V2_ONE ((v2) { 1.f, 1.f })
+#define ONE2 V2_ONE
 
-RIGHT(2)
-RIGHT(3)
-RIGHT(4)
-#undef RIGHT
+#define V3_ONE ((v3) { 1.f, 1.f, 1.f })
+#define ONE3 V3_ONE
 
-#define UP(N) static v ## N v ## N ## _up() \
-{ \
-	v ## N v = v ## N ## _zero(); \
-	v.s[1] = 1.f; \
-	return v; \
-}
+#define V4_ONE ((v4) { 1.f, 1.f, 1.f, 1.f })
+#define ONE4 V4_ONE
 
-UP(2)
-UP(3)
-UP(4)
-#undef UP
+#define one(N, ID) static inline v ## N ID() { return V ## N ## _ONE; }
+ GEN(2, one)
+ GEN(3, one)
+ GEN(4, one)
+#undef  one
 
-#define FWD(N) static v ## N v ## N ## _fwd() \
-{ \
-	v ## N v = v ## N ## _zero(); \
-	v.s[2] = 1.f; \
-	return v; \
-}
+#define V2_R ((v2) { 1.f, 0.f })
+#define RIGHT2 V2_R
 
-FWD(3)
-FWD(4)
-#undef FWD
+#define V3_R ((v3) { 1.f, 0.f, 0.f })
+#define RIGHT3 V3_R
+
+#define V4_R ((v4) { 1.f, 0.f, 0.f, 0.f })
+#define RIGHT4 V4_R
+
+#define right(N, ID) static v ## N ID() { return V ## N ## _R; }
+ GEN(2, right)
+ GEN(3, right)
+ GEN(4, right)
+#undef  right
+
+#define V2_UP ((v2) { 0.f, 1.f })
+#define UP2 V2_UP
+
+#define V3_UP ((v3) { 0.f, 1.f, 0.f })
+#define UP3 V3_UP
+
+#define V4_UP ((v4) { 0.f, 1.f, 0.f, 0.f })
+#define UP4 V4_UP
+
+#define up(N, ID) static v ## N ID() { return V ## N ## _UP; }
+ GEN(2, up)
+ GEN(3, up)
+ GEN(4, up)
+#undef  up
+
+#define V3_FWD ((v3) { 0.f, 0.f, 1.f })
+#define FWD3 V3_FWD
+
+#define V4_FWD ((v4) { 0.f, 0.f, 1.f, 0.f })
+#define FWD4 V4_FWD
+
+#define fwd(N, ID) static v ## N ID() { return V ## N ## _FWD; }
+ GEN(3, fwd)
+ GEN(4, fwd)
+#undef  fwd
+
+#define V2_L ((v2) { -1.f, 0.f })
+#define LEFT2 V2_L
+
+#define V3_L ((v3) { -1.f, 0.f, 0.f })
+#define LEFT3 V3_L
+
+#define V4_L ((v4) { -1.f, 0.f, 0.f, 0.f })
+#define LEFT4 V4_L
+
+#define left(N, ID) static v ## N ID() { return V ## N ## _L; }
+ GEN(2, left)
+ GEN(3, left)
+ GEN(4, left)
+#undef  left
+
+#define V2_DN ((v2) { 0.f, -1.f })
+#define DOWN2 V2_DN
+
+#define V3_DN ((v3) { 0.f, -1.f, 0.f })
+#define DOWN3 V3_DN
+
+#define V4_DN ((v4) { 0.f, -1.f, 0.f, 0.f })
+#define DOWN4 V4_DN
+
+#define down(N, ID) static v ## N ID() { return V ## N ## _DN; }
+ GEN(2, down)
+ GEN(3, down)
+ GEN(4, down)
+#undef  down
+
+#define V3_BCK ((v3) { 0.f, 0.f, -1.f })
+#define BACK3 V3_BACK
+
+#define V4_BCK ((v4) { 0.f, 0.f, -1.f, 0.f })
+#define BACK4 V4_BACK
+
+#define back(N, ID) static v ## N ID() { return V ## N ## _BCK; }
+ GEN(3, back)
+ GEN(4, back)
+#undef  back
 
 #define EQ(N) static int v ## N ## _eq(v ## N a, v ## N b) \
 { \
