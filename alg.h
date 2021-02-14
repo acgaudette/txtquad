@@ -10,7 +10,7 @@
 
 #define VEC(N, ...) typedef union v ## N { \
         float s[N];                        \
-        struct { __VA_ARGS__ };            \
+        __VA_ARGS__;                       \
 } v ## N
 
 #define COMP_2 float x; \
@@ -18,9 +18,15 @@
 #define COMP_3 COMP_2 float z;
 #define COMP_4 COMP_3 float w;
 
-VEC(2, COMP_2);
-VEC(3, COMP_3);
-VEC(4, COMP_4);
+VEC(2, struct { COMP_2 });
+VEC(3, struct { COMP_3 };
+       struct { v2 xy; float _0; };
+       struct { float _1; v2 yz; });
+VEC(4, struct { COMP_4 };
+       struct { v2 xy; v2 zw; };
+       struct { float _0; v2 yz; float _1; };
+       struct { v3 xyz; float _2; };
+       struct { float _3; float yzw; });
 #undef VEC
 
 #define MAT(N, ...) typedef union m ## N { \
@@ -38,6 +44,13 @@ MAT(2, VEC_2(2));
 MAT(3, VEC_3(3));
 MAT(4, VEC_4);
 #undef MAT
+
+#undef COMP_2
+#undef  VEC_2
+#undef COMP_3
+#undef  VEC_3
+#undef COMP_4
+#undef  VEC_4
 
 /* Floating point functions */
 
