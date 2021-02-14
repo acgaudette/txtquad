@@ -663,12 +663,14 @@ static m4 m4_persp(float fov, float asp, float near, float far)
 	float x_scale = y_scale / asp;
 	y_scale *= -1.f;
 
-	m4 m = m4_zero();
-	m.c0.x = x_scale;
-	m.c1.y = y_scale;
-	m.c2.z = z_scale;
-	m.c2.w = 1.f;
-	m.c3.z = z_off;
+	m4 m = {
+		.c0.x = x_scale,
+		.c1.y = y_scale,
+		.c2.z = z_scale,
+		.c2.w = 1.f,
+		.c3.z = z_off,
+	};
+
 	return m;
 }
 
@@ -679,12 +681,14 @@ static m4 m4_ortho(float scale, float asp, float near, float far)
 	const float z_scale = 1.f / range;
 	const float z_off = -near / range;
 
-	m4 m = m4_zero();
-	m.c0.x = 2.f / (asp * scale);
-	m.c1.y = -2.f / scale;
-	m.c2.z = z_scale;
-	m.c3.w = 1.f;
-	m.c3.z = z_off;
+	m4 m = {
+		.c0.x =  2.f / (asp * scale),
+		.c1.y = -2.f / scale,
+		.c2.z = z_scale,
+		.c3.w = 1.f,
+		.c3.z = z_off,
+	};
+
 	return m;
 }
 
