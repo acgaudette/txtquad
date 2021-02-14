@@ -494,32 +494,23 @@ static inline v3 cross3(v3 a, v3 b) { return v3_cross(a, b); }
 
 /* Matrices */
 
-#define ZERO(N) static m ## N m ## N ## _zero() \
-{ \
-	m ## N m; \
-	for (size_t i = 0; i < N; ++i) \
-		m.v[i] = v ## N ## _zero(); \
-	return m; \
-}
+#define ZERO(N) static m ## N m ## N ## _zero() { return (m ## N) {}; }
+        ZERO(2)
+        ZERO(3)
+        ZERO(4)
+#undef  ZERO
 
-ZERO(2)
-ZERO(3)
-ZERO(4)
-#undef ZERO
+#define M2_ID ((m2) { .s[0] = 1.f, .s[3] = 1.f })
+#define M3_ID ((m3) { .s[0] = 1.f, .s[4] = 1.f, .s [8] = 1.f })
+#define M4_ID ((m4) { .s[0] = 1.f, .s[5] = 1.f, .s[10] = 1.f, .s[15] = 1.f })
 
-#define ID(N) static m ## N m ## N ## _id() \
-{ \
-	m ## N m = m ## N ## _zero(); \
-	for (size_t i = 0; i < N; ++i) \
-		m.s[i + N * i] = 1.f; \
-	return m; \
-}
+#define ID(N) static m ## N m ## N ## _id() { return M ## N ## _ID; }
+        ID(2)
+        ID(3)
+        ID(4)
+#undef  ID
 
-ID(2)
-ID(3)
-ID(4)
-#undef ID
-
+// Note: you can retrieve the columns from the union directly
 #define ROW(N) static v ## N m ## N ## _row(m ## N m, size_t r) \
 {                                                               \
         v ## N v;                                               \
