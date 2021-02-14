@@ -494,7 +494,11 @@ static inline v3 cross3(v3 a, v3 b) { return v3_cross(a, b); }
 
 /* Matrices */
 
-#define ZERO(N) static m ## N m ## N ## _zero() { return (m ## N) {}; }
+#define M2_ZERO ((m2) {})
+#define M3_ZERO ((m3) {})
+#define M4_ZERO ((m4) {})
+
+#define ZERO(N) static m ## N m ## N ## _zero() { return M ## N ## _ZERO; }
         ZERO(2)
         ZERO(3)
         ZERO(4)
@@ -545,7 +549,7 @@ MUL(4)
 
 #define DIAG(N) static m ## N m ## N ## _diag(v ## N v) \
 { \
-	m ## N m = m ## N ## _zero(); \
+	m ## N m = M ## N ## _ZERO; \
 	for (size_t i = 0; i < N; ++i) \
 		m.s[i + N * i] = v.s[i]; \
 	return m; \
@@ -556,11 +560,11 @@ DIAG(3);
 DIAG(4);
 #undef DIAG
 
-#define FILL(M, N) static m ## M m ## M ## _fill_m ## N (m ## N n) \
+#define FILL(A, B) static m ## A m ## A ## _fill_m ## B (m ## B n) \
 { \
-	m ## M m = m ## M ## _zero(); \
-	for (size_t i = 0; i < N; ++i) { \
-		for (size_t j = 0; j < N; ++j) { \
+	m ## A m = M ## A ## _ZERO; \
+	for (size_t i = 0; i < B; ++i) { \
+		for (size_t j = 0; j < B; ++j) { \
 			m.v[i].s[j] = n.v[i].s[j]; \
 		} \
 	} \
