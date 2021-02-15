@@ -84,7 +84,7 @@ static void draw_marker(
 
 	struct sprite result = {
 		.anch = v2_zero(),
-		.scale = scale * .15f,
+		.scale = maxf(.005f, scale * .15f),
 		.pos = v3_add(pos, qt_app(rot, offset)),
 		.rot = rot,
 		.col = col,
