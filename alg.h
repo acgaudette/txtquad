@@ -338,6 +338,16 @@ GEN(3, mul)
 GEN(4, mul)
 #undef mul
 
+#define muleq(N, ID) static void ID(v ## N *v, float s) \
+{ \
+	*v = v ## N ## _mul(*v, s); \
+}
+
+GEN(2, muleq)
+GEN(3, muleq)
+GEN(4, muleq)
+#undef muleq
+
 #define schur(N, ID) static v ## N ID(v ## N a, v ## N b) \
 { \
 	for (size_t i = 0; i < N; ++i) \
