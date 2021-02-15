@@ -26,21 +26,21 @@
 
 struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 {
-	v3 cam_pos = v3_zero();
-	v4 cam_rot = qt_id();
+	v3 cam_pos = V3_ZERO;
+	v4 cam_rot = QT_ID;
 
 #ifdef DEMO_0 // Baseline
-	cam_pos = v3_neg(v3_fwd());
+	cam_pos = v3_neg(V3_FWD);
 
 	txt->count = 1;
 	txt->quads[0] = (struct txt_quad) {
 		.value = 'A',
 		.model = m4_model(
-			(v3) { -.5f + PIX_WIDTH * .5f, -.5f, 0 },
-			qt_id(),
-			1.f
+			(v3) { -.5f + PIX_WIDTH * .5f, -.5f, 0 }
+			, QT_ID
+			, 1.f
 		),
-		.color = v4_one(),
+		.color = V4_ONE,
 	};
 #elif DEMO_1
 	char a = 'A' + (1 - .5f * (1 + cos(frame.t * .5f))) * 26 + 0;
@@ -50,57 +50,57 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 	txt->quads[0] = (struct txt_quad) {
 		.value = a,
 		.model = m4_model(
-			(v3) { -.5f - .125f, .5f - .125f, 2 }
-			, qt_id()
+			(v3) { -.5f - .125f, .5f - .125f, 2.f }
+			, QT_ID
 			, .25f
 		),
-		.color = v4_one(),
+		.color = V4_ONE,
 	};
 	txt->quads[1] = (struct txt_quad) {
 		.value = z,
 		.model = m4_model(
-			(v3) { .5f - .125f, .5f - .125f, 2 }
-			, qt_id()
+			(v3) { .5f - .125f, .5f - .125f, 2.f }
+			, QT_ID
 			, .25f
 		),
-		.color = v4_one(),
+		.color = V4_ONE,
 	};
 	txt->quads[2] = (struct txt_quad) {
 		.value = z,
 		.model = m4_model(
-			(v3) { -.5f - .125f, -.5f - .125f, 2 }
-			, qt_id()
+			(v3) { -.5f - .125f, -.5f - .125f, 2.f }
+			, QT_ID
 			, .25f
 		),
-		.color = v4_one(),
+		.color = V4_ONE,
 	};
 	txt->quads[3] = (struct txt_quad) {
 		.value = a,
 		.model = m4_model(
-			(v3) { .5f - .125f, -.5f - .125f, 2 }
-			, qt_id()
+			(v3) { .5f - .125f, -.5f - .125f, 2.f }
+			, QT_ID
 			, .25f
 		),
-		.color = v4_one(),
+		.color = V4_ONE,
 	};
 #elif DEMO_2
-	cam_rot = qt_axis_angle(v3_up(), sinf(frame.t));
-	cam_pos = qt_app(cam_rot, v3_neg(v3_fwd()));
+	cam_rot = qt_axis_angle(V3_FWD, frame.t);
+	cam_pos = qt_app(cam_rot, v3_z(-1.5f));
 
 	const float a = cosf(2.f * frame.t) * .5f + .5f;
 	const float y = cosf(frame.t);
 
 	txt->count = 1;
 	txt->quads[0] = (struct txt_quad) {
-		.value = y > 0.f ? 'Q' : 'S',
+		.value = y > 0.f ? 'Q' : 'R',
 		.model = m4_model(
-			(v3) { -.5f + PIX_WIDTH * .5f, -.5f, .5f }
-			, qt_id()
+			(v3) { -.5f + PIX_WIDTH * .5f, -.5f, 0.f }
+			, QT_ID
 			, 1.f
 		),
 		.color = y > 0.f ?
-			(v4) { 1.f, .8f, .4f, 1.1f * a * a } :
-			(v4) { 1.f, .4f, .8f, 1.1f * a * a } ,
+			(v4) { 1.f, .8f, .4f, 1.1f * a } :
+			(v4) { 1.f, .4f, .8f, 1.1f * a } ,
 	};
 #elif DEMO_3
 	if (KEY_DOWN(ENTER)) {
@@ -123,7 +123,7 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 			.str = cli,
 			.scale = .25f,
 			.pos = { 0.f, -.9f, 2.f },
-			.rot = qt_axis_angle(v3_right(), M_PI * .15f),
+			.rot = qt_axis_angle(V3_R, M_PI * .15f),
 			.anch = { 0.f, -1.f },
 			.justify = JUST_LEFT,
 			.spacing = 1.f,
@@ -134,7 +134,7 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 	struct sprite sprite;
 	while (block_draw(&sprite, &ctx, txt)) {
 		assert(sprite.asc);
-		sprite.col = v3_one();
+		sprite.col = V3_ONE;
 		txt->quads[txt->count++] = sprite_conv(sprite);
 	}
 
@@ -196,7 +196,7 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 
 	return (struct txt_share) {
 		.vp = vp,
-		.screen = (v2) { frame.size.w, frame.size.h },
+		.screen = { frame.size.w, frame.size.h },
 		.time = frame.t,
 	};
 }
