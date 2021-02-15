@@ -727,7 +727,7 @@ static v4 qt_vecs(const v3 fwd, const v3 up)
 static v4 qt_vecs_up(v3 fwd, const v3 up)
 {
 #ifdef ALG_DEBUG
-	assert(v3_is_norm(up));
+	assert(v3_isnorm(up));
 #endif
 	v3 right = v3_cross(up, fwd);
 	right = v3_norm(right);
@@ -747,7 +747,7 @@ static v4 qt_vecs_up(v3 fwd, const v3 up)
 static v4 qt_vecs_fwd(const v3 fwd, v3 up)
 {
 #ifdef ALG_DEBUG
-	assert(v3_is_norm(fwd));
+	assert(v3_isnorm(fwd));
 #endif
 	v3 right = v3_cross(up, fwd);
 	right = v3_norm(right);
@@ -765,7 +765,7 @@ static v4 qt_vecs_fwd(const v3 fwd, v3 up)
 static v4 qt_axis_angle(v3 axis, float angle)
 {
 #ifdef ALG_DEBUG
-	assert(v3_is_norm(axis));
+	assert(v3_isnorm(axis));
 #endif
 	float half = .5f * angle;
 	float sin_half = sinf(half);
