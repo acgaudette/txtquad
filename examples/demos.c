@@ -112,31 +112,32 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 		cli_len = 0;
 	}
 
-	// Cursor
-	*(cli + cli_len + 0) = fmodf(frame.t, 1.f) > .5f ? '_' : ' ';
-	*(cli + cli_len + 1) = 0;
-
+	*(cli + cli_len) = 0;
 	txt->count = 0;
+
 	struct block_ctx ctx = block_prepare(
 		(struct block) {
 			.str = cli,
-			.pos = { 0.f, -.9f, 2.f },
-			.anch = { 0.f, -1.f },
-			.rot = qt_axis_angle(v3_right(), M_PI * .15f),
 			.scale = .25f,
+			.pos = { 0.f, -.9f, 2.f },
+			.rot = qt_axis_angle(v3_right(), M_PI * .15f),
+			.anch = { 0.f, -1.f },
 			.justify = JUST_LEFT,
 			.spacing = 1.f,
 			.line_height = 1.f,
 		}
 	);
 
-	while (!ctx.finished) {
-		struct sprite sprite = block_draw(&ctx, txt);
+	struct sprite sprite;
+	while (block_draw(&sprite, &ctx, txt)) {
+		assert(sprite.asc);
 		sprite.col = v3_one();
 		txt->quads[txt->count++] = sprite_conv(sprite);
 	}
 
-	*(cli + cli_len + 1) = 0;
+	// Cursor
+	sprite.asc = fmodf(frame.t, 1.f) > .5f ? '_' : ' ';
+	txt->quads[txt->count++] = sprite_conv(sprite);
 #endif
 	float asp = (float)frame.size.w / frame.size.h;
 	m4 view = m4_view(cam_pos, cam_rot);

@@ -3,24 +3,21 @@
 struct block {
 	const char *str;
 
-	v3 pos;
-	v2 anch;
-	v4 rot;
 	float scale;
+	v3 pos;
+	v4 rot;
+	v2 anch;
 
 	#define JUST_LEFT   (-1.f)
 	#define JUST_CENTER ( 0.f)
 	#define JUST_RIGHT  ( 1.f)
 	float justify;
+
 	float spacing;
 	float line_height;
 };
 
 struct block_ctx {
-	int finished;
-
-	/* Internal */
-
 	const struct block block;
 	const float nlspace;
 	const v2 offset;
@@ -60,15 +57,12 @@ static struct block_ctx block_prepare(struct block block)
 	v2 offset = v2_schur(extent, v2_mul(anch, -1.f));
 
 	return (struct block_ctx) {
-		.finished = 0,
 		.block = block,
 		.nlspace = nlspace,
 		.offset = offset,
 		.extent = extent,
 		.ptr = block.str,
 		.endl = block.str,
-		.lines = 0,
-		.h = 0.f,
 	};
 }
 
@@ -99,8 +93,25 @@ static void draw_marker(
 }
 #endif
 
-static struct sprite block_draw(struct block_ctx *ctx, struct txt_buf *txt)
-{
+static int block_draw(
+	struct sprite    *out,
+	struct block_ctx *ctx,
+	struct txt_buf   *txt
+) {
+	assert(out);
+
+	struct sprite result = {
+		.anch = v2_zero(),
+		.scale = ctx->block.scale,
+		.rot = ctx->block.rot,
+		.font = 1,
+
+		/* Finalized by user after iter return */
+
+		.col = v3_one(),
+		.vfx = v3_right(),
+	};
+
 	const float scale = ctx->block.scale;
 	const float spacing = ctx->block.spacing;
 
@@ -141,36 +152,24 @@ static struct sprite block_draw(struct block_ctx *ctx, struct txt_buf *txt)
 		0.f,
 	};
 
-	pos = v3_add(
-		pos,
-		(v3) {
-			// Correct for center of rotation
-			 .5f - .5f * PIX_WIDTH,
-			-.5f,
+	const v3 correct = {
+		// Correct for center of rotation
+		 .5f - .5f * PIX_WIDTH,
+		-.5f,
 
-			// Correct for packing
-			1e-4 * (ctx->lines + ((ctx->ptr - ctx->endl) % 2))
-		}
-	);
-
-	pos = v3_mul(pos, scale);
-
-	struct sprite result = {
-		.anch = v2_zero(),
-		.scale = ctx->block.scale,
-		.pos = v3_add(ctx->block.pos, qt_app(ctx->block.rot, pos)),
-		.rot = ctx->block.rot,
-		.asc = *ctx->ptr,
-		.font = 1,
-
-		// Finalized by user after iter return
-		.col = v3_one(),
-		.vfx = v3_right(),
+		// Correct for packing
+		1e-4 * (ctx->lines + ((ctx->ptr - ctx->endl) % 2)),
 	};
 
-	ctx->finished = !*(++ctx->ptr);
+	v3_addeq(&pos, correct);
+	pos = v3_mul(pos, scale);
+
+	result.pos = v3_add(ctx->block.pos, qt_app(ctx->block.rot, pos)),
+	result.asc = *ctx->ptr++,
+	*out = result;
+	if (result.asc) return 1;
+
 #ifdef DEBUG_UI
-	if (!ctx->finished) return result;
 	v3 offset3 = { ctx->offset.x * scale, ctx->offset.y * scale, 0.f };
 	v3 extent3 = { ctx->extent.x * scale, ctx->extent.y * scale, 0.f };
 
@@ -201,5 +200,5 @@ static struct sprite block_draw(struct block_ctx *ctx, struct txt_buf *txt)
 		txt
 	);
 #endif
-	return result;
+	return 0;
 }
