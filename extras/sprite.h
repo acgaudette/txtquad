@@ -1,3 +1,5 @@
+#include <assert.h>
+
 struct sprite {
 	v2 anch; // Ranges from 0 => +/-1 from center
 	float scale;
