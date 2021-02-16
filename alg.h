@@ -219,51 +219,6 @@ GEN(4, shift)
  GEN(4, back)
 #undef  back
 
-#define X(N) static v ## N v ## N ## _x(float s) \
-{ \
-	v ## N v = V ## N ## _ZERO; \
-	v.x = s; \
-	return v; \
-}
-
-X(2)
-X(3)
-X(4)
-#undef X
-
-#define Y(N) static v ## N v ## N ## _y(float s) \
-{ \
-	v ## N v = V ## N ## _ZERO; \
-	v.y = s; \
-	return v; \
-}
-
-Y(2)
-Y(3)
-Y(4)
-#undef Y
-
-#define Z(N) static v ## N v ## N ## _z(float s) \
-{ \
-	v ## N v = V ## N ## _ZERO; \
-	v.z = s; \
-	return v; \
-}
-
-Z(3)
-Z(4)
-#undef Z
-
-#define W(N) static v ## N v ## N ## _w(float s) \
-{ \
-	v ## N v = V ## N ## _ZERO; \
-	v.w = s; \
-	return v; \
-}
-
-W(4)
-#undef W
-
 #define EQ(N) static int v ## N ## _eq(v ## N a, v ## N b) \
 { \
 	int result = 1; \
@@ -927,6 +882,101 @@ PRINT(2)
 PRINT(3)
 PRINT(4)
 #undef PRINT
+
+/* Vector generators (1) */
+
+#define genx(N, ID) static v ## N ID(float s) { return (v ## N) { .x = s }; }
+ GEN(2, genx)
+ GEN(3, genx)
+ GEN(4, genx)
+#undef  genx
+
+#define geny(N, ID) static v ## N ID(float s) { return (v ## N) { .y = s }; }
+ GEN(2, geny)
+ GEN(3, geny)
+ GEN(4, geny)
+#undef  geny
+
+#define genz(N, ID) static v ## N ID(float s) { return (v ## N) { .z = s }; }
+ GEN(3, genz)
+ GEN(4, genz)
+#undef  genz
+
+#define genw(N, ID) static v ## N ID(float s) { return (v ## N) { .w = s }; }
+ GEN(4, genw)
+#undef  genw
+
+/* Vector generators (2) */
+
+#define MKF2(N, A, B, PRE, PST) \
+static v ## N PRE ## gen ## PST (float a, float b) \
+{ \
+	return (v ## N) { . A = a, . B = b }; \
+} \
+static v ## N PRE ## pad ## PST (v2 v) \
+{ \
+	return PRE ## gen ## PST (v.x, v.y); \
+}
+
+#define GEN2(N, A, B) \
+	MKF2(N, A, B, v ## N ## _, A ## B) \
+	MKF2(N, A, B, , A ## B ## N)
+
+GEN2(2, x, y) // (!)
+GEN2(3, x, y)
+GEN2(4, x, y)
+GEN2(3, x, z)
+GEN2(4, x, z)
+GEN2(4, x, w)
+GEN2(3, y, z)
+GEN2(4, y, z)
+GEN2(4, y, w)
+GEN2(4, z, w)
+
+#undef MKF2
+#undef GEN2
+
+/* Vector generators (3) */
+
+#define MKF3(N, A, B, C, PRE, PST) \
+static v ## N PRE ## gen ## PST (float a, float b, float c) \
+{ \
+	return (v ## N) { .A = a, .B = b, .C = c }; \
+} \
+static v ## N PRE ## pad ## PST (v3 v) \
+{ \
+	return PRE ## gen ## PST (v.x, v.y, v.z); \
+}
+
+#define GEN3(N, A, B, C) \
+	MKF3(N, A, B, C, v ## N ## _, A ## B ## C) \
+	MKF3(N, A, B, C, , A ## B ## C ## N)
+
+GEN3(3, x, y, z) // (!)
+GEN3(4, x, y, z)
+GEN3(4, x, y, w)
+GEN3(4, x, z, w)
+GEN3(4, y, z, w)
+
+#undef MKF3
+#undef GEN3
+
+/* Vector generators (4) */
+
+#define genxyzw(N, ID) static v ## N ID(float a, float b, float c, float d) \
+{ \
+	return (v ## N) { .x = a, .y = b, .z = c, .w = d }; \
+}
+
+#define padxyzw(N, ID) static v ## N ID(float a, float b, float c, float d) \
+{ \
+	return v ## N ## _genxyzw(a, b, c, d); \
+}
+
+GEN(4, genxyzw)
+GEN(4, padxyzw)
+#undef genxyzw
+#undef padxyzw
 
 /* Swizzles (2) */
 
