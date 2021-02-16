@@ -50,6 +50,13 @@ static struct txt_quad sprite_conv(struct sprite spr)
 	return result;
 }
 
+static void quad_draw_imm(struct txt_quad quad, struct txt_buf *txt)
+{
+	size_t count = txt->count++;
+	assert(count < MAX_QUAD);
+	*(txt->quads + count) = quad;
+}
+
 static void sprite_draw_imm(struct sprite spr, struct txt_buf *txt)
 {
 	size_t count = txt->count++;
