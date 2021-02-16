@@ -88,6 +88,16 @@ static inline float lerpf_clamp(const float a, const float b, const float t)
 	return lerpf(a, b, clamp01f(t));
 }
 
+static float mixf(const ff range, const float t)
+{
+	return lerpf(range.x, range.y, t);
+}
+
+static float mixf_safe(const ff range, const float t)
+{
+	return lerpf_clamp(range.x, range.y, t);
+}
+
 static inline float signf(const float s)
 {
 	u32 u = *((u32*)&s);
