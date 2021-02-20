@@ -111,9 +111,9 @@ static inline int is01f(const float s)
 
 /* Vectors */
 
-#define GEN(N, ID) \
+#define GEN(N, ID, FV) \
 	ID(N, v ## N ## _ ## ID) \
-	ID(N, ID ## N)
+	ID(N, ID ## FV)
 
 #define fill(N, ID) static v ## N ID(float s) \
 { \
@@ -123,9 +123,9 @@ static inline int is01f(const float s)
 	return v; \
 }
 
-GEN(2, fill)
-GEN(3, fill)
-GEN(4, fill)
+GEN(2, fill, ff)
+GEN(3, fill, fff)
+GEN(4, fill, ffff)
 #undef fill
 
 #define shift(N, ID) static v ## N ID(v ## N v, const u8 i) \
@@ -138,9 +138,9 @@ GEN(4, fill)
 	return v; \
 }
 
-GEN(2, shift)
-GEN(3, shift)
-GEN(4, shift)
+GEN(2, shift, ff)
+GEN(3, shift, fff)
+GEN(4, shift, ffff)
 #undef shift
 
 #define V2_ZERO ((v2) {})
@@ -148,9 +148,9 @@ GEN(4, shift)
 #define V4_ZERO ((v4) {})
 
 #define zero(N, ID) static inline v ## N ID() { return V ## N ## _ZERO; }
- GEN(2, zero)
- GEN(3, zero)
- GEN(4, zero)
+ GEN(2, zero, ff)
+ GEN(3, zero, fff)
+ GEN(4, zero, ffff)
 #undef  zero
 
 #define V2_ONE ((v2) { 1.f, 1.f })
@@ -158,9 +158,9 @@ GEN(4, shift)
 #define V4_ONE ((v4) { 1.f, 1.f, 1.f, 1.f })
 
 #define one(N, ID) static inline v ## N ID() { return V ## N ## _ONE; }
- GEN(2, one)
- GEN(3, one)
- GEN(4, one)
+ GEN(2, one, ff)
+ GEN(3, one, fff)
+ GEN(4, one, ffff)
 #undef  one
 
 #define V2_R ((v2) { 1.f, 0.f })
@@ -168,9 +168,9 @@ GEN(4, shift)
 #define V4_R ((v4) { 1.f, 0.f, 0.f, 0.f })
 
 #define right(N, ID) static v ## N ID() { return V ## N ## _R; }
- GEN(2, right)
- GEN(3, right)
- GEN(4, right)
+ GEN(2, right, ff)
+ GEN(3, right, fff)
+ GEN(4, right, ffff)
 #undef  right
 
 #define V2_UP ((v2) { 0.f, 1.f })
@@ -178,17 +178,17 @@ GEN(4, shift)
 #define V4_UP ((v4) { 0.f, 1.f, 0.f, 0.f })
 
 #define up(N, ID) static v ## N ID() { return V ## N ## _UP; }
- GEN(2, up)
- GEN(3, up)
- GEN(4, up)
+ GEN(2, up, ff)
+ GEN(3, up, fff)
+ GEN(4, up, ffff)
 #undef  up
 
 #define V3_FWD ((v3) { 0.f, 0.f, 1.f })
 #define V4_FWD ((v4) { 0.f, 0.f, 1.f, 0.f })
 
 #define fwd(N, ID) static v ## N ID() { return V ## N ## _FWD; }
- GEN(3, fwd)
- GEN(4, fwd)
+ GEN(3, fwd, fff)
+ GEN(4, fwd, ffff)
 #undef  fwd
 
 #define V2_L ((v2) { -1.f, 0.f })
@@ -196,9 +196,9 @@ GEN(4, shift)
 #define V4_L ((v4) { -1.f, 0.f, 0.f, 0.f })
 
 #define left(N, ID) static v ## N ID() { return V ## N ## _L; }
- GEN(2, left)
- GEN(3, left)
- GEN(4, left)
+ GEN(2, left, ff)
+ GEN(3, left, fff)
+ GEN(4, left, ffff)
 #undef  left
 
 #define V2_DN ((v2) { 0.f, -1.f })
@@ -206,17 +206,17 @@ GEN(4, shift)
 #define V4_DN ((v4) { 0.f, -1.f, 0.f, 0.f })
 
 #define down(N, ID) static v ## N ID() { return V ## N ## _DN; }
- GEN(2, down)
- GEN(3, down)
- GEN(4, down)
+ GEN(2, down, ff)
+ GEN(3, down, fff)
+ GEN(4, down, ffff)
 #undef  down
 
 #define V3_BCK ((v3) { 0.f, 0.f, -1.f })
 #define V4_BCK ((v4) { 0.f, 0.f, -1.f, 0.f })
 
 #define back(N, ID) static v ## N ID() { return V ## N ## _BCK; }
- GEN(3, back)
- GEN(4, back)
+ GEN(3, back, fff)
+ GEN(4, back, ffff)
 #undef  back
 
 #define EQ(N) static int v ## N ## _eq(v ## N a, v ## N b) \
@@ -252,9 +252,9 @@ FZ_EQ(4)
 	return v; \
 }
 
-GEN(2, neg)
-GEN(3, neg)
-GEN(4, neg)
+GEN(2, neg, ff)
+GEN(3, neg, fff)
+GEN(4, neg, ffff)
 #undef neg
 
 #define add(N, ID) static v ## N ID(v ## N a, v ## N b) \
@@ -264,9 +264,9 @@ GEN(4, neg)
 	return a; \
 }
 
-GEN(2, add)
-GEN(3, add)
-GEN(4, add)
+GEN(2, add, ff)
+GEN(3, add, fff)
+GEN(4, add, ffff)
 #undef add
 
 #define addeq(N, ID) static void ID(v ## N *a, v ## N b) \
@@ -274,9 +274,9 @@ GEN(4, add)
 	*a = v ## N ## _add(*a, b); \
 }
 
-GEN(2, addeq)
-GEN(3, addeq)
-GEN(4, addeq)
+GEN(2, addeq, ff)
+GEN(3, addeq, fff)
+GEN(4, addeq, ffff)
 #undef addeq
 
 #define sub(N, ID) static v ## N ID(v ## N a, v ## N b) \
@@ -286,9 +286,9 @@ GEN(4, addeq)
 	return a; \
 }
 
-GEN(2, sub)
-GEN(3, sub)
-GEN(4, sub)
+GEN(2, sub, ff)
+GEN(3, sub, fff)
+GEN(4, sub, ffff)
 #undef sub
 
 #define mul(N, ID) static v ## N ID(v ## N v, float s) \
@@ -298,9 +298,9 @@ GEN(4, sub)
 	return v; \
 }
 
-GEN(2, mul)
-GEN(3, mul)
-GEN(4, mul)
+GEN(2, mul, ff)
+GEN(3, mul, fff)
+GEN(4, mul, ffff)
 #undef mul
 
 #define muleq(N, ID) static void ID(v ## N *v, float s) \
@@ -308,9 +308,9 @@ GEN(4, mul)
 	*v = v ## N ## _mul(*v, s); \
 }
 
-GEN(2, muleq)
-GEN(3, muleq)
-GEN(4, muleq)
+GEN(2, muleq, ff)
+GEN(3, muleq, fff)
+GEN(4, muleq, ffff)
 #undef muleq
 
 #define schur(N, ID) static v ## N ID(v ## N a, v ## N b) \
@@ -320,9 +320,9 @@ GEN(4, muleq)
 	return a; \
 }
 
-GEN(2, schur)
-GEN(3, schur)
-GEN(4, schur)
+GEN(2, schur, ff)
+GEN(3, schur, fff)
+GEN(4, schur, ffff)
 #undef schur
 
 #define magsq(N, ID) static float ID(v ## N v) \
@@ -333,9 +333,9 @@ GEN(4, schur)
 	return s; \
 }
 
-GEN(2, magsq)
-GEN(3, magsq)
-GEN(4, magsq)
+GEN(2, magsq, ff)
+GEN(3, magsq, fff)
+GEN(4, magsq, ffff)
 #undef magsq
 
 #define mag(N, ID) static float ID(v ## N v) \
@@ -343,9 +343,9 @@ GEN(4, magsq)
 	return sqrtf(v ## N ## _magsq(v)); \
 }
 
-GEN(2, mag)
-GEN(3, mag)
-GEN(4, mag)
+GEN(2, mag, ff)
+GEN(3, mag, fff)
+GEN(4, mag, ffff)
 #undef mag
 
 #define norm(N, ID) static v ## N ID(v ## N v) \
@@ -357,9 +357,9 @@ GEN(4, mag)
 	return v; \
 }
 
-GEN(2, norm)
-GEN(3, norm)
-GEN(4, norm)
+GEN(2, norm, ff)
+GEN(3, norm, fff)
+GEN(4, norm, ffff)
 #undef norm
 
 #define isnorm(N, ID) static int ID(v ## N v) \
@@ -368,9 +368,9 @@ GEN(4, norm)
 	return fabsf(1.f - magsq) < 1e-6; \
 }
 
-GEN(2, isnorm)
-GEN(3, isnorm)
-GEN(4, isnorm)
+GEN(2, isnorm, ff)
+GEN(3, isnorm, fff)
+GEN(4, isnorm, ffff)
 #undef isnorm
 
 #define dot(N, ID) static float ID(v ## N a, v ## N b)         \
@@ -381,9 +381,9 @@ GEN(4, isnorm)
         return s;                                              \
 }
 
-GEN(2, dot)
-GEN(3, dot)
-GEN(4, dot)
+GEN(2, dot, ff)
+GEN(3, dot, fff)
+GEN(4, dot, ffff)
 #undef dot
 
 #define LERP(N) static v ## N v ## N ## _lerp(v ## N a, v ## N b, float s) \
@@ -843,9 +843,9 @@ static inline void printf32(float s)
 	fprintf(stream, "\n"); \
 }
 
-GEN(2, fprint)
-GEN(3, fprint)
-GEN(4, fprint)
+GEN(2, fprint, ff)
+GEN(3, fprint, fff)
+GEN(4, fprint, ffff)
 #undef fprint
 
 #define print(N, ID) static void ID(v ## N v) \
@@ -853,9 +853,9 @@ GEN(4, fprint)
 	v ## N ## _fprint(stdout, v); \
 }
 
-GEN(2, print)
-GEN(3, print)
-GEN(4, print)
+GEN(2, print, ff)
+GEN(3, print, fff)
+GEN(4, print, ffff)
 #undef print
 
 #define FPRINT(N) static void m ## N ## _fprint(FILE *stream, m ## N m) \
@@ -884,6 +884,9 @@ PRINT(4)
 #undef PRINT
 
 /* Vector generators (1) */
+
+#undef  GEN
+#define GEN(N, ID) ID(N, v ## N ## _ ## ID)
 
 #define genx(N, ID) static v ## N ID(float s) { return (v ## N) { .x = s }; }
  GEN(2, genx)
@@ -919,8 +922,7 @@ static v ## N PRE ## pad ## PST (v2 v) \
 }
 
 #define GEN2(N, A, B) \
-	MKF2(N, A, B, v ## N ## _, A ## B) \
-	MKF2(N, A, B, , A ## B ## N)
+	MKF2(N, A, B, v ## N ## _, A ## B)
 
 GEN2(2, x, y) // (!)
 GEN2(3, x, y)
@@ -949,8 +951,7 @@ static v ## N PRE ## pad ## PST (v3 v) \
 }
 
 #define GEN3(N, A, B, C) \
-	MKF3(N, A, B, C, v ## N ## _, A ## B ## C) \
-	MKF3(N, A, B, C, , A ## B ## C ## N)
+	MKF3(N, A, B, C, v ## N ## _, A ## B ## C)
 
 GEN3(3, x, y, z) // (!)
 GEN3(4, x, y, z)
