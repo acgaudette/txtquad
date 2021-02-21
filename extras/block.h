@@ -84,7 +84,6 @@ static void draw_marker(
 		.col = col,
 		.vfx = v3_right(),
 		.asc = 1,
-		.font = 0,
 	};
 
 	size_t char_count = txt->count++;
@@ -104,7 +103,7 @@ static int block_draw(
 		.anch = v2_zero(),
 		.scale = ctx->block.scale,
 		.rot = ctx->block.rot,
-		.font = 1,
+		.bounds = BOUNDS_FONT,
 
 		/* Finalized by user after iter return */
 
