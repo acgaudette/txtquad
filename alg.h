@@ -814,7 +814,12 @@ static m4 qt_to_m4(v4 q)
 
 static m4 m4_model(v3 pos, v4 rot, float scale)
 {
-	return m4_mul(m4_trans(pos), m4_mul(qt_to_m4(rot), m4_scale(scale)));
+	m4 rs = m4_mul(qt_to_m4(rot), m4_scale(scale));
+#ifdef ALG_DEBUG
+	assert(1.f == rs.c3.w);
+#endif
+	rs.c3.xyz = pos;
+	return rs;
 }
 
 static m4 m4_view(v3 pos, v4 rot)
