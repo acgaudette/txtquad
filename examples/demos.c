@@ -85,10 +85,11 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 	};
 #elif DEMO_2
 	cam_rot = qt_axis_angle(V3_FWD, frame.t);
-	cam_pos = qt_app(cam_rot, v3_z(-1.5f));
+	cam_pos = qt_app(cam_rot, v3_genz(-1.5f));
 
 	const float a = cosf(2.f * frame.t) * .5f + .5f;
 	const float y = cosf(frame.t);
+	const float w = 1.f - (1.2f * (a - 1e-2 * .5f));
 
 	txt->count = 1;
 	txt->quads[0] = (struct txt_quad) {
@@ -99,8 +100,8 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 			, 1.f
 		),
 		.color = y > 0.f ?
-			(v4) { 1.f, .8f, .4f, 1.1f * a } :
-			(v4) { 1.f, .4f, .8f, 1.1f * a } ,
+			(v4) { 1.f, .8f, .4f, w } :
+			(v4) { 1.f, .4f, .8f, w } ,
 	};
 #elif DEMO_3
 	if (KEY_DOWN(ENTER)) {
