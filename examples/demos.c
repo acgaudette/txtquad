@@ -3,9 +3,7 @@
 #include "txtquad.h"
 #include "inp.h"
 
-#ifndef DEMO_3
-	void inp_ev_text(unsigned int _) { }
-#else
+#ifdef DEMO_3
 	#define DEBUG_UI
 	#include "extras/sprite.h"
 	#include "extras/block.h"
@@ -19,6 +17,11 @@
 			unicode ^ ' ' : unicode;
 		cli[cli_len++] = ascii;
 	}
+#elif DEMO_4
+	#include "extras/sprite.h"
+	void inp_ev_text(unsigned int _) { }
+#else
+	void inp_ev_text(unsigned int _) { }
 #endif
 
 struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
@@ -138,6 +141,53 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 	// Cursor
 	sprite.asc = fmodf(frame.t, 1.f) > .5f ? '_' : ' ';
 	txt->quads[txt->count++] = sprite_conv(sprite);
+#elif DEMO_4
+	txt->count = 0;
+	const fff pos = { 0.f, 0.f, 1.f };
+
+	sprite_draw_imm(
+		(struct sprite) {
+			.anch = { 1.f, -1.f },
+			.scale = .5f,
+			.pos = pos,
+			.rot = qt_axis_angle(V3_FWD, sinf(frame.t) * .5f),
+			.col = { .8f, .3f, .3f },
+			.vfx = V3_R,
+			.asc = '1',
+			.bounds = BOUNDS_FONT,
+		}, txt
+	);
+
+	sprite_draw_imm(
+		(struct sprite) {
+			.anch = { -1.f, 1.f },
+			.scale = .25f,
+			.pos = pos,
+			.rot = qt_axis_angle(V3_FWD, -sinf(frame.t) * .5f),
+			.col = { .8f, .8f, .8f },
+			.vfx = V3_R,
+			.asc = '4',
+			.bounds = BOUNDS_FONT,
+		}, txt
+	);
+
+	for (unsigned i = 0; i < 4; ++i) {
+		sprite_draw_imm(
+			(struct sprite) {
+				.anch = V2_ZERO,
+				.scale = 1.f,
+				.pos = V3_FWD,
+				.rot = qt_axis_angle(V3_FWD, M_PI * .5f * i),
+				.col = { .1f, .1f, .2f },
+				.vfx = V3_R,
+				.asc = '!',
+				.bounds = mulffff(
+					(v4) { 2.f, 3.f, 4.f, 0.f },
+					PIX_WIDTH
+				),
+			}, txt
+		);
+	}
 #endif
 	float asp = (float)frame.size.w / frame.size.h;
 	m4 view = m4_view(cam_pos, cam_rot);
