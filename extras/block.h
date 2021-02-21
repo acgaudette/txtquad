@@ -169,8 +169,8 @@ static int block_draw(
 	if (result.asc) return 1;
 
 #ifdef DEBUG_UI
-	v3 offset3 = { ctx->offset.x * scale, ctx->offset.y * scale, 0.f };
-	v3 extent3 = { ctx->extent.x * scale, ctx->extent.y * scale, 0.f };
+	v3 offset3 = { ctx->offset.x * scale, ctx->offset.y * scale, 2.f * -1e-4 };
+	v3 extent3 = { ctx->extent.x * scale, ctx->extent.y * scale, 1.f * -1e-4 };
 
 	draw_marker(
 		v3_add(ctx->block.pos, qt_app(ctx->block.rot, offset3)),
