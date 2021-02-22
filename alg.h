@@ -400,9 +400,9 @@ LERP(3)
 LERP(4)
 #undef LERP
 
-static inline v2 mix2(v2 a, v2 b, float t) { return v2_lerp(a, b, t); }
-static inline v3 mix3(v3 a, v3 b, float t) { return v3_lerp(a, b, t); }
-static inline v4 mix4(v4 a, v4 b, float t) { return v4_lerp(a, b, t); }
+#define mixff   (a, b, t) v2_lerp(a, b, t)
+#define mixfff  (a, b, t) v3_lerp(a, b, t)
+#define mixffff (a, b, t) v4_lerp(a, b, t)
 
 #define LERP_CLAMP(N) static v ## N v ## N ## _lerp_clamp(v ## N a, v ## N b, float s) \
 { \
@@ -414,9 +414,9 @@ LERP_CLAMP(3)
 LERP_CLAMP(4)
 #undef LERP_CLAMP
 
-static inline v2 mix2_safe(v2 a, v2 b, float t) { return v2_lerp_clamp(a, b, t); }
-static inline v3 mix3_safe(v3 a, v3 b, float t) { return v3_lerp_clamp(a, b, t); }
-static inline v4 mix4_safe(v4 a, v4 b, float t) { return v4_lerp_clamp(a, b, t); }
+#define mixff_safe(a, b, t) v2_lerp_clamp(a, b, t)
+#define mixfff_safe(a, b, t) v3_lerp_clamp(a, b, t)
+#define mixffff_safe(a, b, t) v4_lerp_clamp(a, b, t)
 
 static v3 v3_cross(v3 a, v3 b)
 {
@@ -427,7 +427,7 @@ static v3 v3_cross(v3 a, v3 b)
 	};
 }
 
-static inline v3 cross3(v3 a, v3 b) { return v3_cross(a, b); }
+#define crossfff(a, b) v3_cross(a, b)
 
 #undef VFN_GEN
 
@@ -679,7 +679,7 @@ static v4 qt_mul(v4 a, v4 b)
 static v4 qt_vecs(const v3 fwd, const v3 up)
 {
 	m3 m = {
-		.c0 = cross3(up, fwd),
+		.c0 = v3_cross(up, fwd),
 		.c1 = up,
 		.c2 = fwd,
 	};
