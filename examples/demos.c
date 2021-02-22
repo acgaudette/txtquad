@@ -126,7 +126,7 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 			.str = cli,
 			.scale = .25f,
 			.pos = { 0.f, -.9f, 2.f },
-			.rot = qt_axis_angle(V3_R, M_PI * .15f),
+			.rot = qt_axis_angle(V3_RT, M_PI * .15f),
 			.anch = { 0.f, -1.f },
 			.justify = JUST_LEFT,
 			.spacing = 1.f,
@@ -155,7 +155,7 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 			.pos = pos,
 			.rot = qt_axis_angle(V3_FWD, sinf(frame.t) * .5f),
 			.col = { .8f, .3f, .3f },
-			.vfx = V3_R,
+			.vfx = V3_RT,
 			.asc = '1',
 			.bounds = BOUNDS_FONT,
 		}, txt
@@ -168,7 +168,7 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 			.pos = pos,
 			.rot = qt_axis_angle(V3_FWD, -sinf(frame.t) * .5f),
 			.col = { .8f, .8f, .8f },
-			.vfx = V3_R,
+			.vfx = V3_RT,
 			.asc = '4',
 			.bounds = BOUNDS_FONT,
 		}, txt
@@ -182,7 +182,7 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 				.pos = V3_FWD,
 				.rot = qt_axis_angle(V3_FWD, M_PI * .5f * i),
 				.col = { .1f, .1f, .2f },
-				.vfx = V3_R,
+				.vfx = V3_RT,
 				.asc = '!',
 				.bounds = mulffff(
 					(v4) { 2.f, 3.f, 4.f, 0.f },
