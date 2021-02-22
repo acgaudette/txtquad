@@ -417,9 +417,28 @@ ROW(4)
 }
 
 MUL(2)
-MUL(3)
 MUL(4)
 #undef MUL
+
+// Hand-unroll for m4_model() bottleneck
+static m3 m3_mul(m3 a, m3 b)
+{
+	const float x0 = a.c0.x * b.c0.x + a.c1.x * b.c0.y + a.c2.x * b.c0.z;
+	const float x1 = a.c0.x * b.c1.x + a.c1.x * b.c1.y + a.c2.x * b.c1.z;
+	const float x2 = a.c0.x * b.c2.x + a.c1.x * b.c2.y + a.c2.x * b.c2.z;
+	const float y0 = a.c0.y * b.c0.x + a.c1.y * b.c0.y + a.c2.y * b.c0.z;
+	const float y1 = a.c0.y * b.c1.x + a.c1.y * b.c1.y + a.c2.y * b.c1.z;
+	const float y2 = a.c0.y * b.c2.x + a.c1.y * b.c2.y + a.c2.y * b.c2.z;
+	const float z0 = a.c0.z * b.c0.x + a.c1.z * b.c0.y + a.c2.z * b.c0.z;
+	const float z1 = a.c0.z * b.c1.x + a.c1.z * b.c1.y + a.c2.z * b.c1.z;
+	const float z2 = a.c0.z * b.c2.x + a.c1.z * b.c2.y + a.c2.z * b.c2.z;
+
+	return (m3) {
+		x0, y0, z0,
+		x1, y1, z1,
+		x2, y2, z2,
+	};
+}
 
 #define M2_DIAG(X, Y)       ((m2) { X, 0.f, 0.f, Y })
 #define M3_DIAG(X, Y, Z)    ((m3) { X, 0.f, 0.f, 0.f, Y, 0.f, 0.f, 0.f, Z })
