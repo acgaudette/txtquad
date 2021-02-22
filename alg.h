@@ -914,6 +914,51 @@ PRINT(4)
  GEN(4, genw)
 #undef  genw
 
+#define padx(N, ID) static v ## N ID(float s, float p) \
+{ \
+	v ## N result = V ## N ## _FILL(p); \
+	result.x = s; \
+	return result; \
+}
+
+ GEN(2, padx)
+ GEN(3, padx)
+ GEN(4, padx)
+#undef  padx
+
+#define pady(N, ID) static v ## N ID(float s, float p) \
+{ \
+	v ## N result = V ## N ## _FILL(p); \
+	result.y = s; \
+	return result; \
+}
+
+ GEN(2, pady)
+ GEN(3, pady)
+ GEN(4, pady)
+#undef  pady
+
+#define padz(N, ID) static v ## N ID(float s, float p) \
+{ \
+	v ## N result = V ## N ## _FILL(p); \
+	result.z = s; \
+	return result; \
+}
+
+ GEN(3, padz)
+ GEN(4, padz)
+#undef  padz
+
+#define padw(N, ID) static v ## N ID(float s, float p) \
+{ \
+	v ## N result = V ## N ## _FILL(p); \
+	result.w = s; \
+	return result; \
+}
+
+ GEN(4, padw)
+#undef  padw
+
 /* Vector generators (2) */
 
 #define MKF2(N, A, B, PRE, PST) \
@@ -921,9 +966,12 @@ static v ## N PRE ## gen ## PST (float a, float b) \
 { \
 	return (v ## N) { . A = a, . B = b }; \
 } \
-static v ## N PRE ## pad ## PST (v2 v) \
+static v ## N PRE ## pad ## PST (v2 v, float p) \
 { \
-	return PRE ## gen ## PST (v.x, v.y); \
+	v ## N result = V ## N ## _FILL(p); \
+	result . A = v.x; \
+	result . B = v.y; \
+	return result; \
 }
 
 #define GEN2(N, A, B) \
@@ -950,9 +998,13 @@ static v ## N PRE ## gen ## PST (float a, float b, float c) \
 { \
 	return (v ## N) { .A = a, .B = b, .C = c }; \
 } \
-static v ## N PRE ## pad ## PST (v3 v) \
+static v ## N PRE ## pad ## PST (v3 v, float p) \
 { \
-	return PRE ## gen ## PST (v.x, v.y, v.z); \
+	v ## N result = V ## N ## _FILL(p); \
+	result . A = v.x; \
+	result . B = v.y; \
+	result . C = v.z; \
+	return result; \
 }
 
 #define GEN3(N, A, B, C) \
@@ -974,15 +1026,8 @@ GEN3(4, y, z, w)
 	return (v ## N) { .x = a, .y = b, .z = c, .w = d }; \
 }
 
-#define padxyzw(N, ID) static v ## N ID(float a, float b, float c, float d) \
-{ \
-	return v ## N ## _genxyzw(a, b, c, d); \
-}
-
 GEN(4, genxyzw)
-GEN(4, padxyzw)
 #undef genxyzw
-#undef padxyzw
 
 /* Swizzles (2) */
 
