@@ -759,12 +759,18 @@ static m4 qt_to_m4(v4 q)
 
 static m4 m4_model(v3 pos, v4 rot, float scale)
 {
-	m4 rs = m4_mul(qt_to_m4(rot), m4_scale(scale));
-#ifdef ALG_DEBUG
-	assert(1.f == rs.c3.w);
-#endif
-	rs.c3.xyz = pos;
-	return rs;
+	const m3 s = M3_DIAG(scale, scale, scale);
+	const m3 r = qt_to_m3(rot);
+	const m3 rs = m3_mul(r, s);
+
+	m4 result = {
+		.c0 = { rs.c0.x, rs.c0.y, rs.c0.z, 0.f },
+		.c1 = { rs.c1.x, rs.c1.y, rs.c1.z, 0.f },
+		.c2 = { rs.c2.x, rs.c2.y, rs.c2.z, 0.f },
+		.c3 = {   pos.x,   pos.y,   pos.z, 1.f },
+	};
+
+	return result;
 }
 
 static m4 m4_view(v3 pos, v4 rot)
