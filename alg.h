@@ -725,7 +725,7 @@ static m3 qt_to_m3(v4 q)
 	float x = inv * ( xx - yy - zz + ww);
 	float y = inv * (-xx + yy - zz + ww);
 	float z = inv * (-xx - yy + zz + ww);
-	m3 m = m3_diag((v3) { x, y, z });
+	m3 m = M3_DIAG(x, y, z);
 
 	float _2inv = 2.f * inv;
 	{
