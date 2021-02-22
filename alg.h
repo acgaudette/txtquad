@@ -735,36 +735,29 @@ static v4 qt_nlerp(v4 a, v4 b, float t)
 // Hamilton convention
 static m3 qt_to_m3(v4 q)
 {
-	float xx = q.x * q.x;
-	float yy = q.y * q.y;
-	float zz = q.z * q.z;
-	float ww = q.w * q.w;
-	float inv = 1.f / (xx + yy + zz + ww);
+	const float xx = q.x * q.x;
+	const float yy = q.y * q.y;
+	const float zz = q.z * q.z;
+	const float ww = q.w * q.w;
+	const float xy = q.x * q.y;
+	const float zw = q.z * q.w;
+	const float xz = q.x * q.z;
+	const float yw = q.y * q.w;
+	const float yz = q.y * q.z;
+	const float xw = q.x * q.w;
 
-	float x = inv * ( xx - yy - zz + ww);
-	float y = inv * (-xx + yy - zz + ww);
-	float z = inv * (-xx - yy + zz + ww);
-	m3 m = M3_DIAG(x, y, z);
+	float inv = 1.f / (xx + yy + zz + ww);
+	float x =  inv * ( xx - yy - zz + ww);
+	float y =  inv * (-xx + yy - zz + ww);
+	float z =  inv * (-xx - yy + zz + ww);
 
 	float _2inv = 2.f * inv;
-	{
-		float xy = q.x * q.y;
-		float zw = q.z * q.w;
-		m.c0.y = _2inv * (xy + zw);
-		m.c1.x = _2inv * (xy - zw);
-	} {
-		float xz = q.x * q.z;
-		float yw = q.y * q.w;
-		m.c0.z = _2inv * (xz - yw);
-		m.c2.x = _2inv * (xz + yw);
-	} {
-		float yz = q.y * q.z;
-		float xw = q.x * q.w;
-		m.c1.z = _2inv * (yz + xw);
-		m.c2.y = _2inv * (yz - xw);
-	}
 
-	return m;
+	return (m3) {
+		.c0 = { x, _2inv * (xy + zw), _2inv * (xz - yw) },
+		.c1 = { _2inv * (xy - zw), y, _2inv * (yz + xw) },
+		.c2 = { _2inv * (xz + yw), _2inv * (yz - xw), z },
+	};
 }
 
 static m4 qt_to_m4(v4 q)
