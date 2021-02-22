@@ -406,11 +406,11 @@ ROW(4)
 { \
 	m ## N m; \
 	for (size_t i = 0; i < N; ++i) { \
-		for (size_t j = 0; j < N; ++j) { \
-			m.v[i].s[j] = v ## N ## _dot( \
-				m ## N ## _row(a, j), \
-				b.v[i] \
-			); \
+		m.v[i] = V ## N ## _ZERO; \
+		for (size_t k = 0; k < N; ++k) { \
+			for (size_t j = 0; j < N; ++j) { \
+				m.v[i].s[j] += b.v[i].s[k] * a.v[k].s[j]; \
+			} \
 		} \
 	} \
 	return m; \
