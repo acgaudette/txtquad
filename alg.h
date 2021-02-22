@@ -419,6 +419,14 @@ MUL(3)
 MUL(4)
 #undef MUL
 
+#define M2_DIAG(X, Y)       ((m2) { X, 0.f, 0.f, Y })
+#define M3_DIAG(X, Y, Z)    ((m3) { X, 0.f, 0.f, 0.f, Y, 0.f, 0.f, 0.f, Z })
+#define M4_DIAG(X, Y, Z, W) ((m4)\
+	{ X, 0.f, 0.f, 0.f, \
+	  0.f, Y, 0.f, 0.f, \
+	  0.f, 0.f, Z, 0.f, \
+	  0.f, 0.f, 0.f, W, })
+
 #define DIAG(N) static m ## N m ## N ## _diag(v ## N v) \
 { \
 	m ## N m = M ## N ## _ZERO; \
