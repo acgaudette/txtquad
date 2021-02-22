@@ -442,11 +442,17 @@ DIAG(4);
 
 #define FILL(A, B) static m ## A m ## A ## _fill_m ## B (m ## B n) \
 { \
-	m ## A m = M ## A ## _ZERO; \
+	m ## A m; \
 	for (size_t i = 0; i < B; ++i) { \
 		for (size_t j = 0; j < B; ++j) { \
 			m.v[i].s[j] = n.v[i].s[j]; \
 		} \
+		for (size_t j = B; j < A; ++j) { \
+			m.v[i].s[j] = 0.f; \
+		} \
+	} \
+	for (size_t i = B; i < A; ++i) { \
+		m.v[i] = V ## A ## _ZERO; \
 	} \
 	return m; \
 }
