@@ -5,6 +5,7 @@
 
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include "nmmintrin.h"
 #ifdef ALG_DEBUG
 #include <assert.h>
 #endif
@@ -28,7 +29,8 @@ VEC(4, struct { COMP_4 };
        struct { v2 xy; v2 zw; };
        struct { float _0; v2 yz; float _1; };
        struct { v3 xyz; float _2; };
-       struct { float _3; float yzw; });
+       struct { float _3; float yzw; };
+       __m128 v);
 #undef VEC
 
 typedef v2 ff;
@@ -329,9 +331,24 @@ GEN(4, isnorm, ffff)
 }
 
 GEN(2, dot, ff)
-GEN(3, dot, fff)
-GEN(4, dot, ffff)
 #undef dot
+
+static ALG_INLINE float v4_dot(v4 a, v4 b)
+{
+	v4 result = { .v = _mm_mul_ps(a.v, b.v) };
+	return result.x + result.y + result.z + result.w;
+}
+
+static ALG_INLINE float v3_dot(v3 a, v3 b)
+{
+	const float xx = a.x * b.x;
+	const float yy = a.y * b.y;
+	const float zz = a.z * b.z;
+	return xx + yy + zz;
+}
+
+#define dotfff (a, b) v3_dot(a, b)
+#define dotffff(a, b) v4_dot(a, b)
 
 #define LERP(N) static v ## N v ## N ## _lerp(v ## N a, v ## N b, float s) \
 { \
