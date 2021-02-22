@@ -1,7 +1,7 @@
 builddir = obj
 
 config = $
-    -O0 -ggdb $
+    -O1 -ggdb $
     -DTXT_DEBUG -DALG_DEBUG $
     -DINP_KEYS -DINP_TEXT -DINP_MOUSE
 cflags = -fPIC -fdiagnostics-color=always
