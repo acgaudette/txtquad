@@ -1,6 +1,8 @@
 #ifndef ALG_H
 #define ALG_H
 
+#define ALG_INLINE __attribute__((__always_inline__))
+
 #define _USE_MATH_DEFINES
 #include <math.h>
 #ifdef ALG_DEBUG
@@ -519,21 +521,21 @@ static v4 m3_to_qt(m3 m)
 	}
 }
 
-static m4 m4_trans(v3 v)
+static ALG_INLINE m4 m4_trans(v3 v)
 {
 	m4 m = M4_ID;
 	m.c3.xyz = v;
 	return m;
 }
 
-static m4 m4_scale(float s)
+static ALG_INLINE m4 m4_scale(float s)
 {
-	return m4_diag((v4) { s, s, s, 1.f });
+	return M4_DIAG(s, s, s, 1.f);
 }
 
-static m4 m4_scale_aniso(float x, float y, float z)
+static ALG_INLINE m4 m4_scale_aniso(float x, float y, float z)
 {
-	return m4_diag((v4) { x, y, z, 1.f });
+	return M4_DIAG(x, y, z, 1.f);
 }
 
 // Expects VFOV (width / height) in degrees
