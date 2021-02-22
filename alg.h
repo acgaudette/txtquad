@@ -115,18 +115,9 @@ static inline int is01f(const float s)
 	ID(N, v ## N ## _ ## ID) \
 	ID(N, ID ## FV)
 
-#define fill(N, ID) static v ## N ID(float s) \
-{ \
-	v ## N v; \
-	for (size_t i = 0; i < N; ++i) \
-		v.s[i] = s; \
-	return v; \
-}
-
-GEN(2, fill, ff)
-GEN(3, fill, fff)
-GEN(4, fill, ffff)
-#undef fill
+#define V2_FILL(S) ((v2) { S, S })
+#define V3_FILL(S) ((v3) { S, S, S })
+#define V4_FILL(S) ((v4) { S, S, S, S })
 
 #define shift(N, ID) static v ## N ID(v ## N v, const u8 i) \
 { \
@@ -147,77 +138,31 @@ GEN(4, shift, ffff)
 #define V3_ZERO ((v3) {})
 #define V4_ZERO ((v4) {})
 
-#define zero(N, ID) static inline v ## N ID() { return V ## N ## _ZERO; }
- GEN(2, zero, ff)
- GEN(3, zero, fff)
- GEN(4, zero, ffff)
-#undef  zero
+#define V2_ONE V2_FILL(1.f)
+#define V3_ONE V3_FILL(1.f)
+#define V4_ONE V4_FILL(1.f)
 
-#define V2_ONE ((v2) { 1.f, 1.f })
-#define V3_ONE ((v3) { 1.f, 1.f, 1.f })
-#define V4_ONE ((v4) { 1.f, 1.f, 1.f, 1.f })
-
-#define one(N, ID) static inline v ## N ID() { return V ## N ## _ONE; }
- GEN(2, one, ff)
- GEN(3, one, fff)
- GEN(4, one, ffff)
-#undef  one
-
-#define V2_R ((v2) { 1.f, 0.f })
-#define V3_R ((v3) { 1.f, 0.f, 0.f })
-#define V4_R ((v4) { 1.f, 0.f, 0.f, 0.f })
-
-#define right(N, ID) static v ## N ID() { return V ## N ## _R; }
- GEN(2, right, ff)
- GEN(3, right, fff)
- GEN(4, right, ffff)
-#undef  right
+#define V2_RT ((v2) { 1.f, 0.f })
+#define V3_RT ((v3) { 1.f, 0.f, 0.f })
+#define V4_RT ((v4) { 1.f, 0.f, 0.f, 0.f })
 
 #define V2_UP ((v2) { 0.f, 1.f })
 #define V3_UP ((v3) { 0.f, 1.f, 0.f })
 #define V4_UP ((v4) { 0.f, 1.f, 0.f, 0.f })
 
-#define up(N, ID) static v ## N ID() { return V ## N ## _UP; }
- GEN(2, up, ff)
- GEN(3, up, fff)
- GEN(4, up, ffff)
-#undef  up
-
 #define V3_FWD ((v3) { 0.f, 0.f, 1.f })
 #define V4_FWD ((v4) { 0.f, 0.f, 1.f, 0.f })
 
-#define fwd(N, ID) static v ## N ID() { return V ## N ## _FWD; }
- GEN(3, fwd, fff)
- GEN(4, fwd, ffff)
-#undef  fwd
-
-#define V2_L ((v2) { -1.f, 0.f })
-#define V3_L ((v3) { -1.f, 0.f, 0.f })
-#define V4_L ((v4) { -1.f, 0.f, 0.f, 0.f })
-
-#define left(N, ID) static v ## N ID() { return V ## N ## _L; }
- GEN(2, left, ff)
- GEN(3, left, fff)
- GEN(4, left, ffff)
-#undef  left
+#define V2_LFT ((v2) { -1.f, 0.f })
+#define V3_LFT ((v3) { -1.f, 0.f, 0.f })
+#define V4_LFT ((v4) { -1.f, 0.f, 0.f, 0.f })
 
 #define V2_DN ((v2) { 0.f, -1.f })
 #define V3_DN ((v3) { 0.f, -1.f, 0.f })
 #define V4_DN ((v4) { 0.f, -1.f, 0.f, 0.f })
 
-#define down(N, ID) static v ## N ID() { return V ## N ## _DN; }
- GEN(2, down, ff)
- GEN(3, down, fff)
- GEN(4, down, ffff)
-#undef  down
-
 #define V3_BCK ((v3) { 0.f, 0.f, -1.f })
 #define V4_BCK ((v4) { 0.f, 0.f, -1.f, 0.f })
-
-#define back(N, ID) static v ## N ID() { return V ## N ## _BCK; }
- GEN(3, back, fff)
- GEN(4, back, ffff)
-#undef  back
 
 #define EQ(N) static int v ## N ## _eq(v ## N a, v ## N b) \
 { \
@@ -437,21 +382,9 @@ static v3 v3_cross(v3 a, v3 b)
 #define M3_ZERO ((m3) {})
 #define M4_ZERO ((m4) {})
 
-#define ZERO(N) static m ## N m ## N ## _zero() { return M ## N ## _ZERO; }
-        ZERO(2)
-        ZERO(3)
-        ZERO(4)
-#undef  ZERO
-
 #define M2_ID ((m2) { .s[0] = 1.f, .s[3] = 1.f })
 #define M3_ID ((m3) { .s[0] = 1.f, .s[4] = 1.f, .s [8] = 1.f })
 #define M4_ID ((m4) { .s[0] = 1.f, .s[5] = 1.f, .s[10] = 1.f, .s[15] = 1.f })
-
-#define ID(N) static m ## N m ## N ## _id() { return M ## N ## _ID; }
-        ID(2)
-        ID(3)
-        ID(4)
-#undef  ID
 
 // Note: you can retrieve the columns from the union directly
 #define ROW(N) static v ## N m ## N ## _row(m ## N m, size_t r) \
@@ -632,10 +565,6 @@ static m4 m4_ortho(float scale, float asp, float near, float far)
 /* Quaternions */
 
 #define QT_ID ((v4) { 0.f, 0.f, 0.f, 1.f })
-static inline v4 qt_id()
-{
-	return QT_ID;
-}
 
 static inline v4 qt_conj(v4 q)
 {
