@@ -38,7 +38,7 @@ struct raw_char {
 	v2 _slop;
 };
 
-static v2 char_off(u8 c)
+static ALG_INLINE v2 char_off(u8 c)
 {
 	return (v2) {
 		c % FONT_OFF,
@@ -934,7 +934,7 @@ static void prep_share(struct dev dev, struct buf *out)
 
 	out->gpu = buf;
 	memset(out->mapped, 0, sizeof(struct txt_share));
-	((struct txt_share*)out->mapped)->vp = m4_id();
+	((struct txt_share*)out->mapped)->vp = M4_ID;
 	out->align = align;
 	out->frame_size = frame_size;
 }
