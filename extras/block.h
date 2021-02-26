@@ -33,7 +33,7 @@ static struct block_ctx block_prepare(struct block block)
 
 	/* Compute bounds and offset */
 
-	v2 extent = v2_zero();
+	v2 extent = V2_ZERO;
 	float ex = 0.f;
 
 	for (const char *v = block.str; *v; ++v) {
@@ -74,15 +74,15 @@ static void draw_marker(
 	const v3 col,
 	struct txt_buf *txt
 ) {
-	v3 offset = v3_mul(v3_fwd(), -1e-3);
+	v3 offset = v3_mul(V3_FWD, -1e-3);
 
 	struct sprite result = {
-		.anch = v2_zero(),
+		.anch = V2_ZERO,
 		.scale = maxf(.005f, scale * .15f),
 		.pos = v3_add(pos, qt_app(rot, offset)),
 		.rot = rot,
 		.col = col,
-		.vfx = v3_right(),
+		.vfx = V3_RT,
 		.asc = 1,
 	};
 
@@ -100,15 +100,15 @@ static int block_draw(
 	assert(out);
 
 	struct sprite result = {
-		.anch = v2_zero(),
+		.anch = V2_ZERO,
 		.scale = ctx->block.scale,
 		.rot = ctx->block.rot,
 		.bounds = BOUNDS_FONT,
 
 		/* Finalized by user after iter return */
 
-		.col = v3_one(),
-		.vfx = v3_right(),
+		.col = V3_ONE,
+		.vfx = V3_RT,
 	};
 
 	const float scale = ctx->block.scale;

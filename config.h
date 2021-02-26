@@ -2,7 +2,7 @@
 #define SWAP_IMG_COUNT 3
 #define MAX_DT (1.f / 10.f)
 
-#define MAX_QUAD 8192
+#define MAX_QUAD (8192 * 16)
 
 #define FONT_WIDTH 128
 #define CHAR_WIDTH 8

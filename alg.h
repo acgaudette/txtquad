@@ -1,8 +1,11 @@
 #ifndef ALG_H
 #define ALG_H
 
+#define ALG_INLINE __attribute__((__always_inline__))
+
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include "nmmintrin.h"
 #ifdef ALG_DEBUG
 #include <assert.h>
 #endif
@@ -26,7 +29,8 @@ VEC(4, struct { COMP_4 };
        struct { v2 xy; v2 zw; };
        struct { float _0; v2 yz; float _1; };
        struct { v3 xyz; float _2; };
-       struct { float _3; float yzw; });
+       struct { float _3; float yzw; };
+       __m128 v);
 #undef VEC
 
 typedef v2 ff;
@@ -115,18 +119,9 @@ static inline int is01f(const float s)
 	ID(N, v ## N ## _ ## ID) \
 	ID(N, ID ## FV)
 
-#define fill(N, ID) static v ## N ID(float s) \
-{ \
-	v ## N v; \
-	for (size_t i = 0; i < N; ++i) \
-		v.s[i] = s; \
-	return v; \
-}
-
-GEN(2, fill, ff)
-GEN(3, fill, fff)
-GEN(4, fill, ffff)
-#undef fill
+#define V2_FILL(S) ((v2) { S, S })
+#define V3_FILL(S) ((v3) { S, S, S })
+#define V4_FILL(S) ((v4) { S, S, S, S })
 
 #define shift(N, ID) static v ## N ID(v ## N v, const u8 i) \
 { \
@@ -147,77 +142,31 @@ GEN(4, shift, ffff)
 #define V3_ZERO ((v3) {})
 #define V4_ZERO ((v4) {})
 
-#define zero(N, ID) static inline v ## N ID() { return V ## N ## _ZERO; }
- GEN(2, zero, ff)
- GEN(3, zero, fff)
- GEN(4, zero, ffff)
-#undef  zero
+#define V2_ONE V2_FILL(1.f)
+#define V3_ONE V3_FILL(1.f)
+#define V4_ONE V4_FILL(1.f)
 
-#define V2_ONE ((v2) { 1.f, 1.f })
-#define V3_ONE ((v3) { 1.f, 1.f, 1.f })
-#define V4_ONE ((v4) { 1.f, 1.f, 1.f, 1.f })
-
-#define one(N, ID) static inline v ## N ID() { return V ## N ## _ONE; }
- GEN(2, one, ff)
- GEN(3, one, fff)
- GEN(4, one, ffff)
-#undef  one
-
-#define V2_R ((v2) { 1.f, 0.f })
-#define V3_R ((v3) { 1.f, 0.f, 0.f })
-#define V4_R ((v4) { 1.f, 0.f, 0.f, 0.f })
-
-#define right(N, ID) static v ## N ID() { return V ## N ## _R; }
- GEN(2, right, ff)
- GEN(3, right, fff)
- GEN(4, right, ffff)
-#undef  right
+#define V2_RT ((v2) { 1.f, 0.f })
+#define V3_RT ((v3) { 1.f, 0.f, 0.f })
+#define V4_RT ((v4) { 1.f, 0.f, 0.f, 0.f })
 
 #define V2_UP ((v2) { 0.f, 1.f })
 #define V3_UP ((v3) { 0.f, 1.f, 0.f })
 #define V4_UP ((v4) { 0.f, 1.f, 0.f, 0.f })
 
-#define up(N, ID) static v ## N ID() { return V ## N ## _UP; }
- GEN(2, up, ff)
- GEN(3, up, fff)
- GEN(4, up, ffff)
-#undef  up
-
 #define V3_FWD ((v3) { 0.f, 0.f, 1.f })
 #define V4_FWD ((v4) { 0.f, 0.f, 1.f, 0.f })
 
-#define fwd(N, ID) static v ## N ID() { return V ## N ## _FWD; }
- GEN(3, fwd, fff)
- GEN(4, fwd, ffff)
-#undef  fwd
-
-#define V2_L ((v2) { -1.f, 0.f })
-#define V3_L ((v3) { -1.f, 0.f, 0.f })
-#define V4_L ((v4) { -1.f, 0.f, 0.f, 0.f })
-
-#define left(N, ID) static v ## N ID() { return V ## N ## _L; }
- GEN(2, left, ff)
- GEN(3, left, fff)
- GEN(4, left, ffff)
-#undef  left
+#define V2_LFT ((v2) { -1.f, 0.f })
+#define V3_LFT ((v3) { -1.f, 0.f, 0.f })
+#define V4_LFT ((v4) { -1.f, 0.f, 0.f, 0.f })
 
 #define V2_DN ((v2) { 0.f, -1.f })
 #define V3_DN ((v3) { 0.f, -1.f, 0.f })
 #define V4_DN ((v4) { 0.f, -1.f, 0.f, 0.f })
 
-#define down(N, ID) static v ## N ID() { return V ## N ## _DN; }
- GEN(2, down, ff)
- GEN(3, down, fff)
- GEN(4, down, ffff)
-#undef  down
-
 #define V3_BCK ((v3) { 0.f, 0.f, -1.f })
 #define V4_BCK ((v4) { 0.f, 0.f, -1.f, 0.f })
-
-#define back(N, ID) static v ## N ID() { return V ## N ## _BCK; }
- GEN(3, back, fff)
- GEN(4, back, ffff)
-#undef  back
 
 #define EQ(N) static int v ## N ## _eq(v ## N a, v ## N b) \
 { \
@@ -382,9 +331,24 @@ GEN(4, isnorm, ffff)
 }
 
 GEN(2, dot, ff)
-GEN(3, dot, fff)
-GEN(4, dot, ffff)
 #undef dot
+
+static ALG_INLINE float v4_dot(v4 a, v4 b)
+{
+	v4 result = { .v = _mm_mul_ps(a.v, b.v) };
+	return result.x + result.y + result.z + result.w;
+}
+
+static ALG_INLINE float v3_dot(v3 a, v3 b)
+{
+	const float xx = a.x * b.x;
+	const float yy = a.y * b.y;
+	const float zz = a.z * b.z;
+	return xx + yy + zz;
+}
+
+#define dotfff (a, b) v3_dot(a, b)
+#define dotffff(a, b) v4_dot(a, b)
 
 #define LERP(N) static v ## N v ## N ## _lerp(v ## N a, v ## N b, float s) \
 { \
@@ -437,21 +401,9 @@ static v3 v3_cross(v3 a, v3 b)
 #define M3_ZERO ((m3) {})
 #define M4_ZERO ((m4) {})
 
-#define ZERO(N) static m ## N m ## N ## _zero() { return M ## N ## _ZERO; }
-        ZERO(2)
-        ZERO(3)
-        ZERO(4)
-#undef  ZERO
-
 #define M2_ID ((m2) { .s[0] = 1.f, .s[3] = 1.f })
 #define M3_ID ((m3) { .s[0] = 1.f, .s[4] = 1.f, .s [8] = 1.f })
 #define M4_ID ((m4) { .s[0] = 1.f, .s[5] = 1.f, .s[10] = 1.f, .s[15] = 1.f })
-
-#define ID(N) static m ## N m ## N ## _id() { return M ## N ## _ID; }
-        ID(2)
-        ID(3)
-        ID(4)
-#undef  ID
 
 // Note: you can retrieve the columns from the union directly
 #define ROW(N) static v ## N m ## N ## _row(m ## N m, size_t r) \
@@ -471,20 +423,47 @@ ROW(4)
 { \
 	m ## N m; \
 	for (size_t i = 0; i < N; ++i) { \
-		for (size_t j = 0; j < N; ++j) { \
-			m.v[i].s[j] = v ## N ## _dot( \
-				m ## N ## _row(a, j), \
-				b.v[i] \
-			); \
+		m.v[i] = V ## N ## _ZERO; \
+		for (size_t k = 0; k < N; ++k) { \
+			for (size_t j = 0; j < N; ++j) { \
+				m.v[i].s[j] += b.v[i].s[k] * a.v[k].s[j]; \
+			} \
 		} \
 	} \
 	return m; \
 }
 
 MUL(2)
-MUL(3)
 MUL(4)
 #undef MUL
+
+// Hand-unroll for m4_model() bottleneck
+static m3 m3_mul(m3 a, m3 b)
+{
+	const float x0 = a.c0.x * b.c0.x + a.c1.x * b.c0.y + a.c2.x * b.c0.z;
+	const float x1 = a.c0.x * b.c1.x + a.c1.x * b.c1.y + a.c2.x * b.c1.z;
+	const float x2 = a.c0.x * b.c2.x + a.c1.x * b.c2.y + a.c2.x * b.c2.z;
+	const float y0 = a.c0.y * b.c0.x + a.c1.y * b.c0.y + a.c2.y * b.c0.z;
+	const float y1 = a.c0.y * b.c1.x + a.c1.y * b.c1.y + a.c2.y * b.c1.z;
+	const float y2 = a.c0.y * b.c2.x + a.c1.y * b.c2.y + a.c2.y * b.c2.z;
+	const float z0 = a.c0.z * b.c0.x + a.c1.z * b.c0.y + a.c2.z * b.c0.z;
+	const float z1 = a.c0.z * b.c1.x + a.c1.z * b.c1.y + a.c2.z * b.c1.z;
+	const float z2 = a.c0.z * b.c2.x + a.c1.z * b.c2.y + a.c2.z * b.c2.z;
+
+	return (m3) {
+		x0, y0, z0,
+		x1, y1, z1,
+		x2, y2, z2,
+	};
+}
+
+#define M2_DIAG(X, Y)       ((m2) { X, 0.f, 0.f, Y })
+#define M3_DIAG(X, Y, Z)    ((m3) { X, 0.f, 0.f, 0.f, Y, 0.f, 0.f, 0.f, Z })
+#define M4_DIAG(X, Y, Z, W) ((m4)\
+	{ X, 0.f, 0.f, 0.f, \
+	  0.f, Y, 0.f, 0.f, \
+	  0.f, 0.f, Z, 0.f, \
+	  0.f, 0.f, 0.f, W, })
 
 #define DIAG(N) static m ## N m ## N ## _diag(v ## N v) \
 { \
@@ -501,11 +480,17 @@ DIAG(4);
 
 #define FILL(A, B) static m ## A m ## A ## _fill_m ## B (m ## B n) \
 { \
-	m ## A m = M ## A ## _ZERO; \
+	m ## A m; \
 	for (size_t i = 0; i < B; ++i) { \
 		for (size_t j = 0; j < B; ++j) { \
 			m.v[i].s[j] = n.v[i].s[j]; \
 		} \
+		for (size_t j = B; j < A; ++j) { \
+			m.v[i].s[j] = 0.f; \
+		} \
+	} \
+	for (size_t i = B; i < A; ++i) { \
+		m.v[i] = V ## A ## _ZERO; \
 	} \
 	return m; \
 }
@@ -572,21 +557,21 @@ static v4 m3_to_qt(m3 m)
 	}
 }
 
-static m4 m4_trans(v3 v)
+static ALG_INLINE m4 m4_trans(v3 v)
 {
 	m4 m = M4_ID;
 	m.c3.xyz = v;
 	return m;
 }
 
-static m4 m4_scale(float s)
+static ALG_INLINE m4 m4_scale(float s)
 {
-	return m4_diag((v4) { s, s, s, 1.f });
+	return M4_DIAG(s, s, s, 1.f);
 }
 
-static m4 m4_scale_aniso(float x, float y, float z)
+static ALG_INLINE m4 m4_scale_aniso(float x, float y, float z)
 {
-	return m4_diag((v4) { x, y, z, 1.f });
+	return M4_DIAG(x, y, z, 1.f);
 }
 
 // Expects VFOV (width / height) in degrees
@@ -632,10 +617,6 @@ static m4 m4_ortho(float scale, float asp, float near, float far)
 /* Quaternions */
 
 #define QT_ID ((v4) { 0.f, 0.f, 0.f, 1.f })
-static inline v4 qt_id()
-{
-	return QT_ID;
-}
 
 static inline v4 qt_conj(v4 q)
 {
@@ -771,36 +752,29 @@ static v4 qt_nlerp(v4 a, v4 b, float t)
 // Hamilton convention
 static m3 qt_to_m3(v4 q)
 {
-	float xx = q.x * q.x;
-	float yy = q.y * q.y;
-	float zz = q.z * q.z;
-	float ww = q.w * q.w;
-	float inv = 1.f / (xx + yy + zz + ww);
+	const float xx = q.x * q.x;
+	const float yy = q.y * q.y;
+	const float zz = q.z * q.z;
+	const float ww = q.w * q.w;
+	const float xy = q.x * q.y;
+	const float zw = q.z * q.w;
+	const float xz = q.x * q.z;
+	const float yw = q.y * q.w;
+	const float yz = q.y * q.z;
+	const float xw = q.x * q.w;
 
-	float x = inv * ( xx - yy - zz + ww);
-	float y = inv * (-xx + yy - zz + ww);
-	float z = inv * (-xx - yy + zz + ww);
-	m3 m = m3_diag((v3) { x, y, z });
+	float inv = 1.f / (xx + yy + zz + ww);
+	float x =  inv * ( xx - yy - zz + ww);
+	float y =  inv * (-xx + yy - zz + ww);
+	float z =  inv * (-xx - yy + zz + ww);
 
 	float _2inv = 2.f * inv;
-	{
-		float xy = q.x * q.y;
-		float zw = q.z * q.w;
-		m.c0.y = _2inv * (xy + zw);
-		m.c1.x = _2inv * (xy - zw);
-	} {
-		float xz = q.x * q.z;
-		float yw = q.y * q.w;
-		m.c0.z = _2inv * (xz - yw);
-		m.c2.x = _2inv * (xz + yw);
-	} {
-		float yz = q.y * q.z;
-		float xw = q.x * q.w;
-		m.c1.z = _2inv * (yz + xw);
-		m.c2.y = _2inv * (yz - xw);
-	}
 
-	return m;
+	return (m3) {
+		.c0 = { x, _2inv * (xy + zw), _2inv * (xz - yw) },
+		.c1 = { _2inv * (xy - zw), y, _2inv * (yz + xw) },
+		.c2 = { _2inv * (xz + yw), _2inv * (yz - xw), z },
+	};
 }
 
 static m4 qt_to_m4(v4 q)
@@ -814,12 +788,18 @@ static m4 qt_to_m4(v4 q)
 
 static m4 m4_model(v3 pos, v4 rot, float scale)
 {
-	m4 rs = m4_mul(qt_to_m4(rot), m4_scale(scale));
-#ifdef ALG_DEBUG
-	assert(1.f == rs.c3.w);
-#endif
-	rs.c3.xyz = pos;
-	return rs;
+	const m3 s = M3_DIAG(scale, scale, scale);
+	const m3 r = qt_to_m3(rot);
+	const m3 rs = m3_mul(r, s);
+
+	m4 result = {
+		.c0 = { rs.c0.x, rs.c0.y, rs.c0.z, 0.f },
+		.c1 = { rs.c1.x, rs.c1.y, rs.c1.z, 0.f },
+		.c2 = { rs.c2.x, rs.c2.y, rs.c2.z, 0.f },
+		.c3 = {   pos.x,   pos.y,   pos.z, 1.f },
+	};
+
+	return result;
 }
 
 static m4 m4_view(v3 pos, v4 rot)
@@ -914,6 +894,51 @@ PRINT(4)
  GEN(4, genw)
 #undef  genw
 
+#define padx(N, ID) static v ## N ID(float s, float p) \
+{ \
+	v ## N result = V ## N ## _FILL(p); \
+	result.x = s; \
+	return result; \
+}
+
+ GEN(2, padx)
+ GEN(3, padx)
+ GEN(4, padx)
+#undef  padx
+
+#define pady(N, ID) static v ## N ID(float s, float p) \
+{ \
+	v ## N result = V ## N ## _FILL(p); \
+	result.y = s; \
+	return result; \
+}
+
+ GEN(2, pady)
+ GEN(3, pady)
+ GEN(4, pady)
+#undef  pady
+
+#define padz(N, ID) static v ## N ID(float s, float p) \
+{ \
+	v ## N result = V ## N ## _FILL(p); \
+	result.z = s; \
+	return result; \
+}
+
+ GEN(3, padz)
+ GEN(4, padz)
+#undef  padz
+
+#define padw(N, ID) static v ## N ID(float s, float p) \
+{ \
+	v ## N result = V ## N ## _FILL(p); \
+	result.w = s; \
+	return result; \
+}
+
+ GEN(4, padw)
+#undef  padw
+
 /* Vector generators (2) */
 
 #define MKF2(N, A, B, PRE, PST) \
@@ -921,9 +946,12 @@ static v ## N PRE ## gen ## PST (float a, float b) \
 { \
 	return (v ## N) { . A = a, . B = b }; \
 } \
-static v ## N PRE ## pad ## PST (v2 v) \
+static v ## N PRE ## pad ## PST (v2 v, float p) \
 { \
-	return PRE ## gen ## PST (v.x, v.y); \
+	v ## N result = V ## N ## _FILL(p); \
+	result . A = v.x; \
+	result . B = v.y; \
+	return result; \
 }
 
 #define GEN2(N, A, B) \
@@ -950,9 +978,13 @@ static v ## N PRE ## gen ## PST (float a, float b, float c) \
 { \
 	return (v ## N) { .A = a, .B = b, .C = c }; \
 } \
-static v ## N PRE ## pad ## PST (v3 v) \
+static v ## N PRE ## pad ## PST (v3 v, float p) \
 { \
-	return PRE ## gen ## PST (v.x, v.y, v.z); \
+	v ## N result = V ## N ## _FILL(p); \
+	result . A = v.x; \
+	result . B = v.y; \
+	result . C = v.z; \
+	return result; \
 }
 
 #define GEN3(N, A, B, C) \
@@ -974,15 +1006,8 @@ GEN3(4, y, z, w)
 	return (v ## N) { .x = a, .y = b, .z = c, .w = d }; \
 }
 
-#define padxyzw(N, ID) static v ## N ID(float a, float b, float c, float d) \
-{ \
-	return v ## N ## _genxyzw(a, b, c, d); \
-}
-
 GEN(4, genxyzw)
-GEN(4, padxyzw)
 #undef genxyzw
-#undef padxyzw
 
 /* Swizzles (2) */
 

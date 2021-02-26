@@ -20,6 +20,8 @@
 #elif DEMO_4
 	#include "extras/sprite.h"
 	void inp_ev_text(unsigned int _) { }
+#elif DEMO_5
+	#include "sys.h"
 #else
 	void inp_ev_text(unsigned int _) { }
 #endif
@@ -124,7 +126,7 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 			.str = cli,
 			.scale = .25f,
 			.pos = { 0.f, -.9f, 2.f },
-			.rot = qt_axis_angle(V3_R, M_PI * .15f),
+			.rot = qt_axis_angle(V3_RT, M_PI * .15f),
 			.anch = { 0.f, -1.f },
 			.justify = JUST_LEFT,
 			.spacing = 1.f,
@@ -153,7 +155,7 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 			.pos = pos,
 			.rot = qt_axis_angle(V3_FWD, sinf(frame.t) * .5f),
 			.col = { .8f, .3f, .3f },
-			.vfx = V3_R,
+			.vfx = V3_RT,
 			.asc = '1',
 			.bounds = BOUNDS_FONT,
 		}, txt
@@ -166,7 +168,7 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 			.pos = pos,
 			.rot = qt_axis_angle(V3_FWD, -sinf(frame.t) * .5f),
 			.col = { .8f, .8f, .8f },
-			.vfx = V3_R,
+			.vfx = V3_RT,
 			.asc = '4',
 			.bounds = BOUNDS_FONT,
 		}, txt
@@ -180,7 +182,7 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 				.pos = V3_FWD,
 				.rot = qt_axis_angle(V3_FWD, M_PI * .5f * i),
 				.col = { .1f, .1f, .2f },
-				.vfx = V3_R,
+				.vfx = V3_RT,
 				.asc = '!',
 				.bounds = mulffff(
 					(v4) { 2.f, 3.f, 4.f, 0.f },
@@ -188,6 +190,43 @@ struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 				),
 			}, txt
 		);
+	}
+#elif DEMO_5
+	const size_t waterline = MAX_QUAD;
+	txt->count = waterline;
+
+	const fff origin = V3_FWD;
+	const float scale = .1f;
+	const float depth = waterline / 60 + 1;
+
+	for (size_t i = 0; i < waterline; ++i) {
+		float x = i % 10, y = (i % 60) / 10, z = i / 60;
+
+		fff pos = {
+			-.95f + x * 2.f * scale,
+			-.55f + y * 2.f * scale,
+			1.f + .5f * scale * z,
+		};
+
+		ffff col = {
+			x / 10.f,
+			y / 6.f,
+			1.f - (i / 54) / (depth * !((i / 54) % 4)),
+			.5f + fmodf(frame.t * .1f, 1.f) * .5f,
+		};
+
+		v4 rot = qt_axis_angle(V3_FWD, (i % 4) * M_PI * .5f);
+
+		txt->quads[i] = (struct txt_quad) {
+			.value = 1,
+			.model = m4_model(pos, rot, scale),
+			.color = col,
+		};
+	}
+
+	if (frame.i > 32 && frame.t > 3.f && frame.dt > 1.f / 60.f + 1e-3) {
+		fprintf(stderr, "dt=%f (%.1f)\n", frame.dt, 1.f / frame.dt);
+		panic_msg("performance barrier reached");
 	}
 #endif
 	float asp = (float)frame.size.w / frame.size.h;
