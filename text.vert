@@ -20,7 +20,7 @@ layout (set = 1, binding = 0) uniform Share {
 	float time;
 } share;
 
-layout (set = 2, binding = 0) readonly buffer Data { Char chars[MAX_CHAR]; } data;
+layout (set = 2, binding = 0) readonly buffer Data { Char chars[MAX_QUAD]; } data;
 
 #ifdef PLATFORM_COMPAT_VBO
 	layout (location = 0) in vec2 vert;

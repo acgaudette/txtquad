@@ -3,70 +3,106 @@
 #include "txtquad.h"
 #include "inp.h"
 
-#ifdef DEMO_2
-static char cli[1024];
-static size_t cli_len;
+#ifdef DEMO_3
+	#define DEBUG_UI
+	#include "extras/sprite.h"
+	#include "extras/block.h"
 
-void inp_ev_text(unsigned int unicode)
-{
-	char ascii = unicode > 'Z' && unicode <= 'z' ? unicode - 32 : unicode;
-	cli[cli_len++] = ascii;
-}
+	static char cli[1024];
+	static size_t cli_len;
+
+	void inp_ev_text(unsigned int unicode)
+	{
+		char ascii = 'z' >= unicode && unicode >= 'a' ?
+			unicode ^ ' ' : unicode;
+		cli[cli_len++] = ascii;
+	}
+#elif DEMO_4
+	#include "extras/sprite.h"
+	void inp_ev_text(unsigned int _) { }
 #else
-void inp_ev_text(unsigned int _) { }
+	void inp_ev_text(unsigned int _) { }
 #endif
 
-struct Share txtquad_update(struct Frame data, struct Text *text)
+struct txt_share txtquad_update(struct txt_frame frame, struct txt_buf *txt)
 {
 	v3 cam_pos = v3_zero();
 	v4 cam_rot = qt_id();
 
-#ifdef DEMO_0
-	cam_rot = qt_axis_angle(v3_up(), data.t);
-	cam_pos = qt_app(cam_rot, v3_neg(v3_fwd()));
+#ifdef DEMO_0 // Baseline
+	cam_pos = v3_neg(v3_fwd());
 
-	text->char_count = 1;
-	text->chars[0] = (struct Char) {
-		.pos = { -.5f + PIX_WIDTH * .5f, -.5f, 0 },
-		.rot = qt_id(),
-		.scale = 1.f,
-		.v = 'A',
-		.col = v4_one(),
+	txt->count = 1;
+	txt->quads[0] = (struct txt_quad) {
+		.value = 'A',
+		.model = m4_model(
+			(v3) { -.5f + PIX_WIDTH * .5f, -.5f, 0 },
+			qt_id(),
+			1.f
+		),
+		.color = v4_one(),
 	};
 #elif DEMO_1
-	char a = 'A' + (1 - .5f * (1 + cos(data.t * .5f))) * 26 + 0;
-	char z = 'Z' - (1 - .5f * (1 + cos(data.t * .5f))) * 26 + 1;
+	char a = 'A' + (1 - .5f * (1 + cos(frame.t * .5f))) * 26 + 0;
+	char z = 'Z' - (1 - .5f * (1 + cos(frame.t * .5f))) * 26 + 1;
 
-	text->char_count = 4;
-	text->chars[0] = (struct Char) {
-		.pos = { -.5f - .125f, .5f - .125f, 2 },
-		.rot = qt_id(),
-		.scale = .25f,
-		.v = a,
-		.col = v4_one(),
+	txt->count = 4;
+	txt->quads[0] = (struct txt_quad) {
+		.value = a,
+		.model = m4_model(
+			(v3) { -.5f - .125f, .5f - .125f, 2 }
+			, qt_id()
+			, .25f
+		),
+		.color = v4_one(),
 	};
-	text->chars[1] = (struct Char) {
-		.pos = { .5f - .125f, .5f - .125f, 2 },
-		.rot = qt_id(),
-		.scale = .25f,
-		.v = z,
-		.col = v4_one(),
+	txt->quads[1] = (struct txt_quad) {
+		.value = z,
+		.model = m4_model(
+			(v3) { .5f - .125f, .5f - .125f, 2 }
+			, qt_id()
+			, .25f
+		),
+		.color = v4_one(),
 	};
-	text->chars[2] = (struct Char) {
-		.pos = { -.5f - .125f, -.5f - .125f, 2 },
-		.rot = qt_id(),
-		.scale = .25f,
-		.v = z,
-		.col = v4_one(),
+	txt->quads[2] = (struct txt_quad) {
+		.value = z,
+		.model = m4_model(
+			(v3) { -.5f - .125f, -.5f - .125f, 2 }
+			, qt_id()
+			, .25f
+		),
+		.color = v4_one(),
 	};
-	text->chars[3] = (struct Char) {
-		.pos = { .5f - .125f, -.5f - .125f, 2 },
-		.rot = qt_id(),
-		.scale = .25f,
-		.v = a,
-		.col = v4_one(),
+	txt->quads[3] = (struct txt_quad) {
+		.value = a,
+		.model = m4_model(
+			(v3) { .5f - .125f, -.5f - .125f, 2 }
+			, qt_id()
+			, .25f
+		),
+		.color = v4_one(),
 	};
 #elif DEMO_2
+	cam_rot = qt_axis_angle(v3_up(), sinf(frame.t));
+	cam_pos = qt_app(cam_rot, v3_neg(v3_fwd()));
+
+	const float a = cosf(2.f * frame.t) * .5f + .5f;
+	const float y = cosf(frame.t);
+
+	txt->count = 1;
+	txt->quads[0] = (struct txt_quad) {
+		.value = y > 0.f ? 'Q' : 'S',
+		.model = m4_model(
+			(v3) { -.5f + PIX_WIDTH * .5f, -.5f, .5f }
+			, qt_id()
+			, 1.f
+		),
+		.color = y > 0.f ?
+			(v4) { 1.f, .8f, .4f, 1.1f * a * a } :
+			(v4) { 1.f, .4f, .8f, 1.1f * a * a } ,
+	};
+#elif DEMO_3
 	if (KEY_DOWN(ENTER)) {
 		cli[cli_len++] = '\n';
 	}
@@ -79,53 +115,95 @@ struct Share txtquad_update(struct Frame data, struct Text *text)
 		cli_len = 0;
 	}
 
-	text->char_count = 0;
-	text->block_count = 1;
-	text->blocks[0] = (struct Block) {
-		.str = cli,
-		.str_len = cli_len,
-		.pos = { -.9f, -.9f, 2 },
-		.rot = qt_axis_angle(v3_right(), M_PI * .15f),
-		.scale = .25f,
-		.piv = { 0.f, 1.f },
-		.off = { 0.f, 0.f },
-		.just = JUST_LEFT,
-		.col = v4_one(),
-		.spacing = LINE_HEIGHT,
-		.col_lim = 8,
-		.cursor = '_',
-	};
-#elif DEMO_3
-	cam_rot = qt_axis_angle(v3_up(), sinf(data.t));
-	cam_pos = qt_app(cam_rot, v3_neg(v3_fwd()));
+	*(cli + cli_len) = 0;
+	txt->count = 0;
 
-	const float a = cosf(2.f * data.t) * .5f + .5f;
+	struct block_ctx ctx = block_prepare(
+		(struct block) {
+			.str = cli,
+			.scale = .25f,
+			.pos = { 0.f, -.9f, 2.f },
+			.rot = qt_axis_angle(v3_right(), M_PI * .15f),
+			.anch = { 0.f, -1.f },
+			.justify = JUST_LEFT,
+			.spacing = 1.f,
+			.line_height = 1.f,
+		}
+	);
 
-	text->char_count = 1;
-	text->chars[0] = (struct Char) {
-		.pos = { -.5f + PIX_WIDTH * .5f, -.5f, .5f },
-		.rot = qt_id(),
-		.scale = 1.f,
-		.v = cosf(data.t) > 0.f ? 'Q' : 'S',
-		.col = (v4) { 1.f, 1.f, 1.f, 1.1f * a * a },
-	};
+	struct sprite sprite;
+	while (block_draw(&sprite, &ctx, txt)) {
+		assert(sprite.asc);
+		sprite.col = v3_one();
+		txt->quads[txt->count++] = sprite_conv(sprite);
+	}
+
+	// Cursor
+	sprite.asc = fmodf(frame.t, 1.f) > .5f ? '_' : ' ';
+	txt->quads[txt->count++] = sprite_conv(sprite);
+#elif DEMO_4
+	txt->count = 0;
+	const fff pos = { 0.f, 0.f, 1.f };
+
+	sprite_draw_imm(
+		(struct sprite) {
+			.anch = { 1.f, -1.f },
+			.scale = .5f,
+			.pos = pos,
+			.rot = qt_axis_angle(V3_FWD, sinf(frame.t) * .5f),
+			.col = { .8f, .3f, .3f },
+			.vfx = V3_R,
+			.asc = '1',
+			.bounds = BOUNDS_FONT,
+		}, txt
+	);
+
+	sprite_draw_imm(
+		(struct sprite) {
+			.anch = { -1.f, 1.f },
+			.scale = .25f,
+			.pos = pos,
+			.rot = qt_axis_angle(V3_FWD, -sinf(frame.t) * .5f),
+			.col = { .8f, .8f, .8f },
+			.vfx = V3_R,
+			.asc = '4',
+			.bounds = BOUNDS_FONT,
+		}, txt
+	);
+
+	for (unsigned i = 0; i < 4; ++i) {
+		sprite_draw_imm(
+			(struct sprite) {
+				.anch = V2_ZERO,
+				.scale = 1.f,
+				.pos = V3_FWD,
+				.rot = qt_axis_angle(V3_FWD, M_PI * .5f * i),
+				.col = { .1f, .1f, .2f },
+				.vfx = V3_R,
+				.asc = '!',
+				.bounds = mulffff(
+					(v4) { 2.f, 3.f, 4.f, 0.f },
+					PIX_WIDTH
+				),
+			}, txt
+		);
+	}
 #endif
-
-	float asp = (float)data.win_size.w / data.win_size.h;
+	float asp = (float)frame.size.w / frame.size.h;
 	m4 view = m4_view(cam_pos, cam_rot);
 	m4 proj = m4_persp(60, asp, .001f, 1024);
 	m4 vp = m4_mul(proj, view);
 
-	return (struct Share) {
-		vp,
-		(v2) { data.win_size.w, data.win_size.h },
-		data.t,
+	return (struct txt_share) {
+		.vp = vp,
+		.screen = (v2) { frame.size.w, frame.size.h },
+		.time = frame.t,
 	};
 }
 
 int main()
 {
-#ifndef DEMO_2
+#ifndef DEMO_3
 	inp_key_init(NULL, 0);
 #else
 	int inp_handles[] = {
@@ -136,14 +214,14 @@ int main()
 
 	inp_key_init(inp_handles, sizeof(inp_handles) / sizeof(int));
 #endif
-	struct Settings settings = {
+	struct txt_cfg cfg = {
 		.app_name = "txtquad-demo",
 		.asset_path = "./assets/",
 		.win_size = { 800, 800 }, // Ignored
 		.mode = MODE_BORDERLESS,
 	};
 
-	txtquad_init(settings);
+	txtquad_init(cfg);
 	txtquad_start();
 	exit(0);
 }

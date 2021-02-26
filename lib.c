@@ -27,12 +27,12 @@
 #define PLATFORM_COMPAT_VBO
 #endif
 
-static struct Text text;
+static struct txt_buf txt;
 static char *root_path;
 static char *filename;
 
-struct RawChar {
-	m4 model;
+struct raw_char {
+	m4 trs;
 	v4 col;
 	v2 off;
 	v2 _slop;
@@ -46,96 +46,24 @@ static v2 char_off(u8 c)
 	};
 }
 
-static void text_update(struct RawChar *buf, struct Frame data)
+static void txt_update(struct raw_char *buf)
 {
-	for (size_t i = 0; i < text.char_count; ++i) {
-		struct Char c = text.chars[i];
-		buf[i] = (struct RawChar) {
-			.model = m4_model(c.pos, c.rot, c.scale),
-			.col = c.col,
-			.off = char_off(c.v),
-			._slop = c.fx,
+	for (size_t i = 0; i < txt.count; ++i) {
+		struct txt_quad *quad = txt.quads + i;
+		buf[i] = (struct raw_char) {
+			  .trs = quad->model,
+			  .col = quad->color,
+			  .off = char_off(quad->value),
+			._slop = quad->_extra,
 		};
 	}
 
-	size_t end = text.char_count;
-	for (size_t i = 0; i < text.block_count; ++i) {
-		struct Block block = text.blocks[i];
-		float line_scale = block.spacing * block.scale;
-		float height = line_scale;
-		float width = 0.f;
-
-		float k = 0;
-		for (size_t j = 0; j < block.str_len; ++j) {
-			if (block.str[j] == '\n') {
-				height += line_scale;
-				if (k > width) width = k;
-				k = 0;
-				continue;
-			}
-
-			k += block.scale;
-		}
-
-		if (k > width) width = k;
-
-		m3 rot = qt_to_m3(block.rot);
-		v3 right = rot.c0;
-		v3 left = v3_neg(right);
-		v3 up = rot.c1;
-		v3 down = v3_neg(up);
-
-		v2 off2 = v2_mul(block.off, block.scale);
-		v3 off3 = v3_add(
-			v3_mul(left, width * block.piv.x - off2.x),
-			v3_mul(up, height * block.piv.y - off2.y)
-		);
-
-		v3 start = v3_add(block.pos, off3);
-		v3 pos = start;
-
-		// TODO: for justification,
-		// need to know the width of each line.
-
-		size_t line = 0;
-		for (size_t j = 0; j < block.str_len; ++j) {
-			char c = block.str[j];
-			switch (c) {
-			case '\n':
-				++line;
-				float amt = line * line_scale;
-				pos = v3_add(start, v3_mul(down, amt));
-				continue;
-			}
-
-			buf[end + j - line] = (struct RawChar) {
-				.model = m4_model(pos, block.rot, block.scale),
-				.col = block.col,
-				.off = char_off(c),
-				._slop = v2_zero(),
-			};
-
-			pos = v3_add(pos, v3_mul(right, block.scale));
-		}
-
-		end += block.str_len - line;
-		if (!block.cursor) continue;
-		int flag = fmodf(data.t, 1.f) > .5f;
-		if (flag) continue;
-		buf[end] = (struct RawChar) {
-			.model = m4_model(pos, block.rot, block.scale),
-			.col = block.col,
-			.off = char_off(block.cursor),
-			._slop = v2_zero(),
-		};
-		++end;
-	}
-
-	size_t clear_size = (MAX_CHAR - end) * sizeof(struct RawChar);
+	size_t end = txt.count;
+	size_t clear_size = (MAX_QUAD - end) * sizeof(struct raw_char);
 	memset(buf + end, 0, clear_size);
 }
 
-struct PipelineTemplate {
+struct pipeline_template {
 	VkPipelineShaderStageCreateInfo shader_create_infos[2];
 #ifdef PLATFORM_COMPAT_VBO
 	VkVertexInputBindingDescription binding_desc;
@@ -153,11 +81,11 @@ struct PipelineTemplate {
 	VkGraphicsPipelineCreateInfo data;
 };
 
-static struct App {
+static struct {
 	GLFWwindow *win;
 	VkInstance inst;
 	VkSurfaceKHR surf;
-	struct DevData {
+	struct dev {
 		VkPhysicalDevice *devices;
 		VkPhysicalDevice hard;
 		VkPhysicalDeviceProperties props;
@@ -166,24 +94,24 @@ static struct App {
 		size_t q_ind;
 		VkQueue q;
 	} dev;
-	struct SwapData {
+	struct swap {
 		VkSwapchainKHR chain;
 		VkFormat format;
-		struct Extent extent;
+		struct extent extent;
 		VkImage *img;
 		struct ak_img depth;
 	} swap;
-	struct FontData {
+	struct font {
 		struct ak_img tex;
 		VkSampler sampler;
 	} font;
-	struct BufData {
+	struct buf {
 		struct ak_buf gpu;
 		void *mapped;
 		u64 align;
 		u64 frame_size;
 	} share, rchar;
-	struct DescData {
+	struct desc {
 		VkDescriptorSetLayout *layouts;
 		u32 lay_count;
 		VkDescriptorSetLayout *layouts_exp;
@@ -191,24 +119,24 @@ static struct App {
 		u32 set_count;
 		VkDescriptorPool pool;
 	} desc;
-	struct GraphicsData {
+	struct graphics {
 		struct ak_shader vert;
 		struct ak_shader frag;
 #ifdef PLATFORM_COMPAT_VBO
 		struct ak_buf quad;
 #endif
 		VkRenderPass pass;
-		struct PipelineTemplate *template;
+		struct pipeline_template *template;
 	} graphics;
-	struct PipelineData {
+	struct pipeline {
 		VkPipelineLayout layout;
 		VkPipeline line;
 	} pipe;
-	struct FrameData {
+	struct frame {
 		VkImageView *views;
 		VkFramebuffer *buffers;
 	} frame;
-	struct SyncData {
+	struct sync {
 		VkFence acquire;
 		VkFence *submit;
 		VkSemaphore *sem;
@@ -246,7 +174,7 @@ static void glfw_char_callback(GLFWwindow *win, unsigned int unicode)
 }
 #endif
 
-static GLFWwindow *mk_win(const char *name, int type, struct Extent *extent)
+static GLFWwindow *mk_win(const char *name, int type, struct extent *extent)
 {
 	if (!glfwInit()) {
 		panic_msg("unable to initialize GLFW");
@@ -433,7 +361,7 @@ static VkSurfaceKHR mk_surf(GLFWwindow *win, VkInstance inst)
 	return surf;
 }
 
-static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
+static struct dev mk_dev(VkInstance inst, VkSurfaceKHR surf)
 {
 	unsigned int dev_count;
 	VkPhysicalDevice *hard_devs, hard_dev;
@@ -543,7 +471,7 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 		printf("Found heap %u with size %.1fMB\n", i, size);
 	}
 
-	return (struct DevData) {
+	return (struct dev) {
 		hard_devs,
 		hard_dev,
 		dev_props,
@@ -554,10 +482,10 @@ static struct DevData mk_dev(VkInstance inst, VkSurfaceKHR surf)
 	};
 }
 
-static struct SwapData mk_swap(
-	struct Extent req,
-	struct Extent fbuffer,
-	struct DevData dev,
+static struct swap mk_swap(
+	struct extent req,
+	struct extent fbuffer,
+	struct dev dev,
 	GLFWwindow *win,
 	VkSurfaceKHR surf
 ) {
@@ -654,7 +582,7 @@ static struct SwapData mk_swap(
 		&depth
 	);
 
-	return (struct SwapData) {
+	return (struct swap) {
 		swapchain,
 		format,
 		{ win_w, win_h },
@@ -663,7 +591,7 @@ static struct SwapData mk_swap(
 	};
 }
 
-static VkCommandPool mk_pool(struct DevData dev)
+static VkCommandPool mk_pool(struct dev dev)
 {
 	VkResult err;
 	VkCommandPoolCreateInfo pool_create_info = {
@@ -776,7 +704,7 @@ static unsigned char *read_font() // Read custom PBM file
 	return exp;
 }
 
-static struct FontData load_font(struct DevData dev, VkCommandPool pool)
+static struct font load_font(struct dev dev, VkCommandPool pool)
 {
 	/* Staging buffer */
 
@@ -975,13 +903,13 @@ static struct FontData load_font(struct DevData dev, VkCommandPool pool)
 	vkFreeCommandBuffers(dev.log, pool, 1, &cmd);
 	ak_buf_free(dev.log, staging);
 
-	return (struct FontData) {
+	return (struct font) {
 		tex,
 		sampler,
 	};
 }
 
-static void prep_share(struct DevData dev, struct BufData *out)
+static void prep_share(struct dev dev, struct buf *out)
 {
 	/* Could combine with the rchar buffer
 	 * as they are updated at the same rate;
@@ -991,7 +919,7 @@ static void prep_share(struct DevData dev, struct BufData *out)
 
 	struct ak_buf buf;
 	u64 align = dev.props.limits.minUniformBufferOffsetAlignment;
-	u64 frame_size = ak_align_up(sizeof(struct Share), align);
+	u64 frame_size = ak_align_up(sizeof(struct txt_share), align);
 	u64 size = frame_size * SWAP_IMG_COUNT;
 
 	AK_BUF_MK_AND_MAP(
@@ -1005,18 +933,17 @@ static void prep_share(struct DevData dev, struct BufData *out)
 	);
 
 	out->gpu = buf;
-	((struct Share*)out->mapped)->vp = m4_id();
-	((struct Share*)out->mapped)->screen = v2_zero();
-	((struct Share*)out->mapped)->time = 0.f;
+	memset(out->mapped, 0, sizeof(struct txt_share));
+	((struct txt_share*)out->mapped)->vp = m4_id();
 	out->align = align;
 	out->frame_size = frame_size;
 }
 
-static void prep_rchar(struct DevData dev, struct BufData *out)
+static void prep_rchar(struct dev dev, struct buf *out)
 {
 	struct ak_buf buf;
 	u64 align = dev.props.limits.minStorageBufferOffsetAlignment;
-	u64 frame_size = ak_align_up(MAX_CHAR * sizeof(struct RawChar), align);
+	u64 frame_size = ak_align_up(MAX_QUAD * sizeof(struct raw_char), align);
 	u64 size = frame_size * SWAP_IMG_COUNT;
 
 	AK_BUF_MK_AND_MAP(
@@ -1035,7 +962,7 @@ static void prep_rchar(struct DevData dev, struct BufData *out)
 	out->frame_size = frame_size;
 }
 
-static struct DescData mk_desc_sets(VkDevice dev)
+static struct desc mk_desc_sets(VkDevice dev)
 {
 	VkResult err;
 
@@ -1156,7 +1083,7 @@ static struct DescData mk_desc_sets(VkDevice dev)
 
 	printf("Backed descriptor sets\n");
 
-	return (struct DescData) {
+	return (struct desc) {
 		layouts,
 		lay_count,
 		layouts_exp,
@@ -1168,10 +1095,10 @@ static struct DescData mk_desc_sets(VkDevice dev)
 
 static void mk_bindings(
 	VkDevice dev,
-	struct DescData desc,
-	struct FontData font,
-	struct BufData share,
-	struct BufData rchar
+	struct desc desc,
+	struct font font,
+	struct buf share,
+	struct buf rchar
 ) {
 	size_t write_count = 2 + 2 * SWAP_IMG_COUNT;
 	VkWriteDescriptorSet writes[write_count];
@@ -1258,14 +1185,14 @@ static void mk_bindings(
 	printf("Updated descriptor sets (%zu writes)\n", write_count);
 }
 
-static struct GraphicsData mk_graphics(
-	struct DevData dev,
-	struct SwapData swap
+static struct graphics mk_graphics(
+	struct dev dev,
+	struct swap swap
 ) {
 	VkResult err;
 
-	struct PipelineTemplate *template = malloc(
-		sizeof(struct PipelineTemplate)
+	struct pipeline_template *template = malloc(
+		sizeof(struct pipeline_template)
 	);
 
 	assert(template);
@@ -1547,7 +1474,7 @@ static struct GraphicsData mk_graphics(
 
 	printf("Created pipeline template\n");
 
-	return (struct GraphicsData) {
+	return (struct graphics) {
 		vert,
 		frag,
 #ifdef PLATFORM_COMPAT_VBO
@@ -1558,11 +1485,11 @@ static struct GraphicsData mk_graphics(
 	};
 }
 
-static struct PipelineData mk_pipe(
+static struct pipeline mk_pipe(
 	VkDevice dev,
-	struct Extent extent,
-	struct DescData desc,
-	struct PipelineTemplate *template
+	struct extent extent,
+	struct desc desc,
+	struct pipeline_template *template
 ) {
 	VkResult err;
 
@@ -1633,15 +1560,15 @@ static struct PipelineData mk_pipe(
 	}
 
 	printf("Created graphics pipeline\n");
-	return (struct PipelineData) {
+	return (struct pipeline) {
 		null_pipe_layout,
 		pipeline,
 	};
 }
 
-static struct FrameData mk_fbuffers(
+static struct frame mk_fbuffers(
 	VkDevice dev,
-	struct SwapData swap,
+	struct swap swap,
 	VkRenderPass pass
 ) {
 	VkResult err;
@@ -1720,7 +1647,7 @@ static struct FrameData mk_fbuffers(
 	}
 
 	printf("Created %u framebuffers\n", SWAP_IMG_COUNT);
-	return (struct FrameData) {
+	return (struct frame) {
 		views,
 		fbuffers,
 	};
@@ -1728,11 +1655,11 @@ static struct FrameData mk_fbuffers(
 
 static VkCommandBuffer *record_graphics(
 	VkDevice dev,
-	struct SwapData swap,
+	struct swap swap,
 	VkDescriptorSet *sets,
-	struct GraphicsData graphics,
-	struct PipelineData pipe,
-	struct FrameData frame,
+	struct graphics graphics,
+	struct pipeline pipe,
+	struct frame frame,
 	VkCommandPool pool
 ) {
 	VkCommandBufferAllocateInfo cmd_alloc_info = {
@@ -1820,7 +1747,7 @@ static VkCommandBuffer *record_graphics(
 			NULL
 		);
 
-		vkCmdDraw(cmd[i], 4, MAX_CHAR, 0, 0); // Quad
+		vkCmdDraw(cmd[i], 4, MAX_QUAD, 0, 0); // Quad
 		vkCmdEndRenderPass(cmd[i]);
 
 		err = vkEndCommandBuffer(cmd[i]);
@@ -1834,7 +1761,7 @@ static VkCommandBuffer *record_graphics(
 	return cmd;
 }
 
-static struct SyncData mk_sync(VkDevice dev)
+static struct sync mk_sync(VkDevice dev)
 {
 	VkResult err;
 	VkFenceCreateInfo fence_create_info = {
@@ -1888,7 +1815,7 @@ static struct SyncData mk_sync(VkDevice dev)
 	}
 
 	printf("Created %u semaphores\n", SWAP_IMG_COUNT);
-	return (struct SyncData) {
+	return (struct sync) {
 		acq_fence,
 		sub_fence,
 		sem,
@@ -1897,9 +1824,9 @@ static struct SyncData mk_sync(VkDevice dev)
 
 static void swap_free(
 	VkDevice dev,
-	struct SwapData swap,
-	struct PipelineData pipe,
-	struct FrameData frame,
+	struct swap swap,
+	struct pipeline pipe,
+	struct frame frame,
 	VkCommandPool pool,
 	VkCommandBuffer *cmd
 ) {
@@ -1922,21 +1849,21 @@ static void swap_free(
 	ak_img_free(dev, swap.depth);
 }
 
-struct ReswapData {
-	struct SwapData *swap;
-	struct PipelineData *pipe;
-	struct FrameData *frame;
+struct reswap_data {
+	struct swap *swap;
+	struct pipeline *pipe;
+	struct frame *frame;
 	VkCommandBuffer **cmd;
 };
 
 static int reswap(
 	GLFWwindow *win,
 	VkSurfaceKHR surf,
-	struct DevData dev,
-	struct GraphicsData graphics,
-	struct DescData desc,
+	struct dev dev,
+	struct graphics graphics,
+	struct desc desc,
 	VkCommandPool pool,
-	struct ReswapData in
+	struct reswap_data in
 ) {
 	int fbw, fbh;
 	glfwGetFramebufferSize(win, &fbw, &fbh);
@@ -1949,7 +1876,7 @@ static int reswap(
 		glfwGetFramebufferSize(win, &fbw, &fbh);
 	}
 
-	struct Extent fbs = { fbw, fbh };
+	struct extent fbs = { fbw, fbh };
 	printf("Recreating swapchain\n");
 
 	swap_free(
@@ -1981,27 +1908,25 @@ static int done;
 static void run(
 	GLFWwindow *win,
 	VkSurfaceKHR surf,
-	struct DevData dev,
-	struct GraphicsData graphics,
-	struct DescData desc,
+	struct dev dev,
+	struct graphics graphics,
+	struct desc desc,
 	VkCommandPool pool,
-	struct SyncData sync,
-	struct BufData share,
-	struct BufData rchar,
-	struct ReswapData vol
+	struct sync sync,
+	struct buf share,
+	struct buf rchar,
+	struct reswap_data vol
 ) {
 	printf("Initializing update data...\n");
 	glfwSetTime(0);
 
 	printf("Entering render loop...\n");
 	unsigned int img_i;
-	struct Frame data = {
-		.win_size = vol.swap->extent,
+	struct txt_frame frame = {
+		.size = vol.swap->extent,
 		.i = 0,
 		.t = 0.f,
 	};
-
-	// TODO: review loop ordering
 
 	VkResult err;
 	while (!done) {
@@ -2035,22 +1960,22 @@ static void run(
 			panic();
 		}
 
-		++data.i;
+		++frame.i;
 		float t = glfwGetTime();
-		data.dt = minf(t - data.last_t, MAX_DT);
-		data.last_t = t;
-		data.t += data.dt;
-#ifdef DEBUG
-		data.acc += data.dt;
-		if (data.acc > 1) {
+		frame.dt = minf(t - frame.t_prev, MAX_DT);
+		frame.t_prev = t;
+		frame.t += frame.dt;
+#ifdef TXT_DEBUG
+		frame.acc += frame.dt;
+		if (frame.acc > 1) {
 			printf(
 				"FPS=%zu\tdt=%.3fms\n",
-				data.i - data.last_i,
-				data.dt * 1000
+				frame.i - frame.i_last,
+				frame.dt * 1000
 			);
 
-			data.last_i = data.i;
-			data.acc = 0;
+			frame.i_last = frame.i;
+			frame.acc = 0;
 		}
 #endif
 		glfwPollEvents();
@@ -2058,13 +1983,12 @@ static void run(
 		inp_update(win);
 #endif
 		void *share_buf = share.mapped + img_i * share.frame_size;
-		*((struct Share*)share_buf) = txtquad_update(data, &text);
-#ifdef DEBUG
-		assert(text.block_count <= MAX_BLCK);
-		assert(text.char_count <= MAX_CHAR);
+		*((struct txt_share*)share_buf) = txtquad_update(frame, &txt);
+#ifdef TXT_DEBUG
+		assert(txt.count <= MAX_QUAD);
 #endif
 		void *rchar_buf = rchar.mapped + img_i * rchar.frame_size;
-		text_update((struct RawChar*)rchar_buf, data);
+		txt_update((struct raw_char*)rchar_buf);
 
 		VkSubmitInfo submit_info = {
 		STYPE(SUBMIT_INFO)
@@ -2189,37 +2113,37 @@ static void app_free()
 	printf("Cleanup complete\n");
 }
 
-void txtquad_init(struct Settings settings)
+void txtquad_init(struct txt_cfg cfg)
 {
-	struct Extent zero;
-	memset(&zero, 0, sizeof(struct Extent));
+	struct extent zero;
+	memset(&zero, 0, sizeof(struct extent));
 
-	switch (settings.mode) {
+	switch (cfg.mode) {
 	case MODE_WINDOWED:
 	case MODE_FULLSCREEN:
-		assert(settings.win_size.w > 0);
-		assert(settings.win_size.h > 0);
+		assert(cfg.win_size.w > 0);
+		assert(cfg.win_size.h > 0);
 		break;
 	case MODE_BORDERLESS:
-		settings.win_size = zero;
+		cfg.win_size = zero;
 		break;
 	default:
 		assert(0);
 	}
 
-	assert(NULL != settings.app_name);
-	size_t len = strlen(settings.asset_path);
+	assert(NULL != cfg.app_name);
+	size_t len = strlen(cfg.asset_path);
 	root_path = malloc(len + 32);
 	assert(root_path);
 
-	strncpy(root_path, settings.asset_path, len + 1);
+	strncpy(root_path, cfg.asset_path, len + 1);
 	filename = root_path + len;
 
-	app.win = mk_win(settings.app_name, settings.mode, &settings.win_size);
-	app.inst = mk_inst(settings.app_name);
+	app.win = mk_win(cfg.app_name, cfg.mode, &cfg.win_size);
+	app.inst = mk_inst(cfg.app_name);
 	app.surf = mk_surf(app.win, app.inst);
 	app.dev = mk_dev(app.inst, app.surf);
-	app.swap = mk_swap(settings.win_size, zero, app.dev, app.win, app.surf);
+	app.swap = mk_swap(cfg.win_size, zero, app.dev, app.win, app.surf);
 	app.pool = mk_pool(app.dev);
 	app.font = load_font(app.dev, app.pool);
 
@@ -2260,8 +2184,12 @@ void txtquad_init(struct Settings settings)
 
 void txtquad_start()
 {
-#ifdef DEBUG
-	printf("Text memory usage: %.2f MB\n", (float)sizeof(struct Text) / (1000 * 1000));
+#ifdef TXT_DEBUG
+	printf(
+		"Text memory usage: %.2f MB\n",
+		// Note: does not include mapped memory
+		(float)sizeof(struct txt_buf) / (1000 * 1000)
+	);
 #endif
 	run(
 		app.win,
@@ -2273,7 +2201,7 @@ void txtquad_start()
 		app.sync,
 		app.share,
 		app.rchar,
-		(struct ReswapData) {
+		(struct reswap_data) {
 			.swap = &app.swap,
 			.pipe = &app.pipe,
 			.frame = &app.frame,

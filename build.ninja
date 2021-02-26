@@ -2,7 +2,7 @@ builddir = obj
 
 config = $
     -O0 -ggdb $
-    -DDEBUG -DALG_DEBUG $
+    -DTXT_DEBUG -DALG_DEBUG $
     -DINP_KEYS -DINP_TEXT -DINP_MOUSE
 cflags = -fPIC -fdiagnostics-color=always
 lflags = -shared
@@ -20,28 +20,28 @@ rule ld
 rule ar
     command = lib $in $libs /out:$out
 
-build $builddir/main.o: cc main.c
+build $builddir/lib.o: cc lib.c
 build $builddir/inp.o: cc inp.c
 
-build $builddir/main_nopic.o: cc main.c
+build $builddir/lib_nopic.o: cc lib.c
     cflags =
 build $builddir/inp_nopic.o: cc inp.c
     cflags =
 
 build bin/libtxtquad.so: $
-    ld $builddir/main.o $builddir/inp.o
+    ld $builddir/lib.o $builddir/inp.o
     corelibs = -ldl -lX11 -lm -lpthread
 build so: phony bin/libtxtquad.so
 
 build bin/libtxtquad.dylib: $
-    ld $builddir/main.o $builddir/inp.o
+    ld $builddir/lib.o $builddir/inp.o
     corelibs = -framework Cocoa -framework IOKit
     lflags = -undefined dynamic_lookup -shared $
              -Wl,-install_name,@rpath/libtxtquad.dylib
 build dylib: phony bin/libtxtquad.dylib
 
 build bin/txtquad.lib: $
-    ar $builddir/main_nopic.o $builddir/inp_nopic.o
+    ar $builddir/lib_nopic.o $builddir/inp_nopic.o
     corelibs =
     libs = ext/lib/glfw3.lib ext/lib/vulkan.lib
 build lib: phony bin/txtquad.lib
