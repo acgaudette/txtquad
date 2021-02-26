@@ -13,9 +13,6 @@ Or, you can draw sprites, and render those instead.
 The font I made for the above gif
 can be found [here](https://github.com/acgaudette/kufont-ascii).
 
-txtquad is feature sparse but functional.
-Maybe someday it won't create its own window.
-
 # Getting Started
 
 _The instructions below are for linux._
@@ -47,7 +44,7 @@ You will additionally require the vulkan headers + libs, and glslc.
   to adjust compiler flags and switches
   (the lib is compiled in debug mode by default)
 - Runtime configuration
-  is possible via the Settings struct
+  is possible via the txt_cfg struct
   (see below)
 
 # Usage
@@ -60,7 +57,7 @@ You will additionally require the vulkan headers + libs, and glslc.
 
 # API
 
-`txtquad_init(struct Settings)`
+`txtquad_init(struct txt_cfg)`
 - Call this from your main function to boot up the engine
 - See the struct definition in ./txtquad.h
   for more details regarding configuration
@@ -69,11 +66,11 @@ You will additionally require the vulkan headers + libs, and glslc.
 - Call this to pass control
   from your app to the engine
 
-`txtquad_update(struct Frame, struct Text*)`
+`txtquad_update(struct txt_frame, struct txt_buf*)`
 - Implement this callback,
   it's called once per frame by the engine
-- Grab your animation data from the Frame
-- Write to the Text* to render stuff
+- Grab your animation data from the txt_frame
+- Write to the txt_buf* to render stuff
   (it's just a pointer to a blob of static memory)
 
 # Notes
@@ -82,12 +79,13 @@ You will additionally require the vulkan headers + libs, and glslc.
 - libtxtquad resolves user callback symbols at runtime via weak linking.
   You _must_ implement txtquad_update(),
   otherwise the lib will panic.
-- There is one example executable, but four demos.
+- There is one example executable, but five demos, including a benchmark.
   The demo selection can be controlled at compilation time by a define,
   or the $demo var in ./build.ninja
 - This repo has some other orbiting code in it,
-  like a corny single-header math library.
+  like my corny single-header math library.
   Maybe I'll move those out later.
+  See ./extras/ for useful txtquad extension code.
 
 # Using the input module
 
