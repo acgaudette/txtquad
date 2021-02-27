@@ -71,19 +71,19 @@ build $builddir/demos_nopic.o: cc examples/demos.c
 
 build bin/demos: $
     lde $builddir/demos.o $
-    | bin/libtxtquad.so assets/vert.spv assets/frag.spv
+    | so assets/vert.spv assets/frag.spv
     libs = -L bin -ltxtquad -rpath bin -lm
 build demos: phony bin/demos
 
 build bin/demos.macos: $
     lde $builddir/demos.o $
-    | bin/libtxtquad.dylib assets/vert_compat.spv assets/frag.spv
+    | dylib assets/vert_compat.spv assets/frag.spv
     libs = -L bin -ltxtquad -rpath bin
 build demos.macos: phony bin/demos.macos
 
 build bin/demos.exe: $
     lde $builddir/demos_nopic.o $
-    | bin/txtquad.lib assets/vert.spv assets/frag.spv
+    | lib assets/vert.spv assets/frag.spv
     libs = -L bin -ltxtquad $
            -lmsvcrt -luser32 -lshell32 -lgdi32 $
            -Wl,-nodefaultlib:libcmt -Wl,-nodefaultlib:msvcrtd -Wl,-machine:x64
