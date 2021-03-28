@@ -20,6 +20,8 @@
 #endif
 
 #define ENG_NAME "txtquad"
+#define ASSET_PATH_DEFAULT "./assets/"
+
 #define FONT_SIZE (FONT_WIDTH * FONT_WIDTH)
 #define FONT_OFF  (FONT_WIDTH / CHAR_WIDTH)
 
@@ -2131,16 +2133,18 @@ void txtquad_init(struct txt_cfg cfg)
 		assert(0);
 	}
 
-	assert(NULL != cfg.app_name);
-	size_t len = strlen(cfg.asset_path);
+	const char *app_name = cfg.app_name ?: ENG_NAME;
+	const char *asset_path = cfg.asset_path ?: ASSET_PATH_DEFAULT;
+
+	size_t len = strlen(asset_path);
 	root_path = malloc(len + 32);
 	assert(root_path);
 
-	strncpy(root_path, cfg.asset_path, len + 1);
+	strncpy(root_path, asset_path, len + 1);
 	filename = root_path + len;
 
-	app.win = mk_win(cfg.app_name, cfg.mode, &cfg.win_size);
-	app.inst = mk_inst(cfg.app_name);
+	app.win = mk_win(app_name, cfg.mode, &cfg.win_size);
+	app.inst = mk_inst(app_name);
 	app.surf = mk_surf(app.win, app.inst);
 	app.dev = mk_dev(app.inst, app.surf);
 	app.swap = mk_swap(cfg.win_size, zero, app.dev, app.win, app.surf);
