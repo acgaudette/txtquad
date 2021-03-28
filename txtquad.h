@@ -16,12 +16,15 @@ struct txt_cfg {
 	const char *app_name;
 	const char *asset_path; // .spv and .pbm files are loaded from here
 	enum {
-		  MODE_WINDOWED
+		  MODE_BORDERLESS
 		, MODE_FULLSCREEN // Note: unsupported aspect ratios will panic
-		, MODE_BORDERLESS
+		, MODE_WINDOWED
 	} mode;
 	struct extent win_size; // Ignored for MODE_BORDERLESS
 };
+
+// Zero is an acceptable default for all fields
+#define TXT_CFG_DEFAULT (struct txt_cfg {})
 
 /* Per-frame data */
 
