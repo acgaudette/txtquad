@@ -297,6 +297,17 @@ GEN(3, mag, fff)
 GEN(4, mag, ffff)
 #undef mag
 
+#ifdef ALG_DEBUG
+#define norm(N, ID) static v ## N ID(v ## N v) \
+{ \
+	float mag = v ## N ## _mag(v); \
+	assert(mag >= __FLT_MIN__); \
+	float inv = 1.f / mag; \
+	for (size_t i = 0; i < N; ++i) \
+		v.s[i] *= inv; \
+	return v; \
+}
+#else
 #define norm(N, ID) static v ## N ID(v ## N v) \
 { \
 	float mag = v ## N ## _mag(v); \
@@ -305,6 +316,7 @@ GEN(4, mag, ffff)
 		v.s[i] *= inv; \
 	return v; \
 }
+#endif
 
 GEN(2, norm, ff)
 GEN(3, norm, fff)
@@ -763,7 +775,12 @@ static m3 qt_to_m3(v4 q)
 	const float yz = q.y * q.z;
 	const float xw = q.x * q.w;
 
-	float inv = 1.f / (xx + yy + zz + ww);
+	float denom = xx + yy + zz + ww;
+#ifdef ALG_DEBUG
+	assert(denom >= __FLT_MIN__);
+#endif
+	float inv = 1.f / denom;
+
 	float x =  inv * ( xx - yy - zz + ww);
 	float y =  inv * (-xx + yy - zz + ww);
 	float z =  inv * (-xx - yy + zz + ww);
