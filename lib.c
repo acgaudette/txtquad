@@ -617,7 +617,7 @@ static unsigned char *read_font() // Read custom PBM file
 {
 	errno = 0;
 	strncpy(filename, "font.pbm", 8 + 1);
-	FILE *file = fopen(root_path, "r");
+	FILE *file = fopen(root_path, "rb");
 	if (errno) {
 		fprintf(
 			stderr,
