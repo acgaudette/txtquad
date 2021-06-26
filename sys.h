@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+__attribute__((noreturn))
 static void panic()
 {
 	printf("Exit failure\n");
@@ -11,6 +12,7 @@ static void panic()
 	abort();
 }
 
+__attribute__((noreturn))
 static void panic_msg(const char *msg)
 {
 	fflush(stdout);
