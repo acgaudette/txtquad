@@ -1662,7 +1662,8 @@ static VkCommandBuffer *record_graphics(
 	struct graphics graphics,
 	struct pipeline pipe,
 	struct frame frame,
-	VkCommandPool pool
+	VkCommandPool pool,
+	v3 clear_col
 ) {
 	VkCommandBufferAllocateInfo cmd_alloc_info = {
 	STYPE(COMMAND_BUFFER_ALLOCATE_INFO)
@@ -1693,7 +1694,7 @@ static VkCommandBuffer *record_graphics(
 	};
 
 	VkClearValue clears[] = {
-		{ 0, 0, 0, 1 },
+		{ clear_col.x, clear_col.y, clear_col.z, 1 },
 		{ 1, 0 },
 	};
 
@@ -1856,6 +1857,7 @@ struct reswap_data {
 	struct pipeline *pipe;
 	struct frame *frame;
 	VkCommandBuffer **cmd;
+	v3 clear_col;
 };
 
 static int reswap(
@@ -1900,7 +1902,8 @@ static int reswap(
 		graphics,
 		*(in.pipe),
 		*(in.frame),
-		pool
+		pool,
+		in.clear_col
 	);
 
 	return 0;
@@ -2179,7 +2182,8 @@ void txtquad_init(struct txt_cfg cfg)
 		app.graphics,
 		app.pipe,
 		app.frame,
-		app.pool
+		app.pool,
+		cfg.clear_col
 	);
 
 	app.sync = mk_sync(app.dev.log);

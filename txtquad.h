@@ -21,6 +21,7 @@ struct txt_cfg {
 		, MODE_WINDOWED
 	} mode;
 	struct extent win_size; // Ignored for MODE_BORDERLESS
+	v3 clear_col;
 };
 
 // Zero is an acceptable default for all fields
