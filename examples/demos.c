@@ -259,6 +259,7 @@ int main()
 		.asset_path = "./assets/",
 		.win_size = { 800, 800 }, // Ignored
 		.mode = MODE_BORDERLESS,
+		.cursor = CURSOR_SCREEN,
 	};
 
 	txtquad_init(cfg);

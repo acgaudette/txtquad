@@ -22,6 +22,10 @@ struct txt_cfg {
 	} mode;
 	struct extent win_size; // Ignored for MODE_BORDERLESS
 	v3 clear_col;
+	enum {
+		  CURSOR_SCREEN // Always bounded by the screen extent
+		, CURSOR_INF    // Unbounded, but locked to the window
+	} cursor;
 };
 
 // Zero is an acceptable default for all fields

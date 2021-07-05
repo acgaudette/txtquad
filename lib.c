@@ -176,8 +176,12 @@ static void glfw_char_callback(GLFWwindow *win, unsigned int unicode)
 }
 #endif
 
-static GLFWwindow *mk_win(const char *name, int type, struct extent *extent)
-{
+static GLFWwindow *mk_win(
+	const char *name,
+	int type,
+	struct extent *extent,
+	int cursor
+) {
 	if (!glfwInit()) {
 		panic_msg("unable to initialize GLFW");
 	}
@@ -264,7 +268,7 @@ static GLFWwindow *mk_win(const char *name, int type, struct extent *extent)
 #ifdef INP_TEXT
 	glfwSetCharCallback(win, glfw_char_callback);
 #endif
-	glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+	glfwSetInputMode(win, GLFW_CURSOR, cursor);
 
 	return win;
 }
@@ -2133,7 +2137,19 @@ void txtquad_init(struct txt_cfg cfg)
 		cfg.win_size = zero;
 		break;
 	default:
-		assert(0);
+		panic();
+	}
+
+	int cursor;
+	switch (cfg.cursor) {
+	case CURSOR_SCREEN:
+		cursor = GLFW_CURSOR_HIDDEN;
+		break;
+	case CURSOR_INF:
+		cursor = GLFW_CURSOR_DISABLED;
+		break;
+	default:
+		panic();
 	}
 
 	const char *app_name = cfg.app_name ?: ENG_NAME;
@@ -2146,7 +2162,7 @@ void txtquad_init(struct txt_cfg cfg)
 	strncpy(root_path, asset_path, len + 1);
 	filename = root_path + len;
 
-	app.win = mk_win(app_name, cfg.mode, &cfg.win_size);
+	app.win = mk_win(app_name, cfg.mode, &cfg.win_size, cursor);
 	app.inst = mk_inst(app_name);
 	app.surf = mk_surf(app.win, app.inst);
 	app.dev = mk_dev(app.inst, app.surf);
