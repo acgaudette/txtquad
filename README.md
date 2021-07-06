@@ -3,7 +3,11 @@ render "game jam" style 3D text in the most straightforward way possible.
 
 ![](media/2bp.gif)
 
-It supports a custom format that essentially boils down
+Surprisingly, you can do a lot with just "text":
+
+![](media/jam13.gif)
+
+txtquad supports a custom format that essentially boils down
 to a square, ASCII-indexed binary bitmap.
 The font file is encoded as a pbm, and WYSIWYG.
 
@@ -31,6 +35,12 @@ You will additionally require the vulkan headers + libs, and glslc.
    - This also grabs the font from the link above
      and installs it into ./assets
      if a font doesn't already exist at that location
+   - Additionally, this clones the headers
+     https://github.com/acgaudette/alg
+     and
+     https://github.com/acgaudette/acg
+     (previously in-tree dependencies)
+     into ./ext/include
 2. ./runex to build and launch ./bin/demos
    - This will build ./bin/libtxtquad.so as a side effect
    - Alternatively,
@@ -82,10 +92,7 @@ You will additionally require the vulkan headers + libs, and glslc.
 - There is one example executable, but five demos, including a benchmark.
   The demo selection can be controlled at compilation time by a define,
   or the $demo var in ./build.ninja
-- This repo has some other orbiting code in it,
-  like my corny single-header math library.
-  Maybe I'll move those out later.
-  See ./extras/ for useful txtquad extension code.
+- See ./extras/ for useful txtquad extension code.
 
 # Using the input module
 
