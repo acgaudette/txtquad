@@ -3,6 +3,8 @@
 INSTALL="$(pwd)/ext/"
 GLFW_URL="https://github.com/glfw/glfw/releases/download/3.3.2/glfw-3.3.2.zip"
 FONT_URL="https://github.com/acgaudette/kufont-ascii.git"
+HEAD_URL="https://github.com/acgaudette/acg.git"
+ ALG_URL="https://github.com/acgaudette/alg.git"
 
 mkdir -p assets && cd assets
 
@@ -12,8 +14,13 @@ mkdir -p assets && cd assets
 cd ..
 
 mkdir -p ext && cd ext
-mkdir -p src && cd src
 
+mkdir -p include && cd include
+! test -d acg && git clone $HEAD_URL
+! test -d alg && git clone  $ALG_URL
+cd ..
+
+mkdir -p src && cd src
 ! test -f glfw*.zip && wget $GLFW_URL
 ! test -d glfw*/ && unzip glfw*.zip
 
