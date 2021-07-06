@@ -3,8 +3,8 @@
 
 #include <inttypes.h>
 #include <vulkan/vulkan.h>
-#include "sys.h"
-#include "types.h"
+#include "acg/sys.h"
+#include "acg/types.h"
 
 #define STYPE(NAME) .sType = VK_STRUCTURE_TYPE_ ## NAME ,
 #define AK_MEM_PROP(STR) VK_MEMORY_PROPERTY_ ## STR ## _BIT

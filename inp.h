@@ -3,7 +3,7 @@
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
-#include "alg.h"
+#include "alg/alg.h"
 
 /*
  * Public API

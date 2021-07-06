@@ -2,7 +2,8 @@
 #define TXTQUAD_H
 
 #include "config.h"
-#include "alg.h"
+#include "alg/alg.h"
+#include "acg/types.h"
 
 #define PIX_WIDTH (1.f / CHAR_WIDTH)
 #define LINE_HEIGHT (PIX_WIDTH + 1.f)
