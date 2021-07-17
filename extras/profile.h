@@ -1,9 +1,12 @@
 #ifdef QUAD_MARK_COUNT
 
+#include <string.h>
+#include "acg/sys.h"
+
 #define PROFILE_MARK(TXT) \
 	profile_add(profile_hash(__func__), TXT)
 
-static struct {
+extern struct quad_profile {
 	const char *istr[QUAD_MARK_COUNT];
 	u16 counters[QUAD_MARK_COUNT];
 	u16 total;
@@ -65,7 +68,7 @@ static void profile_log(struct txt_buf *txt)
 #define PROFILE_MARK(_) ;
 #endif
 
-void profile_add(int e, struct txt_buf *txt)
+static void profile_add(int e, struct txt_buf *txt)
 {
 #ifdef QUAD_MARK_COUNT
 	assert(e < QUAD_MARK_COUNT);
@@ -79,7 +82,7 @@ void profile_add(int e, struct txt_buf *txt)
 #endif
 }
 
-void profile_report(struct txt_frame frame, struct txt_buf *txt)
+static void profile_report(struct txt_frame frame, struct txt_buf *txt)
 {
 #ifdef QUAD_MARK_COUNT
 	if (quad_profile.total != txt->count) {
