@@ -1,4 +1,5 @@
 #include <assert.h>
+#include "txtquad/extras/sprite.h"
 
 struct block {
 	const char *str;

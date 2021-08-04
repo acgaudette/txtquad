@@ -1,12 +1,11 @@
 #include <stdlib.h>
 #include <math.h>
-#include "txtquad.h"
-#include "inp.h"
+#include "txtquad/txtquad.h"
+#include "txtquad/inp.h"
 
 #ifdef DEMO_3
 	#define DEBUG_UI
-	#include "extras/sprite.h"
-	#include "extras/block.h"
+	#include "txtquad/extras/block.h"
 
 	static char cli[1024];
 	static size_t cli_len;
@@ -18,10 +17,10 @@
 		cli[cli_len++] = ascii;
 	}
 #elif DEMO_4
-	#include "extras/sprite.h"
+	#include "txtquad/extras/sprite.h"
 	void inp_ev_text(unsigned int _) { }
 #elif DEMO_5
-	#include "sys.h"
+	#include "acg/sys.h"
 #else
 	void inp_ev_text(unsigned int _) { }
 #endif

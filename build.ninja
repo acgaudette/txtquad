@@ -6,7 +6,7 @@ config = $
     -DINP_KEYS -DINP_TEXT -DINP_MOUSE
 cflags = -fPIC -fdiagnostics-color=always
 lflags = -shared
-incl = -I . -I ext/include
+incl = -I .. -I ext/include
 libs = -L ext/lib -lglfw3 -lvulkan
 corelibs = ERROR_PLATFORM_UNDEFINED
 
