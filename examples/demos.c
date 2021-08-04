@@ -3,7 +3,9 @@
 #include "txtquad/txtquad.h"
 #include "txtquad/inp.h"
 
-#ifdef DEMO_3
+#ifdef DEMO_1
+# elif DEMO_2
+# elif DEMO_3
 	#define DEBUG_UI
 	#include "txtquad/extras/block.h"
 
@@ -22,6 +24,7 @@
 #elif DEMO_5
 	#include "acg/sys.h"
 #else
+	#error invalid demo selection
 	void inp_ev_text(unsigned int _) { }
 #endif
 
