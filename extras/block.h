@@ -3,10 +3,14 @@
 
 struct block {
 	const char *str;
-
-	float scale;
-	v3 pos;
-	v4 rot;
+	union {
+		t3 trs; // Optional transform
+		struct {
+			float scale;
+			v3 pos;
+			v4 rot;
+		};
+	};
 	v2 anch;
 
 	#define JUST_LEFT   (-1.f)

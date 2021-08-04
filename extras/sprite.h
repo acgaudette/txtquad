@@ -1,10 +1,19 @@
 #include <assert.h>
+#include "acg/trs.h"
 
 #define BOUNDS_FONT ((v4) { 0.f, 0.f, PIX_WIDTH, 0.f }) // Correct 7px font
 
 struct sprite {
 	v2 anch; // Ranges from 0 => +/-1 from center
-	float scale; v3 pos; v4 rot;
+	union {
+		t3 trs; // Optional transform
+		struct {
+			float scale;
+			v3 pos;
+			v4 rot;
+		};
+	};
+
 	v3 col;
 	v3 vfx;
 	char asc;
