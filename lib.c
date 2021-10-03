@@ -225,7 +225,7 @@ static GLFWwindow *mk_win(
 		exists |= active;
 		printf(
 			"\t%s%5d x %5d (%.2f) @%4dHz\n",
-			active ?  "* " : "  ",
+			active ? "* " : "  ",
 			m.width,
 			m.height,
 			m.width / (float)m.height,
