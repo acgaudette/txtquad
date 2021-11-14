@@ -91,7 +91,7 @@ static struct {
 		VkPhysicalDevice *devices;
 		VkPhysicalDevice hard;
 		VkPhysicalDeviceProperties props;
-		VkPhysicalDeviceMemoryProperties mem_props;
+		VkPhysicalDeviceMemoryProperties props_mem;
 		VkDevice log;
 		size_t q_ind;
 		VkQueue q;
@@ -386,16 +386,16 @@ static struct dev mk_dev(VkInstance inst, VkSurfaceKHR surf)
 	assert(GPU_IDX < dev_count);
 	hard_dev = hard_devs[GPU_IDX];
 
-	VkPhysicalDeviceProperties dev_props;
-	vkGetPhysicalDeviceProperties(hard_dev, &dev_props);
+	VkPhysicalDeviceProperties props;
+	vkGetPhysicalDeviceProperties(hard_dev, &props);
 	printf(
 		"Using device \"%s\" (%s)\n"
 		"API version %u.%u.%u\n",
-		dev_props.deviceName,
-		ak_dev_type_str(dev_props.deviceType),
-		VK_VERSION_MAJOR(dev_props.apiVersion),
-		VK_VERSION_MINOR(dev_props.apiVersion),
-		VK_VERSION_PATCH(dev_props.apiVersion)
+		props.deviceName,
+		ak_dev_type_str(props.deviceType),
+		VK_VERSION_MAJOR(props.apiVersion),
+		VK_VERSION_MINOR(props.apiVersion),
+		VK_VERSION_PATCH(props.apiVersion)
 	);
 
 	unsigned int q_family_count = 1;
@@ -461,18 +461,18 @@ static struct dev mk_dev(VkInstance inst, VkSurfaceKHR surf)
 	vkGetDeviceQueue(dev, q_ind, 0, &q);
 	printf("Acquired queue [%zu]\n", q_ind);
 
-	VkPhysicalDeviceMemoryProperties mem_props;
-	vkGetPhysicalDeviceMemoryProperties(hard_dev, &mem_props);
+	VkPhysicalDeviceMemoryProperties props_mem;
+	vkGetPhysicalDeviceMemoryProperties(hard_dev, &props_mem);
 
-	for (u32 i = 0; i < mem_props.memoryTypeCount; ++i) {
-		VkMemoryType t = mem_props.memoryTypes[i];
+	for (u32 i = 0; i < props_mem.memoryTypeCount; ++i) {
+		VkMemoryType t = props_mem.memoryTypes[i];
 		printf("Found memory type %u:\n", i);
 		VkMemoryPropertyFlags flags = t.propertyFlags;
-		ak_print_mem_props(flags, "\t%s\n");
+		ak_print_props_mem(flags, "\t%s\n");
 	}
 
-	for (u32 i = 0; i < mem_props.memoryHeapCount; ++i) {
-		VkMemoryHeap h = mem_props.memoryHeaps[i];
+	for (u32 i = 0; i < props_mem.memoryHeapCount; ++i) {
+		VkMemoryHeap h = props_mem.memoryHeaps[i];
 		float size = (float)h.size / (1024 * 1024);
 		printf("Found heap %u with size %.1fMB\n", i, size);
 	}
@@ -480,8 +480,8 @@ static struct dev mk_dev(VkInstance inst, VkSurfaceKHR surf)
 	return (struct dev) {
 		hard_devs,
 		hard_dev,
-		dev_props,
-		mem_props,
+		props,
+		props_mem,
 		dev,
 		q_ind,
 		q,
@@ -579,7 +579,7 @@ static struct swap mk_swap(
 	struct ak_img depth;
 	AK_IMG_MK(
 		dev.log,
-		dev.mem_props,
+		dev.props_mem,
 		"depth texture",
 		win_w, win_h,
 		D32_SFLOAT,
@@ -720,7 +720,7 @@ static struct font load_font(struct dev dev, VkCommandPool pool)
 
 	AK_BUF_MK_AND_MAP(
 		dev.log,
-		dev.mem_props,
+		dev.props_mem,
 		"font staging",
 		FONT_SIZE,
 		TRANSFER_SRC,
@@ -738,7 +738,7 @@ static struct font load_font(struct dev dev, VkCommandPool pool)
 	struct ak_img tex;
 	AK_IMG_MK(
 		dev.log,
-		dev.mem_props,
+		dev.props_mem,
 		"font texture",
 		128, 128,
 		R8_UNORM,
@@ -930,7 +930,7 @@ static void prep_share(struct dev dev, struct buf *out)
 
 	AK_BUF_MK_AND_MAP(
 		dev.log,
-		dev.mem_props,
+		dev.props_mem,
 		"share",
 		size,
 		UNIFORM_BUFFER,
@@ -954,7 +954,7 @@ static void prep_rchar(struct dev dev, struct buf *out)
 
 	AK_BUF_MK_AND_MAP(
 		dev.log,
-		dev.mem_props,
+		dev.props_mem,
 		"char",
 		size,
 		STORAGE_BUFFER,
@@ -1243,7 +1243,7 @@ static struct graphics mk_graphics(
 		float *verts;
 		AK_BUF_MK_AND_MAP(
 			dev.log,
-			dev.mem_props,
+			dev.props_mem,
 			"compat vertex",
 			4 * sizeof(float) * 4,
 			VERTEX_BUFFER,

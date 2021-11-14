@@ -45,7 +45,7 @@ static const char *ak_dev_type_str(int e)
 	}
 }
 
-static void ak_print_mem_props(VkMemoryPropertyFlags prop_mask, const char *format)
+static void ak_print_props_mem(VkMemoryPropertyFlags prop_mask, const char *format)
 {
 	u32 j = 0;
 	while (prop_mask) {
@@ -59,19 +59,19 @@ static void ak_print_mem_props(VkMemoryPropertyFlags prop_mask, const char *form
 }
 
 static u32 ak_mem_type_idx(
-	VkPhysicalDeviceMemoryProperties mem_props,
+	VkPhysicalDeviceMemoryProperties props_mem,
 	u32 type_mask,
 	VkMemoryPropertyFlags prop_mask
 ) {
 	printf("\t| ");
-	ak_print_mem_props(prop_mask, "%s ");
+	ak_print_props_mem(prop_mask, "%s ");
 	printf("\n");
 
-	for (u32 i = 0; i < mem_props.memoryTypeCount; ++i) {
+	for (u32 i = 0; i < props_mem.memoryTypeCount; ++i) {
 		int compat = type_mask & (1 << i);
 		if (!compat) continue;
 
-		VkMemoryType t = mem_props.memoryTypes[i];
+		VkMemoryType t = props_mem.memoryTypes[i];
 		VkMemoryPropertyFlags flags = t.propertyFlags;
 		compat = prop_mask == (flags & prop_mask);
 		if (!compat) continue;
@@ -239,7 +239,7 @@ static void ak_buf_mk(
 	VkPhysicalDeviceMemoryProperties mem_info,
 	VkDeviceSize size,
 	VkBufferUsageFlags usage,
-	VkMemoryPropertyFlags mem_props,
+	VkMemoryPropertyFlags props_mem,
 	struct ak_buf *out
 ) {
 	VkResult err;
@@ -276,7 +276,7 @@ static void ak_buf_mk(
 		.memoryTypeIndex = ak_mem_type_idx(
 			mem_info,
 			req.memoryTypeBits,
-			mem_props
+			props_mem
 		),
 		.pNext = NULL,
 	};
@@ -308,7 +308,7 @@ static void ak_buf_mk(
 
 static void ak_buf_mk_and_map(
 	VkDevice dev,
-	VkPhysicalDeviceMemoryProperties mem_props,
+	VkPhysicalDeviceMemoryProperties props_mem,
 	VkDeviceSize size,
 	VkBufferUsageFlags usage,
 	struct ak_buf *out,
@@ -316,7 +316,7 @@ static void ak_buf_mk_and_map(
 ) {
 	ak_buf_mk(
 		dev,
-		mem_props,
+		props_mem,
 		size,
 		usage,
 		// TODO: support uncached and/or non host-coherent heaps
