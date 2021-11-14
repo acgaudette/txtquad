@@ -1993,9 +1993,8 @@ static void run(
 #endif
 		void *share_buf = share.mapped + img_i * share.frame_size;
 		*((struct txt_share*)share_buf) = txtquad_update(frame, &txt);
-#ifdef TXT_DEBUG
 		assert(txt.count <= MAX_QUAD);
-#endif
+
 		void *rchar_buf = rchar.mapped + img_i * rchar.frame_size;
 		txt_update((struct raw_char*)rchar_buf);
 
