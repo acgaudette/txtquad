@@ -1417,20 +1417,20 @@ static struct graphics mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkAttachmentDescription col_attach = {
+	VkAttachmentDescription attach_col = {
 		.format = swap.format,
-		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.samples = dev.sample_n,
 		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
 		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-		.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+		.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 	};
 
-	VkAttachmentDescription depth_attach = {
+	VkAttachmentDescription attach_depth = {
 		.format = VK_FORMAT_D32_SFLOAT,
-		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.samples = dev.sample_n,
 		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 		.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
@@ -1439,14 +1439,30 @@ static struct graphics mk_graphics(
 		.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 	};
 
-	VkAttachmentReference col_attach_ref = {
+	VkAttachmentDescription attach_resolve = {
+		.format = swap.format,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+	};
+
+	VkAttachmentReference attach_col_ref = {
 		.attachment = 0,
 		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 	};
 
-	VkAttachmentReference depth_attach_ref = {
+	VkAttachmentReference attach_depth_ref = {
 		.attachment = 1,
 		.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+	};
+
+	VkAttachmentReference attach_resolve_ref = {
+		.attachment = 2,
+		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 	};
 
 	VkSubpassDescription subpass = {
@@ -1455,19 +1471,23 @@ static struct graphics mk_graphics(
 		.inputAttachmentCount = 0,
 		.pInputAttachments = NULL,
 		.colorAttachmentCount = 1,
-		.pColorAttachments = &col_attach_ref,
-		.pResolveAttachments = NULL,
-		.pDepthStencilAttachment = &depth_attach_ref,
+		.pColorAttachments = &attach_col_ref,
+		.pResolveAttachments = &attach_resolve_ref,
+		.pDepthStencilAttachment = &attach_depth_ref,
 		.preserveAttachmentCount = 0,
 		.pPreserveAttachments = NULL,
 	};
 
-	VkAttachmentDescription attach[] = { col_attach, depth_attach, };
+	VkAttachmentDescription attach[] = {
+		attach_col,
+		attach_depth,
+		attach_resolve,
+	};
 
 	VkRenderPassCreateInfo pass_create_info = {
 	STYPE(RENDER_PASS_CREATE_INFO)
 		.flags = 0,
-		.attachmentCount = 2,
+		.attachmentCount = 3,
 		.pAttachments = attach,
 		.subpassCount = 1,
 		.pSubpasses = &subpass,
@@ -1632,23 +1652,24 @@ static struct frame mk_fbuffers(
 		.pNext = NULL,
 	};
 
-	VkImageView *views = malloc(2 * sizeof(VkImageView) * SWAP_IMG_COUNT);
+	VkImageView *views = malloc(3 * sizeof(VkImageView) * SWAP_IMG_COUNT);
 	assert(views);
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
+		views[3 * i + 0] = swap.aa.view;
+		views[3 * i + 1] = swap.depth.view;
+
 		view_create_info.image = swap.img[i];
 		err = vkCreateImageView(
 			dev,
 			&view_create_info,
 			NULL,
-			&views[2 * i]
+			&views[3 * i + 2]
 		);
 
 		if (err != VK_SUCCESS) {
 			panic_msg("unable to create image view");
 		}
-
-		views[2 * i + 1] = swap.depth.view;
 	}
 
 	printf("Created %u image views\n", SWAP_IMG_COUNT);
@@ -1657,7 +1678,7 @@ static struct frame mk_fbuffers(
 	STYPE(FRAMEBUFFER_CREATE_INFO)
 		.flags = 0,
 		.renderPass = pass,
-		.attachmentCount = 2,
+		.attachmentCount = 3,
 		.width = swap.extent.w,
 		.height = swap.extent.h,
 		.layers = 1,
@@ -1671,7 +1692,7 @@ static struct frame mk_fbuffers(
 	assert(fbuffers);
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
-		fbuffer_create_info.pAttachments = views + 2 * i;
+		fbuffer_create_info.pAttachments = views + 3 * i;
 		err = vkCreateFramebuffer(
 			dev,
 			&fbuffer_create_info,
@@ -1873,7 +1894,7 @@ static void swap_free(
 	free(cmd);
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
-		vkDestroyImageView(dev, frame.views[2 * i], NULL);
+		vkDestroyImageView(dev, frame.views[3 * i + 2], NULL);
 		vkDestroyFramebuffer(dev, frame.buffers[i], NULL);
 	}
 
