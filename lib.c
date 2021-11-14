@@ -103,6 +103,7 @@ static struct {
 		VkFormat format;
 		struct extent extent;
 		VkImage *img;
+		struct ak_img aa;
 		struct ak_img depth;
 	} swap;
 	struct font {
@@ -593,13 +594,26 @@ static struct swap mk_swap(
 	vkGetSwapchainImagesKHR(dev.log, swapchain, &img_count, img);
 	printf("Created swapchain with %u images\n", img_count);
 
+	struct ak_img aa;
+	AK_IMG_MK(
+		dev.log,
+		dev.props_mem,
+		"aa buffer",
+		win_w, win_h, dev.sample_n,
+		format,
+		  AK_IMG_USAGE(TRANSIENT_ATTACHMENT)
+		| AK_IMG_USAGE(COLOR_ATTACHMENT),
+		COLOR,
+		&aa
+	);
+
 	struct ak_img depth;
 	AK_IMG_MK(
 		dev.log,
 		dev.props_mem,
 		"depth texture",
-		win_w, win_h,
-		D32_SFLOAT,
+		win_w, win_h, dev.sample_n,
+		VK_FORMAT_D32_SFLOAT,
 		AK_IMG_USAGE(DEPTH_STENCIL_ATTACHMENT),
 		DEPTH,
 		&depth
@@ -610,6 +624,7 @@ static struct swap mk_swap(
 		format,
 		{ win_w, win_h },
 		img,
+		aa,
 		depth,
 	};
 }
@@ -757,8 +772,8 @@ static struct font load_font(struct dev dev, VkCommandPool pool)
 		dev.log,
 		dev.props_mem,
 		"font texture",
-		128, 128,
-		R8_UNORM,
+		128, 128, 0,
+		VK_FORMAT_R8_UNORM,
 		AK_IMG_USAGE(SAMPLED) | AK_IMG_USAGE(TRANSFER_DST),
 		COLOR,
 		&tex
@@ -1870,6 +1885,7 @@ static void swap_free(
 
 	vkDestroySwapchainKHR(dev, swap.chain, NULL);
 	free(swap.img);
+	ak_img_free(dev, swap.aa);
 	ak_img_free(dev, swap.depth);
 }
 

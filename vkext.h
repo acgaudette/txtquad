@@ -101,14 +101,14 @@ struct ak_img {
 
 #define AK_IMG_HEAD(HANDLE) \
 	printf("Making " HANDLE " image\n")
-#define AK_IMG_MK(DEV, MEM, HANDLE, W, H, FORMAT, USAGE, ASPECT, OUT) \
+#define AK_IMG_MK(DEV, MEM, HANDLE, W, H, S, FORMAT, USAGE, ASPECT, OUT) \
 { \
 	AK_IMG_HEAD(HANDLE); \
 	ak_img_mk( \
 		DEV, \
 		MEM, \
-		W, H, \
-		VK_FORMAT_ ## FORMAT, \
+		W, H, S, \
+		FORMAT, \
 		USAGE, \
 		VK_IMAGE_ASPECT_ ## ASPECT ## _BIT, \
 		OUT \
@@ -119,6 +119,7 @@ static void ak_img_mk(
 	VkDevice dev,
 	VkPhysicalDeviceMemoryProperties mem_info,
 	u32 width, u32 height,
+	VkSampleCountFlagBits sample_n,
 	VkFormat format,
 	VkImageUsageFlags usage,
 	VkImageAspectFlags aspect,
@@ -133,7 +134,7 @@ static void ak_img_mk(
 		.extent = { width, height, 1 },
 		.mipLevels = 1,
 		.arrayLayers = 1,
-		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.samples = sample_n ?: VK_SAMPLE_COUNT_1_BIT,
 		.tiling = VK_IMAGE_TILING_OPTIMAL,
 		.usage = usage,
 		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
