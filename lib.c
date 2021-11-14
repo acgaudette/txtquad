@@ -92,9 +92,11 @@ static struct {
 		VkPhysicalDevice hard;
 		VkPhysicalDeviceProperties props;
 		VkPhysicalDeviceMemoryProperties props_mem;
+		VkPhysicalDeviceFeatures feats;
 		VkDevice log;
 		size_t q_ind;
 		VkQueue q;
+		VkSampleCountFlagBits sample_n;
 	} dev;
 	struct swap {
 		VkSwapchainKHR chain;
@@ -398,6 +400,19 @@ static struct dev mk_dev(VkInstance inst, VkSurfaceKHR surf)
 		VK_VERSION_PATCH(props.apiVersion)
 	);
 
+	VkSampleCountFlags sample_n =
+		  props.limits.framebufferColorSampleCounts
+		& props.limits.framebufferDepthSampleCounts;
+
+	     if (sample_n & VK_SAMPLE_COUNT_4_BIT)
+	         sample_n = VK_SAMPLE_COUNT_4_BIT;
+	else if (sample_n & VK_SAMPLE_COUNT_2_BIT)
+	         sample_n = VK_SAMPLE_COUNT_2_BIT;
+	else     sample_n = VK_SAMPLE_COUNT_1_BIT;
+
+	VkPhysicalDeviceFeatures feats;
+	vkGetPhysicalDeviceFeatures(hard_dev, &feats);
+
 	unsigned int q_family_count = 1;
 	VkQueueFamilyProperties q_prop;
 	vkGetPhysicalDeviceQueueFamilyProperties(
@@ -445,7 +460,7 @@ static struct dev mk_dev(VkInstance inst, VkSurfaceKHR surf)
 		.ppEnabledLayerNames = NULL,
 		.enabledExtensionCount = 1,
 		.ppEnabledExtensionNames = dev_ext_names,
-		.pEnabledFeatures = NULL,
+		.pEnabledFeatures = &feats,
 		.pNext = NULL,
 	};
 
@@ -482,9 +497,11 @@ static struct dev mk_dev(VkInstance inst, VkSurfaceKHR surf)
 		hard_dev,
 		props,
 		props_mem,
+		feats,
 		dev,
 		q_ind,
 		q,
+		sample_n,
 	};
 }
 
