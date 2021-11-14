@@ -76,7 +76,7 @@ struct pipeline_template {
 #endif
 	VkPipelineInputAssemblyStateCreateInfo asm_state_create_info;
 	VkPipelineRasterizationStateCreateInfo raster_state_create_info;
-	VkPipelineMultisampleStateCreateInfo null_multi_state_create_info;
+	VkPipelineMultisampleStateCreateInfo multi_state_create_info;
 	VkPipelineDepthStencilStateCreateInfo depth_stencil_state_create_info;
 	VkPipelineColorBlendAttachmentState blend_attach;
 	VkPipelineColorBlendStateCreateInfo blend_state_create_info;
@@ -1362,13 +1362,13 @@ static struct graphics mk_graphics(
 		.pNext = NULL,
 	};
 
-	template->null_multi_state_create_info
+	template->multi_state_create_info
 	= (VkPipelineMultisampleStateCreateInfo) {
 	STYPE(PIPELINE_MULTISAMPLE_STATE_CREATE_INFO)
 		.flags = 0,
-		.rasterizationSamples = 1,
-		.sampleShadingEnable = VK_FALSE,
-		.minSampleShading = 0.f,
+		.rasterizationSamples = dev.sample_n,
+		.sampleShadingEnable = dev.feats.sampleRateShading,
+		.minSampleShading = 1.f,
 		.pSampleMask = NULL,
 		.alphaToCoverageEnable = VK_FALSE,
 		.alphaToOneEnable = VK_FALSE,
@@ -1518,7 +1518,7 @@ static struct graphics mk_graphics(
 		.pTessellationState = NULL,
 		/* .pViewportState */
 		.pRasterizationState = &template->raster_state_create_info,
-		.pMultisampleState = &template->null_multi_state_create_info,
+		.pMultisampleState = &template->multi_state_create_info,
 		.pDepthStencilState = &template->depth_stencil_state_create_info,
 		.pColorBlendState = &template->blend_state_create_info,
 		.pDynamicState = NULL,
