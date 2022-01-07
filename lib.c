@@ -76,7 +76,7 @@ struct pipeline_template {
 #endif
 	VkPipelineInputAssemblyStateCreateInfo asm_state_create_info;
 	VkPipelineRasterizationStateCreateInfo raster_state_create_info;
-	VkPipelineMultisampleStateCreateInfo null_multi_state_create_info;
+	VkPipelineMultisampleStateCreateInfo multi_state_create_info;
 	VkPipelineDepthStencilStateCreateInfo depth_stencil_state_create_info;
 	VkPipelineColorBlendAttachmentState blend_attach;
 	VkPipelineColorBlendStateCreateInfo blend_state_create_info;
@@ -91,16 +91,19 @@ static struct {
 		VkPhysicalDevice *devices;
 		VkPhysicalDevice hard;
 		VkPhysicalDeviceProperties props;
-		VkPhysicalDeviceMemoryProperties mem_props;
+		VkPhysicalDeviceMemoryProperties props_mem;
+		VkPhysicalDeviceFeatures feats;
 		VkDevice log;
 		size_t q_ind;
 		VkQueue q;
+		VkSampleCountFlagBits sample_n;
 	} dev;
 	struct swap {
 		VkSwapchainKHR chain;
 		VkFormat format;
 		struct extent extent;
 		VkImage *img;
+		struct ak_img aa;
 		struct ak_img depth;
 	} swap;
 	struct font {
@@ -386,17 +389,30 @@ static struct dev mk_dev(VkInstance inst, VkSurfaceKHR surf)
 	assert(GPU_IDX < dev_count);
 	hard_dev = hard_devs[GPU_IDX];
 
-	VkPhysicalDeviceProperties dev_props;
-	vkGetPhysicalDeviceProperties(hard_dev, &dev_props);
+	VkPhysicalDeviceProperties props;
+	vkGetPhysicalDeviceProperties(hard_dev, &props);
 	printf(
 		"Using device \"%s\" (%s)\n"
 		"API version %u.%u.%u\n",
-		dev_props.deviceName,
-		ak_dev_type_str(dev_props.deviceType),
-		VK_VERSION_MAJOR(dev_props.apiVersion),
-		VK_VERSION_MINOR(dev_props.apiVersion),
-		VK_VERSION_PATCH(dev_props.apiVersion)
+		props.deviceName,
+		ak_dev_type_str(props.deviceType),
+		VK_VERSION_MAJOR(props.apiVersion),
+		VK_VERSION_MINOR(props.apiVersion),
+		VK_VERSION_PATCH(props.apiVersion)
 	);
+
+	VkSampleCountFlags sample_n =
+		  props.limits.framebufferColorSampleCounts
+		& props.limits.framebufferDepthSampleCounts;
+
+	     if (sample_n & VK_SAMPLE_COUNT_4_BIT)
+	         sample_n = VK_SAMPLE_COUNT_4_BIT;
+	else if (sample_n & VK_SAMPLE_COUNT_2_BIT)
+	         sample_n = VK_SAMPLE_COUNT_2_BIT;
+	else     sample_n = VK_SAMPLE_COUNT_1_BIT;
+
+	VkPhysicalDeviceFeatures feats;
+	vkGetPhysicalDeviceFeatures(hard_dev, &feats);
 
 	unsigned int q_family_count = 1;
 	VkQueueFamilyProperties q_prop;
@@ -445,7 +461,7 @@ static struct dev mk_dev(VkInstance inst, VkSurfaceKHR surf)
 		.ppEnabledLayerNames = NULL,
 		.enabledExtensionCount = 1,
 		.ppEnabledExtensionNames = dev_ext_names,
-		.pEnabledFeatures = NULL,
+		.pEnabledFeatures = &feats,
 		.pNext = NULL,
 	};
 
@@ -461,18 +477,18 @@ static struct dev mk_dev(VkInstance inst, VkSurfaceKHR surf)
 	vkGetDeviceQueue(dev, q_ind, 0, &q);
 	printf("Acquired queue [%zu]\n", q_ind);
 
-	VkPhysicalDeviceMemoryProperties mem_props;
-	vkGetPhysicalDeviceMemoryProperties(hard_dev, &mem_props);
+	VkPhysicalDeviceMemoryProperties props_mem;
+	vkGetPhysicalDeviceMemoryProperties(hard_dev, &props_mem);
 
-	for (u32 i = 0; i < mem_props.memoryTypeCount; ++i) {
-		VkMemoryType t = mem_props.memoryTypes[i];
+	for (u32 i = 0; i < props_mem.memoryTypeCount; ++i) {
+		VkMemoryType t = props_mem.memoryTypes[i];
 		printf("Found memory type %u:\n", i);
 		VkMemoryPropertyFlags flags = t.propertyFlags;
-		ak_print_mem_props(flags, "\t%s\n");
+		ak_print_props_mem(flags, "\t%s\n");
 	}
 
-	for (u32 i = 0; i < mem_props.memoryHeapCount; ++i) {
-		VkMemoryHeap h = mem_props.memoryHeaps[i];
+	for (u32 i = 0; i < props_mem.memoryHeapCount; ++i) {
+		VkMemoryHeap h = props_mem.memoryHeaps[i];
 		float size = (float)h.size / (1024 * 1024);
 		printf("Found heap %u with size %.1fMB\n", i, size);
 	}
@@ -480,11 +496,13 @@ static struct dev mk_dev(VkInstance inst, VkSurfaceKHR surf)
 	return (struct dev) {
 		hard_devs,
 		hard_dev,
-		dev_props,
-		mem_props,
+		props,
+		props_mem,
+		feats,
 		dev,
 		q_ind,
 		q,
+		sample_n,
 	};
 }
 
@@ -576,13 +594,26 @@ static struct swap mk_swap(
 	vkGetSwapchainImagesKHR(dev.log, swapchain, &img_count, img);
 	printf("Created swapchain with %u images\n", img_count);
 
+	struct ak_img aa;
+	AK_IMG_MK(
+		dev.log,
+		dev.props_mem,
+		"aa buffer",
+		win_w, win_h, dev.sample_n,
+		format,
+		  AK_IMG_USAGE(TRANSIENT_ATTACHMENT)
+		| AK_IMG_USAGE(COLOR_ATTACHMENT),
+		COLOR,
+		&aa
+	);
+
 	struct ak_img depth;
 	AK_IMG_MK(
 		dev.log,
-		dev.mem_props,
+		dev.props_mem,
 		"depth texture",
-		win_w, win_h,
-		D32_SFLOAT,
+		win_w, win_h, dev.sample_n,
+		VK_FORMAT_D32_SFLOAT,
 		AK_IMG_USAGE(DEPTH_STENCIL_ATTACHMENT),
 		DEPTH,
 		&depth
@@ -593,6 +624,7 @@ static struct swap mk_swap(
 		format,
 		{ win_w, win_h },
 		img,
+		aa,
 		depth,
 	};
 }
@@ -720,7 +752,7 @@ static struct font load_font(struct dev dev, VkCommandPool pool)
 
 	AK_BUF_MK_AND_MAP(
 		dev.log,
-		dev.mem_props,
+		dev.props_mem,
 		"font staging",
 		FONT_SIZE,
 		TRANSFER_SRC,
@@ -738,10 +770,10 @@ static struct font load_font(struct dev dev, VkCommandPool pool)
 	struct ak_img tex;
 	AK_IMG_MK(
 		dev.log,
-		dev.mem_props,
+		dev.props_mem,
 		"font texture",
-		128, 128,
-		R8_UNORM,
+		128, 128, 0,
+		VK_FORMAT_R8_UNORM,
 		AK_IMG_USAGE(SAMPLED) | AK_IMG_USAGE(TRANSFER_DST),
 		COLOR,
 		&tex
@@ -930,7 +962,7 @@ static void prep_share(struct dev dev, struct buf *out)
 
 	AK_BUF_MK_AND_MAP(
 		dev.log,
-		dev.mem_props,
+		dev.props_mem,
 		"share",
 		size,
 		UNIFORM_BUFFER,
@@ -954,7 +986,7 @@ static void prep_rchar(struct dev dev, struct buf *out)
 
 	AK_BUF_MK_AND_MAP(
 		dev.log,
-		dev.mem_props,
+		dev.props_mem,
 		"char",
 		size,
 		STORAGE_BUFFER,
@@ -1243,7 +1275,7 @@ static struct graphics mk_graphics(
 		float *verts;
 		AK_BUF_MK_AND_MAP(
 			dev.log,
-			dev.mem_props,
+			dev.props_mem,
 			"compat vertex",
 			4 * sizeof(float) * 4,
 			VERTEX_BUFFER,
@@ -1330,13 +1362,13 @@ static struct graphics mk_graphics(
 		.pNext = NULL,
 	};
 
-	template->null_multi_state_create_info
+	template->multi_state_create_info
 	= (VkPipelineMultisampleStateCreateInfo) {
 	STYPE(PIPELINE_MULTISAMPLE_STATE_CREATE_INFO)
 		.flags = 0,
-		.rasterizationSamples = 1,
-		.sampleShadingEnable = VK_FALSE,
-		.minSampleShading = 0.f,
+		.rasterizationSamples = dev.sample_n,
+		.sampleShadingEnable = dev.feats.sampleRateShading,
+		.minSampleShading = 1.f,
 		.pSampleMask = NULL,
 		.alphaToCoverageEnable = VK_FALSE,
 		.alphaToOneEnable = VK_FALSE,
@@ -1385,20 +1417,20 @@ static struct graphics mk_graphics(
 		.pNext = NULL,
 	};
 
-	VkAttachmentDescription col_attach = {
+	VkAttachmentDescription attach_col = {
 		.format = swap.format,
-		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.samples = dev.sample_n,
 		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
 		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-		.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+		.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 	};
 
-	VkAttachmentDescription depth_attach = {
+	VkAttachmentDescription attach_depth = {
 		.format = VK_FORMAT_D32_SFLOAT,
-		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.samples = dev.sample_n,
 		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 		.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
@@ -1407,14 +1439,30 @@ static struct graphics mk_graphics(
 		.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 	};
 
-	VkAttachmentReference col_attach_ref = {
+	VkAttachmentDescription attach_resolve = {
+		.format = swap.format,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+	};
+
+	VkAttachmentReference attach_col_ref = {
 		.attachment = 0,
 		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 	};
 
-	VkAttachmentReference depth_attach_ref = {
+	VkAttachmentReference attach_depth_ref = {
 		.attachment = 1,
 		.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+	};
+
+	VkAttachmentReference attach_resolve_ref = {
+		.attachment = 2,
+		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 	};
 
 	VkSubpassDescription subpass = {
@@ -1423,19 +1471,23 @@ static struct graphics mk_graphics(
 		.inputAttachmentCount = 0,
 		.pInputAttachments = NULL,
 		.colorAttachmentCount = 1,
-		.pColorAttachments = &col_attach_ref,
-		.pResolveAttachments = NULL,
-		.pDepthStencilAttachment = &depth_attach_ref,
+		.pColorAttachments = &attach_col_ref,
+		.pResolveAttachments = &attach_resolve_ref,
+		.pDepthStencilAttachment = &attach_depth_ref,
 		.preserveAttachmentCount = 0,
 		.pPreserveAttachments = NULL,
 	};
 
-	VkAttachmentDescription attach[] = { col_attach, depth_attach, };
+	VkAttachmentDescription attach[] = {
+		attach_col,
+		attach_depth,
+		attach_resolve,
+	};
 
 	VkRenderPassCreateInfo pass_create_info = {
 	STYPE(RENDER_PASS_CREATE_INFO)
 		.flags = 0,
-		.attachmentCount = 2,
+		.attachmentCount = 3,
 		.pAttachments = attach,
 		.subpassCount = 1,
 		.pSubpasses = &subpass,
@@ -1466,7 +1518,7 @@ static struct graphics mk_graphics(
 		.pTessellationState = NULL,
 		/* .pViewportState */
 		.pRasterizationState = &template->raster_state_create_info,
-		.pMultisampleState = &template->null_multi_state_create_info,
+		.pMultisampleState = &template->multi_state_create_info,
 		.pDepthStencilState = &template->depth_stencil_state_create_info,
 		.pColorBlendState = &template->blend_state_create_info,
 		.pDynamicState = NULL,
@@ -1600,23 +1652,24 @@ static struct frame mk_fbuffers(
 		.pNext = NULL,
 	};
 
-	VkImageView *views = malloc(2 * sizeof(VkImageView) * SWAP_IMG_COUNT);
+	VkImageView *views = malloc(3 * sizeof(VkImageView) * SWAP_IMG_COUNT);
 	assert(views);
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
+		views[3 * i + 0] = swap.aa.view;
+		views[3 * i + 1] = swap.depth.view;
+
 		view_create_info.image = swap.img[i];
 		err = vkCreateImageView(
 			dev,
 			&view_create_info,
 			NULL,
-			&views[2 * i]
+			&views[3 * i + 2]
 		);
 
 		if (err != VK_SUCCESS) {
 			panic_msg("unable to create image view");
 		}
-
-		views[2 * i + 1] = swap.depth.view;
 	}
 
 	printf("Created %u image views\n", SWAP_IMG_COUNT);
@@ -1625,7 +1678,7 @@ static struct frame mk_fbuffers(
 	STYPE(FRAMEBUFFER_CREATE_INFO)
 		.flags = 0,
 		.renderPass = pass,
-		.attachmentCount = 2,
+		.attachmentCount = 3,
 		.width = swap.extent.w,
 		.height = swap.extent.h,
 		.layers = 1,
@@ -1639,7 +1692,7 @@ static struct frame mk_fbuffers(
 	assert(fbuffers);
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
-		fbuffer_create_info.pAttachments = views + 2 * i;
+		fbuffer_create_info.pAttachments = views + 3 * i;
 		err = vkCreateFramebuffer(
 			dev,
 			&fbuffer_create_info,
@@ -1841,7 +1894,7 @@ static void swap_free(
 	free(cmd);
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
-		vkDestroyImageView(dev, frame.views[2 * i], NULL);
+		vkDestroyImageView(dev, frame.views[3 * i + 2], NULL);
 		vkDestroyFramebuffer(dev, frame.buffers[i], NULL);
 	}
 
@@ -1853,6 +1906,7 @@ static void swap_free(
 
 	vkDestroySwapchainKHR(dev, swap.chain, NULL);
 	free(swap.img);
+	ak_img_free(dev, swap.aa);
 	ak_img_free(dev, swap.depth);
 }
 
