@@ -46,6 +46,7 @@ layout (location = 1) out vec2 st;
 layout (location = 2) out vec4 col;
 layout (location = 3) out vec2 fx;
 layout (location = 4) out vec3 pos;
+layout (location = 5) out vec3 nor;
 
 void main()
 {
@@ -68,4 +69,5 @@ void main()
 #endif
 	gl_Position = share.vp * world;
 	pos = world.xyz;
+	nor = normalize((c.model * vec4(0, 0, -1, 0)).xyz);
 }
