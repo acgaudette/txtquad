@@ -106,6 +106,7 @@ static struct {
 		struct ak_img aa;
 		struct ak_img depth;
 	} swap;
+	VkCommandPool pool;
 	struct font {
 		struct ak_img tex;
 		VkSampler sampler;
@@ -141,13 +142,13 @@ static struct {
 		VkImageView *views;
 		VkFramebuffer *buffers;
 	} frame;
+	v3 clear_col;
+	VkCommandBuffer *cmd;
 	struct sync {
 		VkFence acquire;
 		VkFence *submit;
 		VkSemaphore *sem;
 	} sync;
-	VkCommandPool pool;
-	VkCommandBuffer *cmd;
 } app;
 
 #ifdef INP_KEYS
@@ -2244,6 +2245,7 @@ void txtquad_init(struct txt_cfg cfg)
 	);
 
 	app.frame = mk_fbuffers(app.dev.log, app.swap, app.graphics.pass);
+	app.clear_col = cfg.clear_col;
 	app.cmd = record_graphics(
 		app.dev.log,
 		app.swap,
@@ -2252,7 +2254,7 @@ void txtquad_init(struct txt_cfg cfg)
 		app.pipe,
 		app.frame,
 		app.pool,
-		cfg.clear_col
+		app.clear_col
 	);
 
 	app.sync = mk_sync(app.dev.log);
@@ -2283,6 +2285,7 @@ void txtquad_start()
 			.pipe = &app.pipe,
 			.frame = &app.frame,
 			.cmd = &app.cmd,
+			.clear_col = app.clear_col,
 		}
 	);
 
