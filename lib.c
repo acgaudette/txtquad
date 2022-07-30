@@ -184,6 +184,7 @@ static GLFWwindow *mk_win(
 	const char *name,
 	int type,
 	struct extent *extent,
+	int resizable,
 	int cursor
 ) {
 	if (!glfwInit()) {
@@ -193,7 +194,7 @@ static GLFWwindow *mk_win(
 	printf("Initialized GLFW\n");
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // GLFW Vulkan support
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+	glfwWindowHint(GLFW_RESIZABLE, resizable);
 
 	int mon_count;
 	GLFWmonitor **mons = glfwGetMonitors(&mon_count);
@@ -535,12 +536,13 @@ static struct swap mk_swap(
 			"Warning: "
 			"current extent does not match what was requested\n"
 		);
-
-		/*
+	/* We could throw if resizable is false,
+	 * or we could just continue on as I have done here;
+	 * the behavior is mostly only relevant for tiling window managers.
 		float asp_cur = win_w / (float)win_h;
 		float asp_req = req.w / (float)req.h;
 		assert(asp_cur == asp_req);
-		*/
+	 */
 	}
 
 	printf("Image count range: %u-", cap.minImageCount);
@@ -2220,7 +2222,7 @@ void txtquad_init(struct txt_cfg cfg)
 	strncpy(root_path, asset_path, len + 1);
 	filename = root_path + len;
 
-	app.win = mk_win(app_name, cfg.mode, &cfg.win_size, cursor);
+	app.win = mk_win(app_name, cfg.mode, &cfg.win_size, cfg.resizable, cursor);
 	app.inst = mk_inst(app_name);
 	app.surf = mk_surf(app.win, app.inst);
 	app.dev = mk_dev(app.inst, app.surf);

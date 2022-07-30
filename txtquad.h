@@ -22,6 +22,7 @@ struct txt_cfg {
 		, MODE_WINDOWED
 	} mode;
 	struct extent win_size; // Ignored for MODE_BORDERLESS
+	int resizable;
 	v3 clear_col;
 	enum {
 		  CURSOR_SCREEN // Always bounded by the screen extent
