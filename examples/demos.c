@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <math.h>
 #include "txtquad/txtquad.h"
 #include "txtquad/inp.h"
 

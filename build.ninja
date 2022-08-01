@@ -6,7 +6,7 @@ config = $
     -DINP_KEYS -DINP_TEXT -DINP_MOUSE
 cflags = -fPIC -fdiagnostics-color=always
 lflags = -shared
-incl = -I .. -I ext/include
+incl = -I ext/include
 libs = -L ext/lib -lglfw3 -lvulkan
 corelibs = ERROR_PLATFORM_UNDEFINED
 
@@ -65,8 +65,10 @@ build assets/frag.spv: shc text.frag
 
 build $builddir/demos.o: cc examples/demos.c
     config = -O0 -ggdb -DDEMO_$demo
+    incl = -I ext/include -I ..
 build $builddir/demos_nopic.o: cc examples/demos.c
     config = -O0 -ggdb -DDEMO_$demo
+    incl = -I ext/include -I ..
     cflags =
 
 build bin/demos: $
