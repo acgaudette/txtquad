@@ -19,7 +19,8 @@ struct block {
 	float justify;
 
 	float spacing;
-	float line_height;
+	float line_height; // Measured in LINE_HEIGHTs
+	float line_off;    // Measured in CHAR_WIDTHs
 };
 
 struct block_ctx {
@@ -34,7 +35,8 @@ struct block_ctx {
 
 static struct block_ctx block_prepare(struct block block)
 {
-	const float nlspace = block.line_height * LINE_HEIGHT;
+	const float nlspace = block.line_height
+		* (LINE_HEIGHT + block.line_off);
 
 	/* Compute bounds and offset */
 
