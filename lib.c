@@ -1386,7 +1386,7 @@ static struct graphics mk_graphics(
 		.flags = 0,
 		.depthTestEnable = VK_TRUE,
 		.depthWriteEnable = VK_TRUE,
-		.depthCompareOp = VK_COMPARE_OP_LESS,
+		.depthCompareOp = VK_COMPARE_OP_GREATER,
 		.depthBoundsTestEnable = VK_FALSE,
 		.stencilTestEnable = VK_FALSE,
 		.front = { },
@@ -1757,7 +1757,7 @@ static VkCommandBuffer *record_graphics(
 
 	VkClearValue clears[] = {
 		{ clear_col.x, clear_col.y, clear_col.z, 1 },
-		{ 1, 0 },
+		{ 0, 0 },
 	};
 
 	for (size_t i = 0; i < SWAP_IMG_COUNT; ++i) {
